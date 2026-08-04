@@ -28,6 +28,8 @@ Veriler tarayıcının `localStorage`'ında saklanır.
 
 - Veriler cihaza/tarayıcıya özel (localStorage) — cihazlar arası senkron yok.
   Çoklu cihaz senkronizasyonu için bir bulut veritabanı (örn. Firebase) entegrasyonu gerekir.
+- Excel'deki "Personel Ödemeleri" sayfası (personel bazlı maaş/ödeme özeti,
+  Giderler'deki "Personel Adı" sütunundan türetiliyor) henüz uygulamaya taşınmadı.
 - Grafikler Chart.js CDN'ine bağlı (internet gerektirir); CDN erişilemezse
   ilgili grafik alanları boş kalabilir — bu yüzden çoğu yerde tablo ile
   yedeklenmiş durumda.

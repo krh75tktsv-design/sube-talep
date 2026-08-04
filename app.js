@@ -12,18 +12,16 @@ const ICONS = {
   takip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   sube: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V9l8-5 8 5v12M9 21v-6h6v6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   ayar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.6V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.6-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.6V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.6 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  personel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6.3 6.5-6.3s6.5 2.7 6.5 6.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8.2a3 3 0 010 5.9M19 20c0-2.7-1.6-4.9-4-5.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 
 const MENU = [
-  { id: "ozet",     ad: "Genel Bakış",         icon: ICONS.ozet,     mobil: true },
-  { id: "gelir",    ad: "Gelirler",            icon: ICONS.gelir,    mobil: true },
-  { id: "gider",    ad: "Giderler",            icon: ICONS.gider,    mobil: true },
-  { id: "personel", ad: "Personel Ödemeleri",  icon: ICONS.personel, mobil: false },
-  { id: "banka",    ad: "Banka Hesapları",     icon: ICONS.banka,    mobil: true },
-  { id: "takip",    ad: "Ödeme & Tahsilat",    icon: ICONS.takip,    mobil: true },
-  { id: "sube",     ad: "Şube Karşılaştırma",  icon: ICONS.sube,     mobil: false },
-  { id: "ayar",     ad: "Ayarlar",             icon: ICONS.ayar,     mobil: false },
+  { id: "ozet",   ad: "Genel Bakış",        icon: ICONS.ozet,  mobil: true },
+  { id: "gelir",  ad: "Gelirler",           icon: ICONS.gelir, mobil: true },
+  { id: "gider",  ad: "Giderler",           icon: ICONS.gider, mobil: true },
+  { id: "banka",  ad: "Banka Hesapları",    icon: ICONS.banka, mobil: true },
+  { id: "takip",  ad: "Ödeme & Tahsilat",   icon: ICONS.takip, mobil: true },
+  { id: "sube",   ad: "Şube Karşılaştırma", icon: ICONS.sube,  mobil: false },
+  { id: "ayar",   ad: "Ayarlar",            icon: ICONS.ayar,  mobil: false },
 ];
 
 const SUBE_RENK = ["#0F766E","#B45309","#6D28D9","#BE185D","#0369A1","#4D7C0F","#9333EA","#C2410C","#334155"];
@@ -120,7 +118,6 @@ const FILTERS = {
   banka: { arama:"" },
   takip: { tip:"tumu", durum:"tumu", arama:"", bas:"", bit:"" },
   sube:  { bas:_buAy.bas, bit:_buAy.bit },
-  personel: { arama:"", bas:_buAy.bas, bit:_buAy.bit },
 };
 function tarihAralikta(tarih, bas, bit){
   if(!tarih) return true;
@@ -221,7 +218,7 @@ function renderAll(){
   Object.values(charts).forEach(ch=>ch && ch.destroy && ch.destroy());
   charts = {};
   const renderers = { ozet: renderOzet, gelir: ()=>renderIslemSayfa("gelir"), gider: ()=>renderIslemSayfa("gider"),
-    personel: renderPersonel, banka: renderBanka, takip: renderTakip, sube: renderSubeKarsilastirma, ayar: renderAyarlar };
+    banka: renderBanka, takip: renderTakip, sube: renderSubeKarsilastirma, ayar: renderAyarlar };
   c.innerHTML = "";
   renderers[activeTab]();
   window.scrollTo(0,0);
@@ -1035,98 +1032,6 @@ function renderSubeKarsilastirma(){
     FILTERS.sube = { bas:"", bit:"" };
     renderSubeKarsilastirma();
   });
-}
-
-/* ---------------- Personel Ödemeleri ---------------- */
-function personelFiltreli(){
-  const fs = FILTERS.personel;
-  return f(DATA.giderler)
-    .filter(g => g.kategori === "PERSONEL")
-    .filter(g => tarihAralikta(g.tarih, fs.bas, fs.bit))
-    .filter(g => metinEslesir([g.aciklama, g.cari], fs.arama));
-}
-
-function personelGrupla(kayitlar){
-  const gruplar = new Map();
-  kayitlar.forEach(g=>{
-    const ad = (g.cari || g.aciklama || "").trim() || "Belirtilmemiş";
-    if(!gruplar.has(ad)) gruplar.set(ad, { ad, tutar:0, sayi:0, subeler:new Set(), sonTarih:"" });
-    const grup = gruplar.get(ad);
-    grup.tutar += g.tutar;
-    grup.sayi += 1;
-    if(g.sube) grup.subeler.add(g.sube);
-    if(!grup.sonTarih || g.tarih > grup.sonTarih) grup.sonTarih = g.tarih;
-  });
-  return Array.from(gruplar.values()).sort((a,b)=>b.tutar-a.tutar);
-}
-
-function renderPersonelIcerik(){
-  const kayitlar = personelFiltreli();
-  const gruplar = personelGrupla(kayitlar);
-  const toplam = kayitlar.reduce((a,b)=>a+b.tutar,0);
-  const kisiSayisi = gruplar.length;
-  const ortalama = kisiSayisi ? toplam/kisiSayisi : 0;
-
-  document.getElementById("kpi-personel").innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">Toplam Personel Ödemesi</div><div class="kpi-value tabular neg">${fmt(toplam)}</div><div class="kpi-sub">${kayitlar.length} kayıt</div></div>
-    <div class="kpi-card"><div class="kpi-label">Kişi Sayısı</div><div class="kpi-value tabular">${kisiSayisi}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Kişi Başı Ortalama</div><div class="kpi-value tabular">${fmt(ortalama)}</div></div>
-  `;
-
-  document.getElementById("liste-personel").innerHTML = `
-    <table>
-      <thead><tr><th>Ad</th><th>Şube</th><th class="right">Ödeme Sayısı</th><th>Son Ödeme</th><th class="right">Toplam</th></tr></thead>
-      <tbody>
-        ${gruplar.map(g=>`<tr>
-          <td>${g.ad}</td>
-          <td>${Array.from(g.subeler).map(subeRozet).join(" ")}</td>
-          <td class="right tabular">${g.sayi}</td>
-          <td>${fmtTarih(g.sonTarih)}</td>
-          <td class="right tabular neg" style="font-weight:700;">${fmt(g.tutar)}</td>
-        </tr>`).join("") || `<tr><td colspan="5" class="empty">Filtreye uyan kayıt yok.</td></tr>`}
-        ${gruplar.length ? `<tr style="background:var(--paper);font-weight:700;">
-          <td colspan="4">Toplam (${kisiSayisi} kişi)</td>
-          <td class="right tabular">${fmt(toplam)}</td>
-        </tr>` : ""}
-      </tbody>
-    </table>
-  `;
-}
-
-function renderPersonel(){
-  const fs = FILTERS.personel;
-  document.getElementById("content").innerHTML = `
-    <div class="kpi-grid" style="margin-bottom:14px;" id="kpi-personel"></div>
-    ${disaAktarToolbarHTML("personel")}
-
-    <div class="card" id="filtre-personel" style="margin-bottom:14px;">
-      <div class="card-head">Filtrele</div>
-      <div class="card-body">
-        <div class="form-grid">
-          <input type="date" data-fkey="bas" value="${fs.bas}">
-          <input type="date" data-fkey="bit" value="${fs.bit}">
-          <input type="text" data-fkey="arama" placeholder="İsim ara…" value="${fs.arama}">
-          <button class="btn btn-ghost btn-sm" id="filtre-temizle-personel">Temizle</button>
-        </div>
-        <div class="row-sub" style="margin-top:4px;">Giderler sekmesindeki "PERSONEL" kategorili kayıtlardan kişi bazlı özetlenir. Kayıtları düzenlemek için Giderler sekmesini kullanın.</div>
-      </div>
-    </div>
-
-    <div class="section-title">Kişi Bazlı Özet</div>
-    <div class="card"><div class="card-body" style="padding:0;overflow-x:auto;" id="liste-personel"></div></div>
-  `;
-
-  filtreBarWire("personel", renderPersonelIcerik);
-  disaAktarWire("personel",
-    ()=> `personel-odemeleri-${todayStr()}.csv`,
-    ()=> ["Ad","Şube","Ödeme Sayısı","Son Ödeme","Toplam"],
-    ()=> personelGrupla(personelFiltreli()).map(g=>[g.ad, Array.from(g.subeler).join(", "), g.sayi, fmtTarih(g.sonTarih), g.tutar])
-  );
-  document.getElementById("filtre-temizle-personel").addEventListener("click", ()=>{
-    FILTERS.personel = { arama:"", bas:"", bit:"" };
-    renderPersonel();
-  });
-  renderPersonelIcerik();
 }
 
 /* ---------------- Ayarlar ---------------- */
