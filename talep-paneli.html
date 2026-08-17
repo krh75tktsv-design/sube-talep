@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Şube Talepleri Paneli</title>
+<style>
+  :root{--ink:#111827;--paper:#F8F7F4;--brass:#B45309;--line:#E5E2DA;--muted:#6B7280;--total:#FEF3C7;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);}
+  .wrap{max-width:960px;margin:0 auto;padding:24px 16px 80px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  h2.kategori-baslik{font-size:14px;margin:0;padding:14px 16px;border-bottom:1px solid var(--line);background:#FAFAF8;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:20px;}
+  .toolbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em;}
+  input[type=date]{padding:11px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff;font-family:inherit;}
+  button{padding:11px 18px;background:var(--ink);color:#fff;border:0;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;}
+  button:disabled{opacity:.5;cursor:default;}
+  .durum{margin:14px 0;padding:12px;border-radius:10px;font-size:14px;display:none;}
+  .durum.hata{display:block;background:#FEF2F2;color:#991B1B;}
+  .durum.bos{display:block;background:#fff;border:1px solid var(--line);color:var(--muted);}
+  .kart{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:20px;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;}
+  th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:#fff;}
+  thead th{background:#FAFAF8;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700;}
+  tbody tr:last-child td{border-bottom:0;}
+  tr.toplam-satir td{font-weight:700;background:var(--total);}
+  td.toplam-sutun{font-weight:700;background:#FAFAF8;}
+  .tablo-scroll{overflow-x:auto;}
+  .notlar{padding:16px 18px;}
+  .notlar h2{font-size:13px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+  .not-satir{font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--line);}
+  .not-satir:last-child{border-bottom:0;}
+  .not-sube{font-weight:600;}
+  .ozet-kart{padding:14px 16px;}
+  .ozet-kart h2{font-size:13px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+  .ozet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;}
+  .ozet-hucre{background:var(--paper);border-radius:8px;padding:8px 10px;font-size:13px;display:flex;justify-content:space-between;}
+  .ozet-hucre b{font-variant-numeric:tabular-nums;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Şube Talepleri Paneli</h1>
+  <div class="sub">Şubelerin gönderdiği ürün taleplerinin, seçili tarih için özeti.</div>
+
+  <div class="toolbar">
+    <div>
+      <label for="tarih">Tarih</label>
+      <input type="date" id="tarih">
+    </div>
+    <button id="yenile">Yenile</button>
+  </div>
+
+  <div class="durum" id="durum"></div>
+  <div id="icerik"></div>
+</div>
+
+<script>
+// ---- AYARLAR: sube-talep.html ile AYNI Apps Script URL'sini kullan ----
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqY8TfdzTGWmtvrHZMseK8L3UWDFH1EEgZVESD7q8HUdODGU6YtAWb45-M7aA9aQ81aw/exec";
+
+// Kategori gösterim sırası (sube-talep.html'deki KATALOG ile aynı sıra)
+const KATEGORI_SIRASI = ["Tek Pastalar (Fransız)", "Fransız Ekler", "Dilim Cheesecake", "Bütün Cheesecake", "Klasik Pastalar (Boylu)", "Tatlı Kurabiyeler", "Unsuz / Diyet Ürünler", "Kekler", "Börekli Taş & Poğaça Grubu", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Porsiyon Tatlılar"];
+// -------------------------------------------------------------------
+
+const tarihInput = document.getElementById("tarih");
+const durumEl = document.getElementById("durum");
+const icerikEl = document.getElementById("icerik");
+const yenileBtn = document.getElementById("yenile");
+
+const yarin = new Date();
+yarin.setDate(yarin.getDate() + 1);
+tarihInput.value = yarin.toISOString().slice(0, 10);
+
+tarihInput.addEventListener("change", ciz);
+yenileBtn.addEventListener("click", yukleVeCiz);
+
+let TUM_KAYITLAR = [];
+
+yukleVeCiz();
+
+async function yukleVeCiz() {
+  if (APPS_SCRIPT_URL.includes("BURAYA_")) {
+    goster("hata", "Kurulum tamamlanmadı: APPS_SCRIPT_URL henüz ayarlanmamış.");
+    return;
+  }
+  yenileBtn.disabled = true;
+  yenileBtn.textContent = "Yükleniyor...";
+  gizle();
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, { method: "GET" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    TUM_KAYITLAR = data.kayitlar || [];
+    ciz();
+  } catch (err) {
+    goster("hata", "Veriler yüklenemedi, internet bağlantınızı kontrol edip tekrar deneyin.");
+  } finally {
+    yenileBtn.disabled = false;
+    yenileBtn.textContent = "Yenile";
+  }
+}
+
+function urunEtiketi(kayit) {
+  return kayit.boy !== "" && kayit.boy !== undefined && kayit.boy !== null
+    ? `${kayit.urun} (Boy ${kayit.boy})`
+    : kayit.urun;
+}
+
+function ciz() {
+  const secilenTarih = tarihInput.value;
+  const gunlukKayitlar = TUM_KAYITLAR.filter(k => k.tarih === secilenTarih);
+  const talepler = gunlukKayitlar.filter(k => k.urun !== "NOT");
+  const notlar = gunlukKayitlar.filter(k => k.urun === "NOT");
+
+  icerikEl.innerHTML = "";
+
+  if (talepler.length === 0 && notlar.length === 0) {
+    goster("bos", "Bu tarih için henüz talep gönderilmedi.");
+    return;
+  }
+  gizle();
+
+  if (talepler.length > 0) {
+    icerikEl.appendChild(kategoriOzetiOlustur(talepler));
+
+    const kategoriler = [...new Set(talepler.map(t => t.kategori))]
+      .sort((a, b) => {
+        const ia = KATEGORI_SIRASI.indexOf(a), ib = KATEGORI_SIRASI.indexOf(b);
+        return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      });
+    kategoriler.forEach(kategori => {
+      const kategoriKayitlari = talepler.filter(t => t.kategori === kategori);
+      icerikEl.appendChild(pivotTablosuOlustur(kategori, kategoriKayitlari));
+    });
+  }
+  if (notlar.length > 0) {
+    icerikEl.appendChild(notlarKartiOlustur(notlar));
+  }
+}
+
+function kategoriOzetiOlustur(talepler) {
+  const kart = document.createElement("div");
+  kart.className = "kart ozet-kart";
+  const toplamlar = {};
+  talepler.forEach(t => {
+    toplamlar[t.kategori] = (toplamlar[t.kategori] || 0) + Number(t.miktar || 0);
+  });
+  const kategoriler = Object.keys(toplamlar).sort((a, b) => {
+    const ia = KATEGORI_SIRASI.indexOf(a), ib = KATEGORI_SIRASI.indexOf(b);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+  let html = "<h2>Kategori Özeti</h2><div class=\"ozet-grid\">";
+  kategoriler.forEach(k => {
+    html += `<div class="ozet-hucre"><span>${k}</span><b>${toplamlar[k]}</b></div>`;
+  });
+  html += "</div>";
+  kart.innerHTML = html;
+  return kart;
+}
+
+function pivotTablosuOlustur(kategoriAdi, talepler) {
+  const subeler = [...new Set(talepler.map(t => t.sube))].sort((a, b) => a.localeCompare(b, "tr"));
+  const urunEtiketleri = [...new Set(talepler.map(urunEtiketi))];
+  const birimler = {};
+  const grid = {};
+  talepler.forEach(t => {
+    const etiket = urunEtiketi(t);
+    grid[etiket + "|" + t.sube] = (grid[etiket + "|" + t.sube] || 0) + Number(t.miktar || 0);
+    birimler[etiket] = t.birim;
+  });
+
+  const kart = document.createElement("div");
+  kart.className = "kart";
+  const baslik = document.createElement("h2");
+  baslik.className = "kategori-baslik";
+  baslik.textContent = kategoriAdi;
+  kart.appendChild(baslik);
+
+  const scrollWrap = document.createElement("div");
+  scrollWrap.className = "tablo-scroll";
+
+  let html = "<table><thead><tr><th>Ürün</th>";
+  subeler.forEach(s => (html += `<th>${s}</th>`));
+  html += "<th>Toplam</th></tr></thead><tbody>";
+
+  urunEtiketleri.forEach(etiket => {
+    const birim = birimler[etiket] ? ` <span style="color:var(--muted);font-weight:400;">(${birimler[etiket]})</span>` : "";
+    html += `<tr><td>${etiket}${birim}</td>`;
+    let satirToplam = 0;
+    subeler.forEach(sube => {
+      const miktar = grid[etiket + "|" + sube] || 0;
+      satirToplam += miktar;
+      html += `<td>${miktar ? miktar : "–"}</td>`;
+    });
+    html += `<td class="toplam-sutun">${satirToplam}</td></tr>`;
+  });
+
+  html += `<tr class="toplam-satir"><td>Şube Toplamı</td>`;
+  let genelToplam = 0;
+  subeler.forEach(sube => {
+    let subeToplam = 0;
+    urunEtiketleri.forEach(etiket => (subeToplam += grid[etiket + "|" + sube] || 0));
+    genelToplam += subeToplam;
+    html += `<td>${subeToplam}</td>`;
+  });
+  html += `<td class="toplam-sutun">${genelToplam}</td></tr>`;
+  html += "</tbody></table>";
+
+  scrollWrap.innerHTML = html;
+  kart.appendChild(scrollWrap);
+  return kart;
+}
+
+function notlarKartiOlustur(notlar) {
+  const kart = document.createElement("div");
+  kart.className = "kart notlar";
+  let html = "<h2>Şube Notları</h2>";
+  notlar.forEach(n => {
+    html += `<div class="not-satir"><span class="not-sube">${n.sube}:</span> ${n.miktar}</div>`;
+  });
+  kart.innerHTML = html;
+  return kart;
+}
+
+function goster(tur, mesaj) {
+  durumEl.className = "durum " + tur;
+  durumEl.textContent = mesaj;
+}
+function gizle() {
+  durumEl.className = "durum";
+  durumEl.textContent = "";
+}
+</script>
+</body>
+</html>
