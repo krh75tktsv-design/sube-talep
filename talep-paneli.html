@@ -44,14 +44,19 @@
 <body>
 <div class="wrap">
   <h1>Şube Talepleri Paneli</h1>
-  <div class="sub">Şubelerin gönderdiği ürün taleplerinin, seçili tarih için özeti.</div>
+  <div class="sub">Şubelerin gönderdiği ürün taleplerinin, seçili tarih aralığı için özeti.</div>
 
   <div class="toolbar">
     <div>
-      <label for="tarih">Tarih</label>
-      <input type="date" id="tarih">
+      <label for="baslangic">Başlangıç</label>
+      <input type="date" id="baslangic">
+    </div>
+    <div>
+      <label for="bitis">Bitiş</label>
+      <input type="date" id="bitis">
     </div>
     <button id="yenile">Yenile</button>
+    <button id="indir">CSV İndir</button>
   </div>
 
   <div class="durum" id="durum"></div>
@@ -66,19 +71,25 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqY8TfdzTGWmtv
 const KATEGORI_SIRASI = ["Tek Pastalar (Fransız)", "Fransız Ekler", "Dilim Cheesecake", "Bütün Cheesecake", "Klasik Pastalar (Boylu)", "Tatlı Kurabiyeler", "Unsuz / Diyet Ürünler", "Kekler", "Börekli Taş & Poğaça Grubu", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Porsiyon Tatlılar"];
 // -------------------------------------------------------------------
 
-const tarihInput = document.getElementById("tarih");
+const baslangicInput = document.getElementById("baslangic");
+const bitisInput = document.getElementById("bitis");
 const durumEl = document.getElementById("durum");
 const icerikEl = document.getElementById("icerik");
 const yenileBtn = document.getElementById("yenile");
+const indirBtn = document.getElementById("indir");
 
 const yarin = new Date();
 yarin.setDate(yarin.getDate() + 1);
-tarihInput.value = yarin.toISOString().slice(0, 10);
+baslangicInput.value = yarin.toISOString().slice(0, 10);
+bitisInput.value = yarin.toISOString().slice(0, 10);
 
-tarihInput.addEventListener("change", ciz);
+baslangicInput.addEventListener("change", ciz);
+bitisInput.addEventListener("change", ciz);
 yenileBtn.addEventListener("click", yukleVeCiz);
+indirBtn.addEventListener("click", csvIndir);
 
 let TUM_KAYITLAR = [];
+let SON_GORUNTULENEN = [];
 
 yukleVeCiz();
 
@@ -111,15 +122,17 @@ function urunEtiketi(kayit) {
 }
 
 function ciz() {
-  const secilenTarih = tarihInput.value;
-  const gunlukKayitlar = TUM_KAYITLAR.filter(k => k.tarih === secilenTarih);
-  const talepler = gunlukKayitlar.filter(k => k.urun !== "NOT");
-  const notlar = gunlukKayitlar.filter(k => k.urun === "NOT");
+  const bas = baslangicInput.value;
+  const bit = bitisInput.value || bas;
+  const araliktakiKayitlar = TUM_KAYITLAR.filter(k => k.tarih >= bas && k.tarih <= bit);
+  const talepler = araliktakiKayitlar.filter(k => k.urun !== "NOT");
+  const notlar = araliktakiKayitlar.filter(k => k.urun === "NOT");
+  SON_GORUNTULENEN = talepler;
 
   icerikEl.innerHTML = "";
 
   if (talepler.length === 0 && notlar.length === 0) {
-    goster("bos", "Bu tarih için henüz talep gönderilmedi.");
+    goster("bos", "Bu tarih aralığı için henüz talep gönderilmedi.");
     return;
   }
   gizle();
@@ -224,6 +237,37 @@ function notlarKartiOlustur(notlar) {
   });
   kart.innerHTML = html;
   return kart;
+}
+
+function csvAlaniKac(deger) {
+  const s = String(deger === undefined || deger === null ? "" : deger);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function csvIndir() {
+  if (SON_GORUNTULENEN.length === 0) {
+    goster("hata", "İndirilecek veri yok, önce bir tarih aralığı seçin.");
+    return;
+  }
+  const basliklar = ["Tarih", "Şube", "Kategori", "Ürün", "Boy", "Miktar", "Birim"];
+  const satirlar = [basliklar.join(",")];
+  SON_GORUNTULENEN.forEach(k => {
+    satirlar.push([
+      k.tarih, k.sube, k.kategori, k.urun,
+      k.boy !== undefined && k.boy !== null ? k.boy : "",
+      k.miktar, k.birim,
+    ].map(csvAlaniKac).join(","));
+  });
+  const csv = "﻿" + satirlar.join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `sube-talepleri_${baslangicInput.value}_${bitisInput.value}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function goster(tur, mesaj) {

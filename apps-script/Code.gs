@@ -9,8 +9,18 @@
 // 4) Dağıt'a bas, verilen Web App URL'sini kopyala.
 // 5) O URL'yi sube-talep.html VE talep-paneli.html içindeki APPS_SCRIPT_URL
 //    sabitlerine yapıştır (ikisi de aynı URL'yi kullanır).
+//
+// Eksik şube uyarı maili kurulumu (opsiyonel, tek seferlik):
+// 6) Yukarıdaki fonksiyon açılır listesinden "kurulumTetikleyiciOlustur"
+//    seçilir, Çalıştır'a basılır (Gmail gönderme izni için tekrar
+//    yetkilendirme istenebilir, onayla). Bu, her akşam 22:00'de o gün
+//    henüz talep göndermemiş şubeleri UYARI_EPOSTASI adresine mail atan
+//    bir zamanlayıcı kurar. Tekrar çalıştırmak zararsızdır (eski
+//    zamanlayıcıyı silip yenisini kurar, tekrarlanan mail oluşturmaz).
 
 const SHEET_ADI = "Talepler";
+const UYARI_EPOSTASI = "serkansalihoglu@lavita.com.tr";
+const SUBELER = ["Nişantaşı", "Fulya", "Maslak", "Kireçburnu", "Beykent", "Z.burnu", "S.beyli"];
 
 function doGet(e) {
   const sayfa = sayfayiGetirYaOlustur();
@@ -66,6 +76,44 @@ function doPost(e) {
   return ContentService
     .createTextOutput(JSON.stringify({ ok: true }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function kurulumTetikleyiciOlustur() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === "eksikSubeleriUyar") {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  ScriptApp.newTrigger("eksikSubeleriUyar")
+    .timeBased()
+    .everyDays(1)
+    .atHour(22)
+    .create();
+}
+
+function eksikSubeleriUyar() {
+  const tz = Session.getScriptTimeZone();
+  const yarin = new Date();
+  yarin.setDate(yarin.getDate() + 1);
+  const yarinStr = Utilities.formatDate(yarin, tz, "yyyy-MM-dd");
+
+  const sayfa = sayfayiGetirYaOlustur();
+  const veriler = sayfa.getDataRange().getValues();
+  veriler.shift();
+
+  const gonderenSubeler = new Set();
+  veriler.forEach(function (satir) {
+    const tarih = bicimle(satir[1], tz, "yyyy-MM-dd");
+    if (tarih === yarinStr && satir[2]) gonderenSubeler.add(satir[2]);
+  });
+
+  const eksikler = SUBELER.filter(function (s) { return !gonderenSubeler.has(s); });
+  if (eksikler.length === 0) return;
+
+  const konu = "Şube Talebi Uyarısı - " + yarinStr;
+  const govde = yarinStr + " tarihi için henüz ürün talebi göndermeyen şubeler:\n\n" +
+    eksikler.join("\n");
+  MailApp.sendEmail(UYARI_EPOSTASI, konu, govde);
 }
 
 function sayfayiGetirYaOlustur() {
