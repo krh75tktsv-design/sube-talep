@@ -41,6 +41,7 @@
   .ozet-hucre b{font-variant-numeric:tabular-nums;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -292,7 +293,33 @@ function csvIndir() {
   URL.revokeObjectURL(url);
 }
 
-function orijinalFormattaIndir() {
+// Orijinal dosyadaki renkler: şube/GİDEN/boy başlıkları kırmızı, kategori
+// başlık satırları sarı, TOPLAM(ADET) sütunu açık gri (orijinalde tema
+// rengi kullanılıyor, tam karşılığı olmadığı için düz griyle yaklaştırıldı).
+const RENK_SUBE = "FFFF0000";
+const RENK_KATEGORI = "FFFFFF00";
+const RENK_TOPLAM = "FFD9D9D9";
+const INCE_KENAR = { style: "thin", color: { argb: "FFBFBFBF" } };
+
+function hucreStil(cell, { fill, bold, kenarlik = true, hizalama } = {}) {
+  if (fill) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fill } };
+  if (bold !== undefined) cell.font = { bold };
+  if (kenarlik) cell.border = { top: INCE_KENAR, left: INCE_KENAR, bottom: INCE_KENAR, right: INCE_KENAR };
+  if (hizalama) cell.alignment = hizalama;
+}
+
+function ustBilgiEkle(ws, tarihGosterim, gunAdi) {
+  const c1 = ws.getCell(1, 1);
+  c1.value = "LA VİTA";
+  c1.font = { bold: true };
+  ws.getCell(1, 2).value = tarihGosterim;
+  const c2 = ws.getCell(2, 1);
+  c2.value = "GÜN:";
+  c2.font = { bold: true };
+  ws.getCell(2, 2).value = gunAdi;
+}
+
+async function orijinalFormattaIndir() {
   const tarih = baslangicInput.value;
   if (!tarih) {
     goster("hata", "Önce bir tarih seçin.");
@@ -308,26 +335,42 @@ function orijinalFormattaIndir() {
   const gunAdi = GUN_ADLARI[new Date(yil, ay - 1, gun).getDay()];
   const tarihGosterim = `${String(gun).padStart(2, "0")}.${String(ay).padStart(2, "0")}.${yil}`;
 
-  const wb = XLSX.utils.book_new();
+  indirOrijinalBtn.disabled = true;
+  indirOrijinalBtn.textContent = "Hazırlanıyor...";
 
-  SAYFA_TANIMLARI.forEach(tanim => {
-    const sayfaKayitlari = gununKayitlari.filter(k => tanim.kategoriler.includes(k.kategori));
-    if (sayfaKayitlari.length === 0) return;
+  try {
+    const wb = new ExcelJS.Workbook();
 
-    const subeler = [...new Set(sayfaKayitlari.map(k => k.sube))].sort((a, b) => a.localeCompare(b, "tr"));
+    SAYFA_TANIMLARI.forEach(tanim => {
+      const sayfaKayitlari = gununKayitlari.filter(k => tanim.kategoriler.includes(k.kategori));
+      if (sayfaKayitlari.length === 0) return;
 
-    let ws;
-    if (tanim.tip === "boylu") {
-      ws = boyluSayfaOlustur(tanim, sayfaKayitlari, subeler, tarihGosterim, gunAdi);
-    } else if (tanim.tip === "giden") {
-      ws = gidenSayfaOlustur(tanim, sayfaKayitlari, subeler, tarihGosterim, gunAdi);
-    } else {
-      ws = basitSayfaOlustur(tanim, sayfaKayitlari, subeler, tarihGosterim, gunAdi);
-    }
-    XLSX.utils.book_append_sheet(wb, ws, tanim.ad);
-  });
+      const subeler = [...new Set(sayfaKayitlari.map(k => k.sube))].sort((a, b) => a.localeCompare(b, "tr"));
+      const ws = wb.addWorksheet(tanim.ad);
 
-  XLSX.writeFile(wb, `siparis-listesi_${tarih}.xlsx`);
+      if (tanim.tip === "boylu") {
+        boyluSayfaOlustur(ws, tanim, sayfaKayitlari, subeler, tarihGosterim, gunAdi);
+      } else if (tanim.tip === "giden") {
+        gidenSayfaOlustur(ws, tanim, sayfaKayitlari, subeler, tarihGosterim, gunAdi);
+      } else {
+        basitSayfaOlustur(ws, tanim, sayfaKayitlari, subeler, tarihGosterim, gunAdi);
+      }
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `siparis-listesi_${tarih}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } finally {
+    indirOrijinalBtn.disabled = false;
+    indirOrijinalBtn.textContent = "Orijinal Formatında İndir (.xlsx)";
+  }
 }
 
 // Kategori sırasına göre, her kategori başlangıcında bir başlık satırı ekleyerek
@@ -345,85 +388,129 @@ function kategoriBazliUrunSirasi(tanim, kayitlar) {
 }
 
 // tip: "basit" -> ÜRÜNLER | şube1 | şube2 | ... | TOPLAM(ADET)
-function basitSayfaOlustur(tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
+function basitSayfaOlustur(ws, tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
+  ustBilgiEkle(ws, tarihGosterim, gunAdi);
   const grid = {};
   kayitlar.forEach(k => {
     grid[k.urun + "|" + k.sube] = (grid[k.urun + "|" + k.sube] || 0) + Number(k.miktar || 0);
   });
 
-  const satirlar = [
-    ["LA VİTA", tarihGosterim],
-    ["GÜN:", gunAdi],
-    ["ÜRÜNLER", ...subeler, tanim.toplamEtiket],
-  ];
+  const headerRow = 3;
+  const baslikCell = ws.getCell(headerRow, 1);
+  baslikCell.value = "ÜRÜNLER";
+  hucreStil(baslikCell, { bold: true });
+  subeler.forEach((s, i) => {
+    const c = ws.getCell(headerRow, 2 + i);
+    c.value = s;
+    hucreStil(c, { fill: RENK_SUBE, bold: true });
+  });
+  const toplamCol = 2 + subeler.length;
+  const tCell = ws.getCell(headerRow, toplamCol);
+  tCell.value = tanim.toplamEtiket;
+  hucreStil(tCell, { fill: RENK_TOPLAM, bold: true });
 
+  let r = headerRow + 1;
   kategoriBazliUrunSirasi(tanim, kayitlar).forEach(satirBilgi => {
     if (satirBilgi.tip === "kategori") {
-      satirlar.push([satirBilgi.ad]);
+      const c = ws.getCell(r, 1);
+      c.value = satirBilgi.ad;
+      hucreStil(c, { fill: RENK_KATEGORI, bold: true, kenarlik: false });
+      r++;
       return;
     }
     const urun = satirBilgi.ad;
-    const satir = [urun];
+    const adCell = ws.getCell(r, 1);
+    adCell.value = urun;
+    hucreStil(adCell, {});
     let toplam = 0;
-    subeler.forEach(sube => {
+    subeler.forEach((sube, i) => {
       const miktar = grid[urun + "|" + sube] || 0;
       toplam += miktar;
-      satir.push(miktar || "");
+      const c = ws.getCell(r, 2 + i);
+      c.value = miktar || null;
+      hucreStil(c, {});
     });
-    satir.push(toplam);
-    satirlar.push(satir);
+    const tc = ws.getCell(r, toplamCol);
+    tc.value = toplam || null;
+    hucreStil(tc, { bold: true });
+    r++;
   });
 
-  const ws = XLSX.utils.aoa_to_sheet(satirlar);
-  ws["!cols"] = [{ wch: 32 }, ...subeler.map(() => ({ wch: 10 })), { wch: 12 }];
-  return ws;
+  ws.getColumn(1).width = 32;
+  for (let i = 2; i <= toplamCol; i++) ws.getColumn(i).width = 11;
 }
 
 // tip: "giden" -> ÜRÜNLER | şube1 | GİDEN | şube2 | GİDEN | ... | TOPLAM ADET
 // GİDEN: üretim sonrası elle doldurulan, sistemin bilmediği boş bir sütun.
-function gidenSayfaOlustur(tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
+function gidenSayfaOlustur(ws, tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
+  ustBilgiEkle(ws, tarihGosterim, gunAdi);
   const grid = {};
   kayitlar.forEach(k => {
     grid[k.urun + "|" + k.sube] = (grid[k.urun + "|" + k.sube] || 0) + Number(k.miktar || 0);
   });
 
-  const baslikSatiri = ["ÜRÜNLER"];
-  subeler.forEach(s => { baslikSatiri.push(s, "GİDEN"); });
-  baslikSatiri.push(tanim.toplamEtiket);
+  const headerRow = 3;
+  const baslikCell = ws.getCell(headerRow, 1);
+  baslikCell.value = "ÜRÜNLER";
+  hucreStil(baslikCell, { bold: true });
 
-  const satirlar = [
-    ["LA VİTA", tarihGosterim],
-    ["GÜN:", gunAdi],
-    baslikSatiri,
-  ];
+  let col = 2;
+  const subeKolonu = {};
+  subeler.forEach(s => {
+    const c1 = ws.getCell(headerRow, col);
+    c1.value = s;
+    hucreStil(c1, { fill: RENK_SUBE, bold: true });
+    const c2 = ws.getCell(headerRow, col + 1);
+    c2.value = "GİDEN";
+    hucreStil(c2, { fill: RENK_SUBE, bold: true });
+    subeKolonu[s] = col;
+    col += 2;
+  });
+  const toplamCol = col;
+  const tCell = ws.getCell(headerRow, toplamCol);
+  tCell.value = tanim.toplamEtiket;
+  hucreStil(tCell, { fill: RENK_TOPLAM, bold: true });
 
+  let r = headerRow + 1;
   kategoriBazliUrunSirasi(tanim, kayitlar).forEach(satirBilgi => {
     if (satirBilgi.tip === "kategori") {
-      satirlar.push([satirBilgi.ad]);
+      const c = ws.getCell(r, 1);
+      c.value = satirBilgi.ad;
+      hucreStil(c, { fill: RENK_KATEGORI, bold: true, kenarlik: false });
+      r++;
       return;
     }
     const urun = satirBilgi.ad;
-    const satir = [urun];
+    const adCell = ws.getCell(r, 1);
+    adCell.value = urun;
+    hucreStil(adCell, {});
     let toplam = 0;
     subeler.forEach(sube => {
+      const c0 = subeKolonu[sube];
       const miktar = grid[urun + "|" + sube] || 0;
       toplam += miktar;
-      satir.push(miktar || "", "");
+      const mc = ws.getCell(r, c0);
+      mc.value = miktar || null;
+      hucreStil(mc, {});
+      hucreStil(ws.getCell(r, c0 + 1), {});
     });
-    satir.push(toplam);
-    satirlar.push(satir);
+    const tc = ws.getCell(r, toplamCol);
+    tc.value = toplam || null;
+    hucreStil(tc, { bold: true });
+    r++;
   });
 
-  const ws = XLSX.utils.aoa_to_sheet(satirlar);
-  const cols = [{ wch: 32 }];
-  subeler.forEach(() => cols.push({ wch: 9 }, { wch: 8 }));
-  cols.push({ wch: 12 });
-  ws["!cols"] = cols;
-  return ws;
+  ws.getColumn(1).width = 32;
+  for (let i = 2; i < toplamCol; i += 2) {
+    ws.getColumn(i).width = 9;
+    ws.getColumn(i + 1).width = 8;
+  }
+  ws.getColumn(toplamCol).width = 12;
 }
 
 // tip: "boylu" -> ÜRÜNLER | şube1 (Boy 0-3) | şube2 (Boy 0-3) | ... | TOPLAM ADET (NO:0-3)
-function boyluSayfaOlustur(tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
+function boyluSayfaOlustur(ws, tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
+  ustBilgiEkle(ws, tarihGosterim, gunAdi);
   const BOYLAR = ["0", "1", "2", "3"];
   const grid = {};
   kayitlar.forEach(k => {
@@ -432,57 +519,71 @@ function boyluSayfaOlustur(tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
     grid[anahtar] = (grid[anahtar] || 0) + Number(k.miktar || 0);
   });
 
-  const ustBaslik = ["ÜRÜNLER"];
-  const altBaslik = [""];
+  const ustSatir = 3, altSatir = 4;
+  const baslikCell = ws.getCell(ustSatir, 1);
+  baslikCell.value = "ÜRÜNLER";
+  hucreStil(baslikCell, { bold: true });
+
+  let col = 2;
+  const subeBaslangic = {};
+  const ortaHizala = { horizontal: "center" };
   subeler.forEach(s => {
-    ustBaslik.push(s, "", "", "");
-    BOYLAR.forEach(b => altBaslik.push(b));
-  });
-  let toplamBaslangicKolon = 1 + subeler.length * 4;
-  ustBaslik.push(tanim.toplamEtiket, "", "", "");
-  BOYLAR.forEach(b => altBaslik.push("NO:" + b));
-
-  const satirlar = [
-    ["LA VİTA", tarihGosterim],
-    ["GÜN:", gunAdi],
-    ustBaslik,
-    altBaslik,
-  ];
-
-  const merges = [];
-  let col = 1;
-  subeler.forEach(() => {
-    merges.push({ s: { r: 2, c: col }, e: { r: 2, c: col + 3 } });
+    ws.mergeCells(ustSatir, col, ustSatir, col + 3);
+    for (let cc = col; cc <= col + 3; cc++) hucreStil(ws.getCell(ustSatir, cc), { fill: RENK_SUBE, bold: true, hizalama: ortaHizala });
+    ws.getCell(ustSatir, col).value = s;
+    subeBaslangic[s] = col;
+    BOYLAR.forEach((b, i) => {
+      const bc = ws.getCell(altSatir, col + i);
+      bc.value = b;
+      hucreStil(bc, { fill: RENK_SUBE, bold: true, hizalama: ortaHizala });
+    });
     col += 4;
   });
-  merges.push({ s: { r: 2, c: toplamBaslangicKolon }, e: { r: 2, c: toplamBaslangicKolon + 3 } });
 
+  const toplamBaslangic = col;
+  ws.mergeCells(ustSatir, toplamBaslangic, ustSatir, toplamBaslangic + 3);
+  for (let cc = toplamBaslangic; cc <= toplamBaslangic + 3; cc++) hucreStil(ws.getCell(ustSatir, cc), { fill: RENK_TOPLAM, bold: true, hizalama: ortaHizala });
+  ws.getCell(ustSatir, toplamBaslangic).value = tanim.toplamEtiket;
+  BOYLAR.forEach((b, i) => {
+    const bc = ws.getCell(altSatir, toplamBaslangic + i);
+    bc.value = "NO:" + b;
+    hucreStil(bc, { fill: RENK_TOPLAM, bold: true, hizalama: ortaHizala });
+  });
+
+  let r = altSatir + 1;
   kategoriBazliUrunSirasi(tanim, kayitlar).forEach(satirBilgi => {
     if (satirBilgi.tip === "kategori") {
-      satirlar.push([satirBilgi.ad]);
+      const c = ws.getCell(r, 1);
+      c.value = satirBilgi.ad;
+      hucreStil(c, { fill: RENK_KATEGORI, bold: true, kenarlik: false });
+      r++;
       return;
     }
     const urun = satirBilgi.ad;
-    const satir = [urun];
+    const adCell = ws.getCell(r, 1);
+    adCell.value = urun;
+    hucreStil(adCell, {});
     const boyToplamlari = [0, 0, 0, 0];
     subeler.forEach(sube => {
+      const c0 = subeBaslangic[sube];
       BOYLAR.forEach((b, i) => {
         const miktar = grid[urun + "|" + sube + "|" + b] || 0;
         boyToplamlari[i] += miktar;
-        satir.push(miktar || "");
+        const c = ws.getCell(r, c0 + i);
+        c.value = miktar || null;
+        hucreStil(c, {});
       });
     });
-    boyToplamlari.forEach(t => satir.push(t || ""));
-    satirlar.push(satir);
+    boyToplamlari.forEach((t, i) => {
+      const c = ws.getCell(r, toplamBaslangic + i);
+      c.value = t || null;
+      hucreStil(c, { bold: true });
+    });
+    r++;
   });
 
-  const ws = XLSX.utils.aoa_to_sheet(satirlar);
-  ws["!merges"] = merges;
-  const cols = [{ wch: 32 }];
-  subeler.forEach(() => { for (let i = 0; i < 4; i++) cols.push({ wch: 6 }); });
-  for (let i = 0; i < 4; i++) cols.push({ wch: 7 });
-  ws["!cols"] = cols;
-  return ws;
+  ws.getColumn(1).width = 32;
+  for (let i = 2; i < toplamBaslangic + 4; i++) ws.getColumn(i).width = 7;
 }
 
 function goster(tur, mesaj) {
