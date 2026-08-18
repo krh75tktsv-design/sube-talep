@@ -72,21 +72,22 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqY8TfdzTGWmtv
 // Kategori gösterim sırası (sube-talep.html'deki KATALOG ile aynı sıra)
 const KATEGORI_SIRASI = ["Tek Pastalar (Fransız)", "Fransız Ekler", "Dilim Cheesecake", "Bütün Cheesecake", "Klasik Pastalar (Boylu)", "Tatlı Kurabiyeler", "Unsuz / Diyet Ürünler", "Kekler", "Börekli Taş & Poğaça Grubu", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Porsiyon Tatlılar"];
 
-// Orijinal Excel dosyasındaki sayfa adlarına eşleme (Orijinal Formatında İndir için)
-const KATEGORI_SAYFA_ESLEME = {
-  "Tek Pastalar (Fransız)": "PASTA FRANSIZ",
-  "Fransız Ekler": "PASTA FRANSIZ",
-  "Dilim Cheesecake": "PASTA FRANSIZ",
-  "Bütün Cheesecake": "PASTA FRANSIZ",
-  "Klasik Pastalar (Boylu)": "PASTA KLASİK",
-  "Tatlı Kurabiyeler": "TATLI KURABİYE",
-  "Unsuz / Diyet Ürünler": "TATLI KURABİYE",
-  "Kekler": "TATLI KURABİYE",
-  "Börekli Taş & Poğaça Grubu": "TUZLU KURABİYE",
-  "Galeta / Kıtır / Cips / Diğer Tuzlu": "TUZLU KURABİYE",
-  "Porsiyon Tatlılar": "TEK PASTA KLASİK",
-};
-const ORIJINAL_SAYFA_SIRASI = ["PASTA FRANSIZ", "PASTA KLASİK", "TATLI KURABİYE", "TUZLU KURABİYE", "TEK PASTA KLASİK"];
+// Orijinal "Sipariş listesi" dosyasının sayfa yapısı (Orijinal Formatında İndir için).
+// tip: "basit"  -> ÜRÜNLER | şube1 | şube2 | ... | TOPLAM(ADET)   (Pasta Fransız, Tek Pasta Klasik)
+// tip: "giden"  -> ÜRÜNLER | şube1 | GİDEN | şube2 | GİDEN | ... | TOPLAM ADET   (Tatlı/Tuzlu Kurabiye)
+// tip: "boylu"  -> ÜRÜNLER | şube1 (boy 0-3) | şube2 (boy 0-3) | ... | TOPLAM ADET (boy 0-3)  (Pasta Klasik)
+const SAYFA_TANIMLARI = [
+  { ad: "PASTA FRANSIZ", tip: "basit", toplamEtiket: "TOPLAM",
+    kategoriler: ["Tek Pastalar (Fransız)", "Fransız Ekler", "Dilim Cheesecake", "Bütün Cheesecake"] },
+  { ad: "PASTA KLASİK", tip: "boylu", toplamEtiket: "TOPLAM ADET",
+    kategoriler: ["Klasik Pastalar (Boylu)"] },
+  { ad: "TATLI KURABİYE 1", tip: "giden", toplamEtiket: "TOPLAM ADET",
+    kategoriler: ["Tatlı Kurabiyeler", "Unsuz / Diyet Ürünler", "Kekler"] },
+  { ad: "TUZLU KURABİYE 2", tip: "giden", toplamEtiket: "TOPLAM ADET",
+    kategoriler: ["Börekli Taş & Poğaça Grubu", "Galeta / Kıtır / Cips / Diğer Tuzlu"] },
+  { ad: "TEK PASTA KLASİK", tip: "basit", toplamEtiket: "TOPLAM ADET",
+    kategoriler: ["Porsiyon Tatlılar"] },
+];
 const GUN_ADLARI = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 // -------------------------------------------------------------------
 
@@ -309,40 +310,179 @@ function orijinalFormattaIndir() {
 
   const wb = XLSX.utils.book_new();
 
-  ORIJINAL_SAYFA_SIRASI.forEach(sayfaAdi => {
-    const sayfaKayitlari = gununKayitlari.filter(k => KATEGORI_SAYFA_ESLEME[k.kategori] === sayfaAdi);
+  SAYFA_TANIMLARI.forEach(tanim => {
+    const sayfaKayitlari = gununKayitlari.filter(k => tanim.kategoriler.includes(k.kategori));
     if (sayfaKayitlari.length === 0) return;
 
     const subeler = [...new Set(sayfaKayitlari.map(k => k.sube))].sort((a, b) => a.localeCompare(b, "tr"));
-    const urunEtiketleri = [...new Set(sayfaKayitlari.map(urunEtiketi))];
-    const grid = {};
-    sayfaKayitlari.forEach(k => {
-      const etiket = urunEtiketi(k);
-      grid[etiket + "|" + k.sube] = (grid[etiket + "|" + k.sube] || 0) + Number(k.miktar || 0);
-    });
 
-    const satirlar = [];
-    satirlar.push(["LA VİTA", tarihGosterim]);
-    satirlar.push(["GÜN:", gunAdi]);
-    satirlar.push(["ÜRÜNLER", ...subeler, "TOPLAM ADET"]);
-    urunEtiketleri.forEach(etiket => {
-      const satir = [etiket];
-      let toplam = 0;
-      subeler.forEach(sube => {
-        const miktar = grid[etiket + "|" + sube] || 0;
-        toplam += miktar;
-        satir.push(miktar || "");
-      });
-      satir.push(toplam);
-      satirlar.push(satir);
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(satirlar);
-    ws["!cols"] = [{ wch: 32 }, ...subeler.map(() => ({ wch: 10 })), { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, ws, sayfaAdi);
+    let ws;
+    if (tanim.tip === "boylu") {
+      ws = boyluSayfaOlustur(tanim, sayfaKayitlari, subeler, tarihGosterim, gunAdi);
+    } else if (tanim.tip === "giden") {
+      ws = gidenSayfaOlustur(tanim, sayfaKayitlari, subeler, tarihGosterim, gunAdi);
+    } else {
+      ws = basitSayfaOlustur(tanim, sayfaKayitlari, subeler, tarihGosterim, gunAdi);
+    }
+    XLSX.utils.book_append_sheet(wb, ws, tanim.ad);
   });
 
   XLSX.writeFile(wb, `siparis-listesi_${tarih}.xlsx`);
+}
+
+// Kategori sırasına göre, her kategori başlangıcında bir başlık satırı ekleyerek
+// ({tip:"kategori"}) ve ardından o kategorideki ürünleri ({tip:"urun"}) sıralar.
+function kategoriBazliUrunSirasi(tanim, kayitlar) {
+  const sonuc = [];
+  tanim.kategoriler.forEach(kategori => {
+    const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+    if (kategoriKayitlari.length === 0) return;
+    const urunler = [...new Set(kategoriKayitlari.map(k => k.urun))];
+    sonuc.push({ tip: "kategori", ad: kategori });
+    urunler.forEach(u => sonuc.push({ tip: "urun", ad: u }));
+  });
+  return sonuc;
+}
+
+// tip: "basit" -> ÜRÜNLER | şube1 | şube2 | ... | TOPLAM(ADET)
+function basitSayfaOlustur(tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
+  const grid = {};
+  kayitlar.forEach(k => {
+    grid[k.urun + "|" + k.sube] = (grid[k.urun + "|" + k.sube] || 0) + Number(k.miktar || 0);
+  });
+
+  const satirlar = [
+    ["LA VİTA", tarihGosterim],
+    ["GÜN:", gunAdi],
+    ["ÜRÜNLER", ...subeler, tanim.toplamEtiket],
+  ];
+
+  kategoriBazliUrunSirasi(tanim, kayitlar).forEach(satirBilgi => {
+    if (satirBilgi.tip === "kategori") {
+      satirlar.push([satirBilgi.ad]);
+      return;
+    }
+    const urun = satirBilgi.ad;
+    const satir = [urun];
+    let toplam = 0;
+    subeler.forEach(sube => {
+      const miktar = grid[urun + "|" + sube] || 0;
+      toplam += miktar;
+      satir.push(miktar || "");
+    });
+    satir.push(toplam);
+    satirlar.push(satir);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(satirlar);
+  ws["!cols"] = [{ wch: 32 }, ...subeler.map(() => ({ wch: 10 })), { wch: 12 }];
+  return ws;
+}
+
+// tip: "giden" -> ÜRÜNLER | şube1 | GİDEN | şube2 | GİDEN | ... | TOPLAM ADET
+// GİDEN: üretim sonrası elle doldurulan, sistemin bilmediği boş bir sütun.
+function gidenSayfaOlustur(tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
+  const grid = {};
+  kayitlar.forEach(k => {
+    grid[k.urun + "|" + k.sube] = (grid[k.urun + "|" + k.sube] || 0) + Number(k.miktar || 0);
+  });
+
+  const baslikSatiri = ["ÜRÜNLER"];
+  subeler.forEach(s => { baslikSatiri.push(s, "GİDEN"); });
+  baslikSatiri.push(tanim.toplamEtiket);
+
+  const satirlar = [
+    ["LA VİTA", tarihGosterim],
+    ["GÜN:", gunAdi],
+    baslikSatiri,
+  ];
+
+  kategoriBazliUrunSirasi(tanim, kayitlar).forEach(satirBilgi => {
+    if (satirBilgi.tip === "kategori") {
+      satirlar.push([satirBilgi.ad]);
+      return;
+    }
+    const urun = satirBilgi.ad;
+    const satir = [urun];
+    let toplam = 0;
+    subeler.forEach(sube => {
+      const miktar = grid[urun + "|" + sube] || 0;
+      toplam += miktar;
+      satir.push(miktar || "", "");
+    });
+    satir.push(toplam);
+    satirlar.push(satir);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(satirlar);
+  const cols = [{ wch: 32 }];
+  subeler.forEach(() => cols.push({ wch: 9 }, { wch: 8 }));
+  cols.push({ wch: 12 });
+  ws["!cols"] = cols;
+  return ws;
+}
+
+// tip: "boylu" -> ÜRÜNLER | şube1 (Boy 0-3) | şube2 (Boy 0-3) | ... | TOPLAM ADET (NO:0-3)
+function boyluSayfaOlustur(tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
+  const BOYLAR = ["0", "1", "2", "3"];
+  const grid = {};
+  kayitlar.forEach(k => {
+    const boy = k.boy !== undefined && k.boy !== null && k.boy !== "" ? String(k.boy) : "0";
+    const anahtar = k.urun + "|" + k.sube + "|" + boy;
+    grid[anahtar] = (grid[anahtar] || 0) + Number(k.miktar || 0);
+  });
+
+  const ustBaslik = ["ÜRÜNLER"];
+  const altBaslik = [""];
+  subeler.forEach(s => {
+    ustBaslik.push(s, "", "", "");
+    BOYLAR.forEach(b => altBaslik.push(b));
+  });
+  let toplamBaslangicKolon = 1 + subeler.length * 4;
+  ustBaslik.push(tanim.toplamEtiket, "", "", "");
+  BOYLAR.forEach(b => altBaslik.push("NO:" + b));
+
+  const satirlar = [
+    ["LA VİTA", tarihGosterim],
+    ["GÜN:", gunAdi],
+    ustBaslik,
+    altBaslik,
+  ];
+
+  const merges = [];
+  let col = 1;
+  subeler.forEach(() => {
+    merges.push({ s: { r: 2, c: col }, e: { r: 2, c: col + 3 } });
+    col += 4;
+  });
+  merges.push({ s: { r: 2, c: toplamBaslangicKolon }, e: { r: 2, c: toplamBaslangicKolon + 3 } });
+
+  kategoriBazliUrunSirasi(tanim, kayitlar).forEach(satirBilgi => {
+    if (satirBilgi.tip === "kategori") {
+      satirlar.push([satirBilgi.ad]);
+      return;
+    }
+    const urun = satirBilgi.ad;
+    const satir = [urun];
+    const boyToplamlari = [0, 0, 0, 0];
+    subeler.forEach(sube => {
+      BOYLAR.forEach((b, i) => {
+        const miktar = grid[urun + "|" + sube + "|" + b] || 0;
+        boyToplamlari[i] += miktar;
+        satir.push(miktar || "");
+      });
+    });
+    boyToplamlari.forEach(t => satir.push(t || ""));
+    satirlar.push(satir);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(satirlar);
+  ws["!merges"] = merges;
+  const cols = [{ wch: 32 }];
+  subeler.forEach(() => { for (let i = 0; i < 4; i++) cols.push({ wch: 6 }); });
+  for (let i = 0; i < 4; i++) cols.push({ wch: 7 });
+  ws["!cols"] = cols;
+  return ws;
 }
 
 function goster(tur, mesaj) {

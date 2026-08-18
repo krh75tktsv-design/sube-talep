@@ -60,17 +60,22 @@ function doPost(e) {
   const sayfa = sayfayiGetirYaOlustur();
   const zaman = new Date();
 
-  (veri.kalemler || []).forEach(function (kalem) {
-    sayfa.appendRow([
+  const satirlar = (veri.kalemler || []).map(function (kalem) {
+    return [
       zaman, veri.tarih, veri.sube,
       kalem.kategori || "", kalem.urun,
       kalem.boy !== undefined ? kalem.boy : "",
       kalem.miktar, kalem.birim,
-    ]);
+    ];
   });
 
   if (veri.not) {
-    sayfa.appendRow([zaman, veri.tarih, veri.sube, "", "NOT", "", veri.not, ""]);
+    satirlar.push([zaman, veri.tarih, veri.sube, "", "NOT", "", veri.not, ""]);
+  }
+
+  if (satirlar.length > 0) {
+    const ilkSatir = sayfa.getLastRow() + 1;
+    sayfa.getRange(ilkSatir, 1, satirlar.length, satirlar[0].length).setValues(satirlar);
   }
 
   return ContentService
