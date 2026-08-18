@@ -40,6 +40,7 @@
   .ozet-hucre{background:var(--paper);border-radius:8px;padding:8px 10px;font-size:13px;display:flex;justify-content:space-between;}
   .ozet-hucre b{font-variant-numeric:tabular-nums;}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -57,6 +58,7 @@
     </div>
     <button id="yenile">Yenile</button>
     <button id="indir">CSV İndir</button>
+    <button id="indirOrijinal">Orijinal Formatında İndir (.xlsx)</button>
   </div>
 
   <div class="durum" id="durum"></div>
@@ -69,6 +71,23 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqY8TfdzTGWmtv
 
 // Kategori gösterim sırası (sube-talep.html'deki KATALOG ile aynı sıra)
 const KATEGORI_SIRASI = ["Tek Pastalar (Fransız)", "Fransız Ekler", "Dilim Cheesecake", "Bütün Cheesecake", "Klasik Pastalar (Boylu)", "Tatlı Kurabiyeler", "Unsuz / Diyet Ürünler", "Kekler", "Börekli Taş & Poğaça Grubu", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Porsiyon Tatlılar"];
+
+// Orijinal Excel dosyasındaki sayfa adlarına eşleme (Orijinal Formatında İndir için)
+const KATEGORI_SAYFA_ESLEME = {
+  "Tek Pastalar (Fransız)": "PASTA FRANSIZ",
+  "Fransız Ekler": "PASTA FRANSIZ",
+  "Dilim Cheesecake": "PASTA FRANSIZ",
+  "Bütün Cheesecake": "PASTA FRANSIZ",
+  "Klasik Pastalar (Boylu)": "PASTA KLASİK",
+  "Tatlı Kurabiyeler": "TATLI KURABİYE",
+  "Unsuz / Diyet Ürünler": "TATLI KURABİYE",
+  "Kekler": "TATLI KURABİYE",
+  "Börekli Taş & Poğaça Grubu": "TUZLU KURABİYE",
+  "Galeta / Kıtır / Cips / Diğer Tuzlu": "TUZLU KURABİYE",
+  "Porsiyon Tatlılar": "TEK PASTA KLASİK",
+};
+const ORIJINAL_SAYFA_SIRASI = ["PASTA FRANSIZ", "PASTA KLASİK", "TATLI KURABİYE", "TUZLU KURABİYE", "TEK PASTA KLASİK"];
+const GUN_ADLARI = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 // -------------------------------------------------------------------
 
 const baslangicInput = document.getElementById("baslangic");
@@ -77,6 +96,7 @@ const durumEl = document.getElementById("durum");
 const icerikEl = document.getElementById("icerik");
 const yenileBtn = document.getElementById("yenile");
 const indirBtn = document.getElementById("indir");
+const indirOrijinalBtn = document.getElementById("indirOrijinal");
 
 const yarin = new Date();
 yarin.setDate(yarin.getDate() + 1);
@@ -87,6 +107,7 @@ baslangicInput.addEventListener("change", ciz);
 bitisInput.addEventListener("change", ciz);
 yenileBtn.addEventListener("click", yukleVeCiz);
 indirBtn.addEventListener("click", csvIndir);
+indirOrijinalBtn.addEventListener("click", orijinalFormattaIndir);
 
 let TUM_KAYITLAR = [];
 let SON_GORUNTULENEN = [];
@@ -268,6 +289,60 @@ function csvIndir() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function orijinalFormattaIndir() {
+  const tarih = baslangicInput.value;
+  if (!tarih) {
+    goster("hata", "Önce bir tarih seçin.");
+    return;
+  }
+  const gununKayitlari = TUM_KAYITLAR.filter(k => k.tarih === tarih && k.urun !== "NOT");
+  if (gununKayitlari.length === 0) {
+    goster("hata", tarih + " için indirilecek talep yok.");
+    return;
+  }
+
+  const [yil, ay, gun] = tarih.split("-").map(Number);
+  const gunAdi = GUN_ADLARI[new Date(yil, ay - 1, gun).getDay()];
+  const tarihGosterim = `${String(gun).padStart(2, "0")}.${String(ay).padStart(2, "0")}.${yil}`;
+
+  const wb = XLSX.utils.book_new();
+
+  ORIJINAL_SAYFA_SIRASI.forEach(sayfaAdi => {
+    const sayfaKayitlari = gununKayitlari.filter(k => KATEGORI_SAYFA_ESLEME[k.kategori] === sayfaAdi);
+    if (sayfaKayitlari.length === 0) return;
+
+    const subeler = [...new Set(sayfaKayitlari.map(k => k.sube))].sort((a, b) => a.localeCompare(b, "tr"));
+    const urunEtiketleri = [...new Set(sayfaKayitlari.map(urunEtiketi))];
+    const grid = {};
+    sayfaKayitlari.forEach(k => {
+      const etiket = urunEtiketi(k);
+      grid[etiket + "|" + k.sube] = (grid[etiket + "|" + k.sube] || 0) + Number(k.miktar || 0);
+    });
+
+    const satirlar = [];
+    satirlar.push(["LA VİTA", tarihGosterim]);
+    satirlar.push(["GÜN:", gunAdi]);
+    satirlar.push(["ÜRÜNLER", ...subeler, "TOPLAM ADET"]);
+    urunEtiketleri.forEach(etiket => {
+      const satir = [etiket];
+      let toplam = 0;
+      subeler.forEach(sube => {
+        const miktar = grid[etiket + "|" + sube] || 0;
+        toplam += miktar;
+        satir.push(miktar || "");
+      });
+      satir.push(toplam);
+      satirlar.push(satir);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(satirlar);
+    ws["!cols"] = [{ wch: 32 }, ...subeler.map(() => ({ wch: 10 })), { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, ws, sayfaAdi);
+  });
+
+  XLSX.writeFile(wb, `siparis-listesi_${tarih}.xlsx`);
 }
 
 function goster(tur, mesaj) {
