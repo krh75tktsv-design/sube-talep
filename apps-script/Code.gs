@@ -21,6 +21,9 @@
 const SHEET_ADI = "Talepler";
 const UYARI_EPOSTASI = "serkansalihoglu@lavita.com.tr";
 const SUBELER = ["Nişantaşı", "Fulya", "Maslak", "Kireçburnu", "Beykent", "Z.burnu", "S.beyli"];
+// Sadece bu anahtarı bilen (kod dosyasına erişimi olan) veri temizleyebilir.
+// Web sayfalarında hiçbir yerde kullanılmaz/görünmez.
+const TEMIZLEME_ANAHTARI = "zahFI8c_tucmqX4Z5oXRw4k_WGtD_jp5";
 
 function doGet(e) {
   const sayfa = sayfayiGetirYaOlustur();
@@ -57,6 +60,23 @@ function bicimle(deger, tz, format) {
 
 function doPost(e) {
   const veri = JSON.parse(e.postData.contents);
+
+  if (veri.islem === "temizle") {
+    if (veri.anahtar !== TEMIZLEME_ANAHTARI) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ ok: false, hata: "Geçersiz anahtar" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    const sayfa = sayfayiGetirYaOlustur();
+    const sonSatir = sayfa.getLastRow();
+    if (sonSatir > 1) {
+      sayfa.deleteRows(2, sonSatir - 1);
+    }
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: true, silinen: Math.max(0, sonSatir - 1) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   const sayfa = sayfayiGetirYaOlustur();
   const zaman = new Date();
 
