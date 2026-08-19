@@ -77,17 +77,24 @@ const KATEGORI_SIRASI = ["Tek Pastalar (Fransız)", "Fransız Ekler", "Dilim Che
 // tip: "basit"  -> ÜRÜNLER | şube1 | şube2 | ... | TOPLAM(ADET)   (Pasta Fransız, Tek Pasta Klasik)
 // tip: "giden"  -> ÜRÜNLER | şube1 | GİDEN | şube2 | GİDEN | ... | TOPLAM ADET   (Tatlı/Tuzlu Kurabiye)
 // tip: "boylu"  -> ÜRÜNLER | şube1 (boy 0-3) | şube2 (boy 0-3) | ... | TOPLAM ADET (boy 0-3)  (Pasta Klasik)
+// stil: orijinal dosyadaki gibi büyük punto + geniş satırlar (mutfakta uzaktan
+// okunabilmesi için). Değerler orijinal dosyadan ölçülen tipik değerlerdir.
 const SAYFA_TANIMLARI = [
   { ad: "PASTA FRANSIZ", tip: "basit", toplamEtiket: "TOPLAM",
-    kategoriler: ["Tek Pastalar (Fransız)", "Fransız Ekler", "Dilim Cheesecake", "Bütün Cheesecake"] },
+    kategoriler: ["Tek Pastalar (Fransız)", "Fransız Ekler", "Dilim Cheesecake", "Bütün Cheesecake"],
+    stil: { subeFontu: 36, subeYukseklik: 48, kategoriFontu: 36, kategoriYukseklik: 50, urunFontu: 40, miktarFontu: 40, veriYukseklik: 62 } },
   { ad: "PASTA KLASİK", tip: "boylu", toplamEtiket: "TOPLAM ADET",
-    kategoriler: ["Klasik Pastalar (Boylu)"] },
+    kategoriler: ["Klasik Pastalar (Boylu)"],
+    stil: { subeFontu: 44, ustYukseklik: 60, boyFontu: 32, boyYukseklik: 40, kategoriFontu: 32, kategoriYukseklik: 50, urunFontu: 32, miktarFontu: 32, veriYukseklik: 70 } },
   { ad: "TATLI KURABİYE 1", tip: "giden", toplamEtiket: "TOPLAM ADET",
-    kategoriler: ["Tatlı Kurabiyeler", "Unsuz / Diyet Ürünler", "Kekler"] },
+    kategoriler: ["Tatlı Kurabiyeler", "Unsuz / Diyet Ürünler", "Kekler"],
+    stil: { subeFontu: 24, subeYukseklik: 40, kategoriFontu: 28, kategoriYukseklik: 45, urunFontu: 28, miktarFontu: 32, veriYukseklik: 60 } },
   { ad: "TUZLU KURABİYE 2", tip: "giden", toplamEtiket: "TOPLAM ADET",
-    kategoriler: ["Börekli Taş & Poğaça Grubu", "Galeta / Kıtır / Cips / Diğer Tuzlu"] },
+    kategoriler: ["Börekli Taş & Poğaça Grubu", "Galeta / Kıtır / Cips / Diğer Tuzlu"],
+    stil: { subeFontu: 24, subeYukseklik: 40, kategoriFontu: 28, kategoriYukseklik: 45, urunFontu: 28, miktarFontu: 32, veriYukseklik: 60 } },
   { ad: "TEK PASTA KLASİK", tip: "basit", toplamEtiket: "TOPLAM ADET",
-    kategoriler: ["Porsiyon Tatlılar"] },
+    kategoriler: ["Porsiyon Tatlılar"],
+    stil: { subeFontu: 18, subeYukseklik: 28, kategoriFontu: 18, kategoriYukseklik: 28, urunFontu: 26, miktarFontu: 32, veriYukseklik: 50 } },
 ];
 const GUN_ADLARI = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
@@ -326,9 +333,9 @@ const RENK_KATEGORI = "FFFFFF00";
 const RENK_TOPLAM = "FFD9D9D9";
 const INCE_KENAR = { style: "thin", color: { argb: "FFBFBFBF" } };
 
-function hucreStil(cell, { fill, bold, kenarlik = true, hizalama } = {}) {
+function hucreStil(cell, { fill, bold, boyut, kenarlik = true, hizalama } = {}) {
   if (fill) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fill } };
-  if (bold !== undefined) cell.font = { bold };
+  if (bold !== undefined || boyut !== undefined) cell.font = { bold: !!bold, size: boyut || 11 };
   if (kenarlik) cell.border = { top: INCE_KENAR, left: INCE_KENAR, bottom: INCE_KENAR, right: INCE_KENAR };
   if (hizalama) cell.alignment = hizalama;
 }
@@ -415,49 +422,53 @@ function kategoriBazliUrunSirasi(tanim, kayitlar) {
 // tip: "basit" -> ÜRÜNLER | şube1 | şube2 | ... | TOPLAM(ADET)
 function basitSayfaOlustur(ws, tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
   ustBilgiEkle(ws, tarihGosterim, gunAdi);
+  const stil = tanim.stil;
   const grid = {};
   kayitlar.forEach(k => {
     grid[k.urun + "|" + k.sube] = (grid[k.urun + "|" + k.sube] || 0) + Number(k.miktar || 0);
   });
 
   const headerRow = 3;
+  ws.getRow(headerRow).height = stil.subeYukseklik;
   const baslikCell = ws.getCell(headerRow, 1);
   baslikCell.value = "ÜRÜNLER";
-  hucreStil(baslikCell, { bold: true });
+  hucreStil(baslikCell, { bold: true, boyut: stil.subeFontu });
   subeler.forEach((s, i) => {
     const c = ws.getCell(headerRow, 2 + i);
     c.value = s;
-    hucreStil(c, { fill: RENK_SUBE, bold: true });
+    hucreStil(c, { fill: RENK_SUBE, bold: true, boyut: stil.subeFontu });
   });
   const toplamCol = 2 + subeler.length;
   const tCell = ws.getCell(headerRow, toplamCol);
   tCell.value = tanim.toplamEtiket;
-  hucreStil(tCell, { fill: RENK_TOPLAM, bold: true });
+  hucreStil(tCell, { fill: RENK_TOPLAM, bold: true, boyut: stil.subeFontu });
 
   let r = headerRow + 1;
   kategoriBazliUrunSirasi(tanim, kayitlar).forEach(satirBilgi => {
     if (satirBilgi.tip === "kategori") {
+      ws.getRow(r).height = stil.kategoriYukseklik;
       const c = ws.getCell(r, 1);
       c.value = satirBilgi.ad;
-      hucreStil(c, { fill: RENK_KATEGORI, bold: true, kenarlik: false });
+      hucreStil(c, { fill: RENK_KATEGORI, bold: true, boyut: stil.kategoriFontu, kenarlik: false });
       r++;
       return;
     }
+    ws.getRow(r).height = stil.veriYukseklik;
     const urun = satirBilgi.ad;
     const adCell = ws.getCell(r, 1);
     adCell.value = urun;
-    hucreStil(adCell, {});
+    hucreStil(adCell, { boyut: stil.urunFontu });
     let toplam = 0;
     subeler.forEach((sube, i) => {
       const miktar = grid[urun + "|" + sube] || 0;
       toplam += miktar;
       const c = ws.getCell(r, 2 + i);
       c.value = miktar || null;
-      hucreStil(c, {});
+      hucreStil(c, { boyut: stil.miktarFontu });
     });
     const tc = ws.getCell(r, toplamCol);
     tc.value = toplam || null;
-    hucreStil(tc, { bold: true });
+    hucreStil(tc, { bold: true, boyut: stil.miktarFontu });
     r++;
   });
 
@@ -469,46 +480,50 @@ function basitSayfaOlustur(ws, tanim, kayitlar, subeler, tarihGosterim, gunAdi) 
 // GİDEN: üretim sonrası elle doldurulan, sistemin bilmediği boş bir sütun.
 function gidenSayfaOlustur(ws, tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
   ustBilgiEkle(ws, tarihGosterim, gunAdi);
+  const stil = tanim.stil;
   const grid = {};
   kayitlar.forEach(k => {
     grid[k.urun + "|" + k.sube] = (grid[k.urun + "|" + k.sube] || 0) + Number(k.miktar || 0);
   });
 
   const headerRow = 3;
+  ws.getRow(headerRow).height = stil.subeYukseklik;
   const baslikCell = ws.getCell(headerRow, 1);
   baslikCell.value = "ÜRÜNLER";
-  hucreStil(baslikCell, { bold: true });
+  hucreStil(baslikCell, { bold: true, boyut: stil.subeFontu });
 
   let col = 2;
   const subeKolonu = {};
   subeler.forEach(s => {
     const c1 = ws.getCell(headerRow, col);
     c1.value = s;
-    hucreStil(c1, { fill: RENK_SUBE, bold: true });
+    hucreStil(c1, { fill: RENK_SUBE, bold: true, boyut: stil.subeFontu });
     const c2 = ws.getCell(headerRow, col + 1);
     c2.value = "GİDEN";
-    hucreStil(c2, { fill: RENK_SUBE, bold: true });
+    hucreStil(c2, { fill: RENK_SUBE, bold: true, boyut: stil.subeFontu });
     subeKolonu[s] = col;
     col += 2;
   });
   const toplamCol = col;
   const tCell = ws.getCell(headerRow, toplamCol);
   tCell.value = tanim.toplamEtiket;
-  hucreStil(tCell, { fill: RENK_TOPLAM, bold: true });
+  hucreStil(tCell, { fill: RENK_TOPLAM, bold: true, boyut: stil.subeFontu });
 
   let r = headerRow + 1;
   kategoriBazliUrunSirasi(tanim, kayitlar).forEach(satirBilgi => {
     if (satirBilgi.tip === "kategori") {
+      ws.getRow(r).height = stil.kategoriYukseklik;
       const c = ws.getCell(r, 1);
       c.value = satirBilgi.ad;
-      hucreStil(c, { fill: RENK_KATEGORI, bold: true, kenarlik: false });
+      hucreStil(c, { fill: RENK_KATEGORI, bold: true, boyut: stil.kategoriFontu, kenarlik: false });
       r++;
       return;
     }
+    ws.getRow(r).height = stil.veriYukseklik;
     const urun = satirBilgi.ad;
     const adCell = ws.getCell(r, 1);
     adCell.value = urun;
-    hucreStil(adCell, {});
+    hucreStil(adCell, { boyut: stil.urunFontu });
     let toplam = 0;
     subeler.forEach(sube => {
       const c0 = subeKolonu[sube];
@@ -516,12 +531,12 @@ function gidenSayfaOlustur(ws, tanim, kayitlar, subeler, tarihGosterim, gunAdi) 
       toplam += miktar;
       const mc = ws.getCell(r, c0);
       mc.value = miktar || null;
-      hucreStil(mc, {});
-      hucreStil(ws.getCell(r, c0 + 1), {});
+      hucreStil(mc, { boyut: stil.miktarFontu });
+      hucreStil(ws.getCell(r, c0 + 1), { boyut: stil.miktarFontu });
     });
     const tc = ws.getCell(r, toplamCol);
     tc.value = toplam || null;
-    hucreStil(tc, { bold: true });
+    hucreStil(tc, { bold: true, boyut: stil.miktarFontu });
     r++;
   });
 
@@ -536,6 +551,7 @@ function gidenSayfaOlustur(ws, tanim, kayitlar, subeler, tarihGosterim, gunAdi) 
 // tip: "boylu" -> ÜRÜNLER | şube1 (Boy 0-3) | şube2 (Boy 0-3) | ... | TOPLAM ADET (NO:0-3)
 function boyluSayfaOlustur(ws, tanim, kayitlar, subeler, tarihGosterim, gunAdi) {
   ustBilgiEkle(ws, tarihGosterim, gunAdi);
+  const stil = tanim.stil;
   const TUM_BOYLAR = ["0", "1", "2", "3"];
   // Varsayılan boy sütunlarına ek olarak, şube o gün normalde sunmadığı bir boy
   // için talep girmişse (form hepsine aynı 0-3 alanını gösteriyor) o veri
@@ -557,9 +573,11 @@ function boyluSayfaOlustur(ws, tanim, kayitlar, subeler, tarihGosterim, gunAdi) 
   });
 
   const ustSatir = 3, altSatir = 4;
+  ws.getRow(ustSatir).height = stil.ustYukseklik;
+  ws.getRow(altSatir).height = stil.boyYukseklik;
   const baslikCell = ws.getCell(ustSatir, 1);
   baslikCell.value = "ÜRÜNLER";
-  hucreStil(baslikCell, { bold: true });
+  hucreStil(baslikCell, { bold: true, boyut: stil.subeFontu });
 
   let col = 2;
   const subeBaslangic = {};
@@ -568,40 +586,42 @@ function boyluSayfaOlustur(ws, tanim, kayitlar, subeler, tarihGosterim, gunAdi) 
     const boylar = subeBoylari[s];
     const genislik = boylar.length;
     if (genislik > 1) ws.mergeCells(ustSatir, col, ustSatir, col + genislik - 1);
-    for (let cc = col; cc <= col + genislik - 1; cc++) hucreStil(ws.getCell(ustSatir, cc), { fill: RENK_SUBE, bold: true, hizalama: ortaHizala });
+    for (let cc = col; cc <= col + genislik - 1; cc++) hucreStil(ws.getCell(ustSatir, cc), { fill: RENK_SUBE, bold: true, boyut: stil.subeFontu, hizalama: ortaHizala });
     ws.getCell(ustSatir, col).value = s;
     subeBaslangic[s] = col;
     boylar.forEach((b, i) => {
       const bc = ws.getCell(altSatir, col + i);
       bc.value = b;
-      hucreStil(bc, { fill: RENK_SUBE, bold: true, hizalama: ortaHizala });
+      hucreStil(bc, { fill: RENK_SUBE, bold: true, boyut: stil.boyFontu, hizalama: ortaHizala });
     });
     col += genislik;
   });
 
   const toplamBaslangic = col;
   ws.mergeCells(ustSatir, toplamBaslangic, ustSatir, toplamBaslangic + 3);
-  for (let cc = toplamBaslangic; cc <= toplamBaslangic + 3; cc++) hucreStil(ws.getCell(ustSatir, cc), { fill: RENK_TOPLAM, bold: true, hizalama: ortaHizala });
+  for (let cc = toplamBaslangic; cc <= toplamBaslangic + 3; cc++) hucreStil(ws.getCell(ustSatir, cc), { fill: RENK_TOPLAM, bold: true, boyut: stil.subeFontu, hizalama: ortaHizala });
   ws.getCell(ustSatir, toplamBaslangic).value = tanim.toplamEtiket;
   TUM_BOYLAR.forEach((b, i) => {
     const bc = ws.getCell(altSatir, toplamBaslangic + i);
     bc.value = "NO:" + b;
-    hucreStil(bc, { fill: RENK_TOPLAM, bold: true, hizalama: ortaHizala });
+    hucreStil(bc, { fill: RENK_TOPLAM, bold: true, boyut: stil.boyFontu, hizalama: ortaHizala });
   });
 
   let r = altSatir + 1;
   kategoriBazliUrunSirasi(tanim, kayitlar).forEach(satirBilgi => {
     if (satirBilgi.tip === "kategori") {
+      ws.getRow(r).height = stil.kategoriYukseklik;
       const c = ws.getCell(r, 1);
       c.value = satirBilgi.ad;
-      hucreStil(c, { fill: RENK_KATEGORI, bold: true, kenarlik: false });
+      hucreStil(c, { fill: RENK_KATEGORI, bold: true, boyut: stil.kategoriFontu, kenarlik: false });
       r++;
       return;
     }
+    ws.getRow(r).height = stil.veriYukseklik;
     const urun = satirBilgi.ad;
     const adCell = ws.getCell(r, 1);
     adCell.value = urun;
-    hucreStil(adCell, {});
+    hucreStil(adCell, { boyut: stil.urunFontu });
     const boyToplamlari = { "0": 0, "1": 0, "2": 0, "3": 0 };
     subeler.forEach(sube => {
       const c0 = subeBaslangic[sube];
@@ -610,13 +630,13 @@ function boyluSayfaOlustur(ws, tanim, kayitlar, subeler, tarihGosterim, gunAdi) 
         boyToplamlari[b] += miktar;
         const c = ws.getCell(r, c0 + i);
         c.value = miktar || null;
-        hucreStil(c, {});
+        hucreStil(c, { boyut: stil.miktarFontu });
       });
     });
     TUM_BOYLAR.forEach((b, i) => {
       const c = ws.getCell(r, toplamBaslangic + i);
       c.value = boyToplamlari[b] || null;
-      hucreStil(c, { bold: true });
+      hucreStil(c, { bold: true, boyut: stil.miktarFontu });
     });
     r++;
   });
