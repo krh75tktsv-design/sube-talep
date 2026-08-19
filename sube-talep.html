@@ -13,7 +13,6 @@
   .sub{color:var(--muted);font-size:13px;margin-bottom:20px;}
   label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.04em;}
   select,input[type=date],input[type=search],textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff;font-family:inherit;}
-  .sube-sabit{padding:12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:var(--paper);color:var(--ink);font-weight:600;}
   details{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;}
   summary{padding:13px 14px;font-size:14.5px;font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;}
   summary::-webkit-details-marker{display:none;}
@@ -45,7 +44,6 @@
 
   <label for="sube">Şube</label>
   <select id="sube"></select>
-  <div id="sube-sabit" class="sube-sabit" style="display:none;"></div>
 
   <label for="tarih">Talep Tarihi</label>
   <input type="date" id="tarih">
@@ -64,7 +62,7 @@
 
 <script>
 // ---- AYARLAR: kurulumuna göre burayi düzenle ----
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqY8TfdzTGWmtvrHZMseK8L3UWDFH1EEgZVESD7q8HUdODGU6YtAWb45-M7aA9aQ81aw/exec";
+const APPS_SCRIPT_URL = "BURAYA_APPS_SCRIPT_WEB_APP_URLINI_YAPISTIR";
 
 const SUBELER = ["Nişantaşı", "Fulya", "Maslak", "Kireçburnu", "Beykent", "Z.burnu", "S.beyli"];
 
@@ -168,14 +166,6 @@ const KATALOG = [
       {
         "ad": "Çilekli Tart",
         "birim": "adet"
-      },
-      {
-        "ad": "San Sebastian (Fransız)",
-        "birim": "adet"
-      },
-      {
-        "ad": "Çilekli Milföy",
-        "birim": "adet"
       }
     ]
   },
@@ -209,6 +199,10 @@ const KATALOG = [
       },
       {
         "ad": "Limonlu Ekler (Fransız)",
+        "birim": "adet"
+      },
+      {
+        "ad": "Çilekli Milföy",
         "birim": "adet"
       }
     ]
@@ -552,6 +546,26 @@ const KATALOG = [
         "birim": "adet"
       },
       {
+        "ad": "Unsuz Dereotlu Mekik",
+        "birim": "adet"
+      },
+      {
+        "ad": "Unsuz Keçiboynuzu Mekik",
+        "birim": "adet"
+      },
+      {
+        "ad": "Unsuz Kakao Chia",
+        "birim": "adet"
+      },
+      {
+        "ad": "Unsuz Limonlu Chia",
+        "birim": "adet"
+      },
+      {
+        "ad": "Unsuz Yaban Mersinli",
+        "birim": "adet"
+      },
+      {
         "ad": "Hurmalı Browni",
         "birim": "adet"
       },
@@ -573,32 +587,6 @@ const KATALOG = [
       },
       {
         "ad": "Japon Cipsi",
-        "birim": "adet"
-      }
-    ]
-  },
-  {
-    "kategori": "Unsuz / Diyet Ürünler",
-    "boylu": false,
-    "urunler": [
-      {
-        "ad": "Unsuz Dereotlu Mekik",
-        "birim": "adet"
-      },
-      {
-        "ad": "Unsuz Keçiboynuzu Mekik",
-        "birim": "adet"
-      },
-      {
-        "ad": "Unsuz Kakao Chia",
-        "birim": "adet"
-      },
-      {
-        "ad": "Unsuz Limonlu Chia",
-        "birim": "adet"
-      },
-      {
-        "ad": "Unsuz Yaban Mersinli",
         "birim": "adet"
       }
     ]
@@ -1059,16 +1047,10 @@ SUBELER.forEach(s => {
   o.textContent = s;
   subeSelect.appendChild(o);
 });
-const subeSabitEl = document.getElementById("sube-sabit");
 const subeParam = params.get("sube");
-let SUBE_SABIT = null;
 if (subeParam && SUBELER.includes(subeParam)) {
-  SUBE_SABIT = subeParam;
-  subeSelect.style.display = "none";
-  subeSabitEl.style.display = "block";
-  subeSabitEl.textContent = subeParam;
-} else {
-  subeSelect.value = SUBELER[0];
+  subeSelect.value = subeParam;
+  subeSelect.disabled = true;
 }
 
 const tarihInput = document.getElementById("tarih");
@@ -1137,7 +1119,7 @@ const durumEl = document.getElementById("durum");
 const gonderBtn = document.getElementById("gonder");
 
 gonderBtn.addEventListener("click", async () => {
-  const sube = SUBE_SABIT || subeSelect.value;
+  const sube = subeSelect.value;
   const tarih = tarihInput.value;
   const not = document.getElementById("not").value.trim();
 
