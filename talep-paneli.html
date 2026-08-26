@@ -456,9 +456,9 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     ws.getRow(r).height = 20;
     const kc = ws.getCell(r, 1);
     kc.value = kategori;
-    hucreStilVer(kc, { fill: RENK_KATEGORI, bold: true, boyut: 12, kenarlik: false });
+    hucreStilVer(kc, { fill: RENK_KATEGORI, bold: true, boyut: 12 });
     for (let c = 2; c <= toplamCol; c++) {
-      hucreStilVer(ws.getCell(r, c), { fill: RENK_KATEGORI, kenarlik: false });
+      hucreStilVer(ws.getCell(r, c), { fill: RENK_KATEGORI });
     }
     r++;
 
@@ -545,9 +545,9 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     const urunEtiketleri = [...new Set(kategoriKayitlari.map(urunEtiketi))];
 
     ws.getRow(r).height = BUYUK_SATIR_YUKSEKLIGI;
-    hucreStilVer(ws.getCell(r, 1), { fill: RENK_KATEGORI, bold: true, boyut: BUYUK_PUNTO, kenarlik: false });
+    hucreStilVer(ws.getCell(r, 1), { fill: RENK_KATEGORI, bold: true, boyut: BUYUK_PUNTO });
     ws.getCell(r, 1).value = kategori;
-    hucreStilVer(ws.getCell(r, 2), { fill: RENK_KATEGORI, kenarlik: false });
+    hucreStilVer(ws.getCell(r, 2), { fill: RENK_KATEGORI });
     r++;
 
     urunEtiketleri.forEach(etiket => {
@@ -574,8 +574,8 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   hucreStilVer(ws.getCell(r, 2), { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BUYUK_PUNTO, hizalama: { horizontal: "center", vertical: "middle" } });
   ws.getCell(r, 2).value = genelToplam;
 
-  ws.getColumn(1).width = 50;
-  ws.getColumn(2).width = 16;
+  ws.getColumn(1).width = 62;
+  ws.getColumn(2).width = 24;
   ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
 
@@ -605,10 +605,10 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     const urunEtiketleri = [...new Set(kategoriKayitlari.map(urunEtiketi))];
 
     ws.getRow(r).height = BUYUK_SATIR_YUKSEKLIGI;
-    hucreStilVer(ws.getCell(r, 1), { fill: RENK_KATEGORI, bold: true, boyut: BUYUK_PUNTO, kenarlik: false });
+    hucreStilVer(ws.getCell(r, 1), { fill: RENK_KATEGORI, bold: true, boyut: BUYUK_PUNTO });
     ws.getCell(r, 1).value = kategori;
     for (let c = 2; c <= 1 + subeler.length; c++) {
-      hucreStilVer(ws.getCell(r, c), { fill: RENK_KATEGORI, kenarlik: false });
+      hucreStilVer(ws.getCell(r, c), { fill: RENK_KATEGORI });
     }
     r++;
 
@@ -640,8 +640,8 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BUYUK_PUNTO, hizalama: { horizontal: "center", vertical: "middle" } });
   });
 
-  ws.getColumn(1).width = 50;
-  for (let i = 2; i <= 1 + subeler.length; i++) ws.getColumn(i).width = 16;
+  ws.getColumn(1).width = 62;
+  for (let i = 2; i <= 1 + subeler.length; i++) ws.getColumn(i).width = 24;
   ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
 
@@ -715,8 +715,8 @@ function pastaKlasikUretimSayfasiOlustur(wb, kayitlar, tarihBaslik) {
     hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BUYUK_PUNTO, hizalama: { horizontal: "center", vertical: "middle" } });
   });
 
-  ws.getColumn(1).width = 50;
-  for (let i = 2; i <= toplamCol; i++) ws.getColumn(i).width = 16;
+  ws.getColumn(1).width = 62;
+  for (let i = 2; i <= toplamCol; i++) ws.getColumn(i).width = 24;
   ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
 
@@ -810,8 +810,8 @@ function pastaKlasikDagitimSayfasiOlustur(wb, kayitlar, tarihBaslik) {
     });
   });
 
-  ws.getColumn(1).width = 50;
-  for (let i = 2; i <= toplamCol; i++) ws.getColumn(i).width = 16;
+  ws.getColumn(1).width = 62;
+  for (let i = 2; i <= toplamCol; i++) ws.getColumn(i).width = 24;
   ws.views = [{ state: "frozen", xSplit: 1, ySplit: r2 }];
 }
 
