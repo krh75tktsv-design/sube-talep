@@ -58,7 +58,7 @@
     </div>
     <button id="yenile">Yenile</button>
     <button id="indir">CSV İndir</button>
-    <button id="indirOrijinal">Orijinal Formatında İndir (.xlsx)</button>
+    <button id="indirOrijinal">Üretim &amp; Dağıtım Raporu (.xlsx)</button>
   </div>
 
   <div class="durum" id="durum"></div>
@@ -105,7 +105,7 @@ baslangicInput.addEventListener("change", ciz);
 bitisInput.addEventListener("change", ciz);
 yenileBtn.addEventListener("click", yukleVeCiz);
 indirBtn.addEventListener("click", csvIndir);
-indirOrijinalBtn.addEventListener("click", orijinalFormattaIndir);
+indirOrijinalBtn.addEventListener("click", uretimRaporuIndir);
 
 let TUM_KAYITLAR = [];
 let SON_GORUNTULENEN = [];
@@ -289,135 +289,180 @@ function csvIndir() {
   URL.revokeObjectURL(url);
 }
 
-// Şablon dosyasından birebir doldurma: orijinal "Sipariş listesi" dosyasının
-// bir kopyasını (sablon.xlsx) yükleyip SADECE miktar hücrelerine değer
-// yazıyoruz. Renk, font, satır yüksekliği, TOPLAM formülleri dahil her şey
-// zaten şablonda var ve dokunulmuyor — Excel açılınca formüller otomatik
-// hesaplanır.
-const SABLON_URL = "sablon.xlsx";
+// Üretim & Dağıtım Raporu: TAMAMEN SIFIRDAN, basit ve güvenilir bir Excel
+// üretir (var olan bir şablon dosyası yüklenmez — birleştirilmiş hücre,
+// otomatik filtre gibi Excel'i "bozuk" gösterebilecek riskli özellikler
+// kullanılmaz). Ustalar TOPLAM sütununa bakıp ne kadar üretileceğini,
+// dağıtım yapan çalışanlar şube sütunlarına bakıp nereye ne gideceğini
+// tek bakışta görür. Her kategori kendi sayfasında.
+const KATEGORI_SAYFA_ESLEME = {
+  "Tek Pastalar (Fransız)": "Pasta Fransız",
+  "Fransız Ekler": "Pasta Fransız",
+  "Dilim Cheesecake": "Pasta Fransız",
+  "Bütün Cheesecake": "Pasta Fransız",
+  "Klasik Pastalar (Boylu)": "Pasta Klasik",
+  "Tatlı Kurabiyeler": "Tatlı Kurabiye",
+  "Kekler": "Tatlı Kurabiye",
+  "Börekli Taş & Poğaça Grubu": "Tuzlu Kurabiye",
+  "Galeta / Kıtır / Cips / Diğer Tuzlu": "Tuzlu Kurabiye",
+  "Porsiyon Tatlılar": "Porsiyon Tatlılar",
+};
+const RAPOR_SAYFA_SIRASI = ["Pasta Fransız", "Pasta Klasik", "Tatlı Kurabiye", "Tuzlu Kurabiye", "Porsiyon Tatlılar"];
 
-// Her ürün için hangi sayfada, hangi satırda, hangi şube sütununda (ya da
-// boylu ürünlerde hangi şube+boy sütununda) olduğunun haritası. Koordinatlar
-// gerçek dosyadan çıkarılmıştır (satır/sütun 1'den başlar, ExcelJS ile birebir
-// uyumlu).
-const KOORDINAT_HARITASI = {"PASTA FRANSIZ": {"tarihSatir": 1, "gunSatir": 2, "tip": "basit", "urunler": {"Tek Pastalar (Fransız)|Tiramisu": {"row": 6, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Karpatka": {"row": 7, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Ballı Rus Pastası": {"row": 8, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Fraisier (Çilekli Beyaz)": {"row": 9, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Fraisier (Siyah)": {"row": 10, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Hasbahçe (Fransız)": {"row": 11, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Vişneli": {"row": 12, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Profiterol Pasta": {"row": 13, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Ganaj (Fransız)": {"row": 14, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Frambuaz Siyah": {"row": 15, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Frambuaz Beyaz": {"row": 16, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Karamel Banana": {"row": 17, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Kestaneli Pasta": {"row": 18, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Fıstıklı Pasta": {"row": 19, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Portakal Küp": {"row": 20, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Snickers": {"row": 21, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Limonlu Yaz Pastası": {"row": 22, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Mangolu Pasta": {"row": 23, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Glutensiz Çikolatalı Pasta": {"row": 24, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Panna Cotta Mango": {"row": 25, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Panna Cotta Frambuaz": {"row": 26, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Portakallı Fit Kek": {"row": 27, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Yaban Mersinli Pasta": {"row": 28, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Tek Pastalar (Fransız)|Çilekli Tart": {"row": 29, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Fransız Ekler|Çikolatalı Ekler (Fransız)": {"row": 31, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Fransız Ekler|Tiramisulu Ekler": {"row": 32, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Fransız Ekler|Frambuazlı Ekler (Fransız)": {"row": 33, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Fransız Ekler|Fıstıklı Ekler": {"row": 34, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Fransız Ekler|Karamel Ekler": {"row": 35, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Fransız Ekler|Lavanta Ekler": {"row": 36, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Fransız Ekler|Limonlu Ekler (Fransız)": {"row": 37, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Fransız Ekler|Çilekli Milföy": {"row": 39, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "adet"}, "Dilim Cheesecake|Frambuazlı (Dilim)": {"row": 41, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "dilim"}, "Dilim Cheesecake|Limonlu (Dilim)": {"row": 42, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "dilim"}, "Dilim Cheesecake|Çikolatalı (Dilim)": {"row": 43, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "dilim"}, "Dilim Cheesecake|Çilekli (Dilim)": {"row": 44, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "dilim"}, "Dilim Cheesecake|Yaban Mersinli (Dilim)": {"row": 45, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "dilim"}, "Dilim Cheesecake|Mangolu (Dilim)": {"row": 46, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10, "Kireçburnu": 14}, "birim": "dilim"}, "Bütün Cheesecake|Frambuazlı (Bütün)": {"row": 48, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10}, "birim": "adet"}, "Bütün Cheesecake|Limonlu (Bütün)": {"row": 49, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10}, "birim": "adet"}, "Bütün Cheesecake|Yaban Mersinli (Bütün)": {"row": 50, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10}, "birim": "adet"}, "Bütün Cheesecake|Çikolatalı (Bütün)": {"row": 51, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10}, "birim": "adet"}, "Bütün Cheesecake|Çilekli (Bütün)": {"row": 52, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10}, "birim": "adet"}, "Bütün Cheesecake|Lotuslu (Bütün)": {"row": 53, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10}, "birim": "adet"}, "Bütün Cheesecake|Mangolu (Bütün)": {"row": 54, "branches": {"Nişantaşı": 2, "Fulya": 6, "Maslak": 10}, "birim": "adet"}}}, "TATLI KURABİYE 1": {"tarihSatir": 3, "gunSatir": 4, "tip": "basit", "urunler": {"Tatlı Kurabiyeler|İncirli Coco": {"row": 6, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Kayısılı Coco": {"row": 7, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Coco Hindistan Cevizli": {"row": 8, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Sufle Sade": {"row": 9, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Sufle Vişneli": {"row": 10, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Vişneli Mekik Büyük": {"row": 11, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Mini Mekik": {"row": 12, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Mini Bademli Mekik": {"row": 13, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Mantar": {"row": 14, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Tarçınlı Portakal": {"row": 15, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Kestaneli Maringedeze": {"row": 16, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Sable Bademli (Sade)": {"row": 17, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Sable Bademli (Kakaolu)": {"row": 18, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Kavala Kurabiyesi": {"row": 19, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Kukunari Siyah": {"row": 20, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Kukinari Beyaz": {"row": 21, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Hindistan Cevizli Top": {"row": 22, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Fıstıklı Top": {"row": 23, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Pirinç Fındıklı Top": {"row": 24, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Bireçel Beyaz": {"row": 25, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Bireçel Siyah": {"row": 26, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Fındıklı Biscotti": {"row": 27, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Kahveli Bar": {"row": 29, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Limonlu Bar": {"row": 30, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Vişneli Bar": {"row": 31, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Kakaolu Browni": {"row": 32, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Frambuazlı Browni": {"row": 33, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Karamelli Yıldız Kurabiye": {"row": 34, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Şekilli Kurabiye": {"row": 35, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Elmalı Kurabiye": {"row": 37, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Vişneli Kurabiye": {"row": 38, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Bademli Un Kurabiyesi": {"row": 39, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Damalı": {"row": 40, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Marmelatlı Kalp": {"row": 41, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Dökme Çikolatalı Kalp": {"row": 42, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Fındıklı Dökme Çiko Kalp": {"row": 43, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Layd Hand Siyah": {"row": 44, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Layd Hand Beyaz": {"row": 45, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Selanik Gevreği": {"row": 46, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Damla Sakızlı Kurabiye": {"row": 47, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Portakallı Un Kurabiyesi": {"row": 48, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Kayısılı İncirli Biscotti": {"row": 49, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Unsuz Dereotlu Mekik": {"row": 51, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Unsuz Keçiboynuzu Mekik": {"row": 52, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Unsuz Kakao Chia": {"row": 53, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Unsuz Limonlu Chia": {"row": 54, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Unsuz Yaban Mersinli": {"row": 55, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Hurmalı Browni": {"row": 56, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Hurmalı Dilim": {"row": 57, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Havuçlu Browni": {"row": 58, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Portakallı Çikolata": {"row": 59, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Çikolata Cips (Tatlı)": {"row": 60, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Tatlı Kurabiyeler|Japon Cipsi": {"row": 61, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Havuçlu Mable": {"row": 63, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Üzümlü Mable": {"row": 64, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Limonlu Mable": {"row": 65, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Portakallı Mable": {"row": 66, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Zebra Mable": {"row": 67, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Çikolata Mable": {"row": 68, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Şekersiz Mable": {"row": 69, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Kırmızı Meyvalı Mable": {"row": 70, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Bademli Portakallı Bütün Kek": {"row": 72, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Havuçlu Bütün Kek": {"row": 73, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Vişneli Bütün Kek": {"row": 74, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Fransız Çikolatalı Bütün Kek": {"row": 75, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Çikolatalı Muffin": {"row": 77, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Havuçlu Muffin": {"row": 78, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Frambuazlı Muffin": {"row": 79, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}, "Kekler|Limonlu Muffin": {"row": 80, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 19}, "birim": "adet"}}}, "TUZLU KURABİYE 2": {"tarihSatir": 1, "gunSatir": 2, "tip": "basit", "urunler": {"Börekli Taş & Poğaça Grubu|Peynirli Böreklitaş": {"row": 4, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Dereotlu Peynirli": {"row": 5, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Zeytinli": {"row": 6, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Patatesli": {"row": 7, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Kornet Dereotlu": {"row": 9, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Dereotlu Sufle": {"row": 10, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Sebzeli": {"row": 11, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Patlıcanlı": {"row": 12, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Mini Pizza": {"row": 13, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Minik Simit": {"row": 14, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Düz Örgü": {"row": 15, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Yuvarlak Örgü": {"row": 16, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Burgu Susamlı Haşhaşlı": {"row": 17, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Diyet Kurabiyeler (Tuzlu)": {"row": 18, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Burgu Tahıllı": {"row": 19, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Ayçekirdekli Galeta": {"row": 20, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Parmesan Galeta": {"row": 21, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|İtalyan Galeta": {"row": 22, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Biberiyeli Zeytinli Galeta": {"row": 23, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Çekirdekli Kokteyl": {"row": 24, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Üzümlü Kepekli": {"row": 25, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Üzümlü Cevizli Kepekli": {"row": 26, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Kuru Üzümlü Yassı Tahıllı": {"row": 27, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Granola Bar Tepsi": {"row": 28, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Tahinli Susamlı": {"row": 29, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Granola Dökme": {"row": 30, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Kalp Denge Tahıllı": {"row": 31, "branches": {"Nişantaşı": 4, "Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Paskalya": {"row": 33, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Paskalya Çikolatalı": {"row": 34, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Börekli Taş & Poğaça Grubu|Tahinli Çörek": {"row": 35, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Beze Büyük": {"row": 37, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Beze Beyaz Minik": {"row": 38, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Beze Renkli Minik": {"row": 39, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Acıbadem": {"row": 41, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Acıbadem Minik": {"row": 42, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Ayçöreği": {"row": 43, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Batonsale Sade": {"row": 45, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Batonsale Çörekotlu": {"row": 46, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Batonsale Kaşarlı": {"row": 47, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Batonsale Susamlı": {"row": 48, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Batonsale Anasonlu": {"row": 49, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Kırık Kırak Susamlı": {"row": 50, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Galet Kaşarlı": {"row": 52, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Galet Çörekotlu": {"row": 53, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Galet Susamlı": {"row": 54, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Galet Anasonlu": {"row": 55, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Baharatlı Kıtır": {"row": 57, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Kaşarlı Kıtır": {"row": 58, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Zencefilli Kıtır": {"row": 59, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Acılı Kıtır": {"row": 60, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Haşhaşlı Cips": {"row": 62, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|İrmikli Cips": {"row": 63, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Parmesanlı Cips": {"row": 64, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}, "Galeta / Kıtır / Cips / Diğer Tuzlu|Tam Buğday Cips": {"row": 65, "branches": {"Fulya": 9, "Maslak": 14, "Kireçburnu": 18}, "birim": "adet"}}}, "TEK PASTA KLASİK": {"tarihSatir": 1, "gunSatir": 2, "tip": "basit", "urunler": {"Porsiyon Tatlılar|Tiramisu Dilim": {"row": 5, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Magnolia Çilek": {"row": 6, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Magnolia Muzlu": {"row": 7, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Magnolia Oreolu": {"row": 8, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Dubai Magnolia": {"row": 9, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Supangle": {"row": 10, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Profiterol Kase": {"row": 11, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Mozaik": {"row": 12, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Vişneli Tek": {"row": 13, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Hasbahçe Tek": {"row": 14, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Fıstıklı Çikolatalı Tek": {"row": 15, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Kestaneli Tek": {"row": 16, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Profiterol Tek": {"row": 17, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Ganaj Tek": {"row": 18, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Frambuaz Siyah Tek": {"row": 19, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Frambuaz Beyaz Tek": {"row": 20, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Latte (Porsiyon)": {"row": 21, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Kazandibi": {"row": 22, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Sütlaç": {"row": 23, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Trileçe Frambuaz": {"row": 24, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Trileçe Karamel": {"row": 25, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Aşure": {"row": 26, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Çikolatalı Ekler (Porsiyon)": {"row": 28, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Limonlu Ekler (Porsiyon)": {"row": 29, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Beyaz Ekler": {"row": 30, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Petifür": {"row": 31, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Rulo Petifür Muzlu": {"row": 32, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Rulo Petifür Çilek": {"row": 33, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Çiko Limon Parfe": {"row": 34, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Çilekli Adet Rulo": {"row": 35, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Muzlu Adet Rulo": {"row": 36, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Frambuazlı Tek (Cheesecake)": {"row": 38, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Limonlu Tek (Cheesecake)": {"row": 39, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Çilekli Tek (Cheesecake)": {"row": 40, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}, "Porsiyon Tatlılar|Çikolatalı Tek (Cheesecake)": {"row": 41, "branches": {"Nişantaşı": 4, "Fulya": 6, "Maslak": 8, "Kireçburnu": 10, "S.beyli": 14, "Z.burnu": 16, "Beykent": 20}, "birim": "adet"}}}, "PASTA KLASİK": {"tarihSatir": 1, "gunSatir": 2, "tip": "boylu", "urunler": {"Klasik Pastalar (Boylu)|*Fıstık Çikolata Dekora": {"row": 3, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|*Krokanlı Çikolata": {"row": 4, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Ganaj (Klasik)": {"row": 5, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|*Frambuaz Siyah Çikolata": {"row": 6, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|*Frambuaz Beyaz Çikolata": {"row": 7, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Pasta Latte": {"row": 8, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|*Kırmızı Meyvalı Naked": {"row": 9, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Hasbahçe (Klasik)": {"row": 10, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|*Kestaneli Fıstık": {"row": 11, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Muzlu Beyaz Çikolatalı": {"row": 12, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Muzlu Siyah Çikolatalı": {"row": 13, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Profiterol Siyah Çikolatalı": {"row": 14, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Muz Krokan": {"row": 15, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Çilekli Siyah Çikolatalı": {"row": 16, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Çilekli Beyaz Çikolatalı": {"row": 17, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|*Vişne Siyah Çikolatalı": {"row": 18, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|*Frambuaz Muz Naked": {"row": 19, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Frambuaz Çilek Beyaz": {"row": 20, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Muz Çilek Naked": {"row": 21, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Mois Pasta": {"row": 22, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Hasbahçe Siyah": {"row": 23, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|*Vişne Beyaz": {"row": 24, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|Badem Krokan": {"row": 25, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}, "Klasik Pastalar (Boylu)|San Sebastian (Klasik)": {"row": 27, "boyKolonlari": {"Nişantaşı": {"0": 3, "1": 4, "2": 5}, "Fulya": {"0": 7, "1": 8, "2": 9}, "Maslak": {"0": 11, "1": 12, "2": 13, "3": 14}, "S.beyli": {"0": 19, "1": 20}, "Z.burnu": {"0": 22, "1": 23}, "Beykent": {"0": 25, "1": 26}}}}, "toplamKolonlari": {"0": 28, "1": 29, "2": 30, "3": 31}}};
+const RENK_SUBE_BASLIK = "FF7F1D1D";
+const RENK_KATEGORI = "FFFEF3C7";
+const RENK_TOPLAM_SATIR = "FF1F2937";
+const RENK_TOPLAM_SUTUN = "FFFEF9C3";
+const INCE_CIZGI = { style: "thin", color: { argb: "FFE5E7EB" } };
 
-async function orijinalFormattaIndir() {
-  const tarih = baslangicInput.value;
-  if (!tarih) {
+function hucreStilVer(cell, { fill, bold, renk, boyut, hizalama, kenarlik = true } = {}) {
+  if (fill) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fill } };
+  const font = {};
+  if (bold !== undefined) font.bold = bold;
+  if (renk) font.color = { argb: renk };
+  if (boyut) font.size = boyut;
+  if (Object.keys(font).length) cell.font = font;
+  if (hizalama) cell.alignment = hizalama;
+  if (kenarlik) cell.border = { top: INCE_CIZGI, left: INCE_CIZGI, bottom: INCE_CIZGI, right: INCE_CIZGI };
+}
+
+async function uretimRaporuIndir() {
+  const bas = baslangicInput.value;
+  const bit = bitisInput.value || bas;
+  if (!bas) {
     goster("hata", "Önce bir tarih seçin.");
     return;
   }
-  const gununKayitlari = TUM_KAYITLAR.filter(k => k.tarih === tarih && k.urun !== "NOT");
-  if (gununKayitlari.length === 0) {
-    goster("hata", tarih + " için indirilecek talep yok.");
+  const kayitlar = TUM_KAYITLAR.filter(k => k.tarih >= bas && k.tarih <= bit && k.urun !== "NOT");
+  if (kayitlar.length === 0) {
+    goster("hata", "Bu tarih aralığı için indirilecek talep yok.");
     return;
   }
-
-  const [yil, ay, gun] = tarih.split("-").map(Number);
-  const gunAdi = GUN_ADLARI[new Date(yil, ay - 1, gun).getDay()];
-  const tarihGosterim = `${String(gun).padStart(2, "0")}.${String(ay).padStart(2, "0")}.${yil}`;
 
   indirOrijinalBtn.disabled = true;
   indirOrijinalBtn.textContent = "Hazırlanıyor...";
 
   try {
-    const res = await fetch(SABLON_URL + "?v=" + Date.now(), { cache: "no-store" });
-    if (!res.ok) throw new Error("Şablon dosyası yüklenemedi (HTTP " + res.status + ")");
-    const buf = await res.arrayBuffer();
     const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(buf);
-    wb.calcProperties.fullCalcOnLoad = true;
+    const tarihBaslik = bas === bit ? bas : `${bas} — ${bit}`;
 
-    // her sayfanın tarih/gün hücrelerini güncelle
-    Object.entries(KOORDINAT_HARITASI).forEach(([sheetName, sheetInfo]) => {
-      const ws = wb.getWorksheet(sheetName);
-      if (!ws) return;
-      ws.getCell(sheetInfo.tarihSatir, 2).value = tarihGosterim;
-      ws.getCell(sheetInfo.gunSatir, 2).value = gunAdi;
+    RAPOR_SAYFA_SIRASI.forEach(sayfaAdi => {
+      const sayfaKayitlari = kayitlar.filter(k => KATEGORI_SAYFA_ESLEME[k.kategori] === sayfaAdi);
+      if (sayfaKayitlari.length === 0) return;
+      raporSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
     });
 
-    // kayıtları kategori|ürün bazında topla (şube ve varsa boy kırılımında)
-    const toplamlar = {};
-    gununKayitlari.forEach(k => {
-      const key = k.kategori + "|" + k.urun;
-      if (!toplamlar[key]) toplamlar[key] = {};
-      const boyVar = k.boy !== undefined && k.boy !== null && k.boy !== "";
-      if (boyVar) {
-        const boy = String(k.boy);
-        if (!toplamlar[key][k.sube] || typeof toplamlar[key][k.sube] !== "object") toplamlar[key][k.sube] = {};
-        toplamlar[key][k.sube][boy] = (toplamlar[key][k.sube][boy] || 0) + Number(k.miktar || 0);
-      } else {
-        toplamlar[key][k.sube] = (toplamlar[key][k.sube] || 0) + Number(k.miktar || 0);
-      }
-    });
-
-    const eslesmeyenler = [];
-    const atlananSubeler = new Set();
-
-    Object.keys(toplamlar).forEach(key => {
-      let koorBulundu = null;
-      let sheetName = null;
-      for (const [sn, sheetInfo] of Object.entries(KOORDINAT_HARITASI)) {
-        if (sheetInfo.urunler[key]) {
-          koorBulundu = sheetInfo.urunler[key];
-          sheetName = sn;
-          break;
-        }
-      }
-      if (!koorBulundu) {
-        eslesmeyenler.push(key);
-        return;
-      }
-      const ws = wb.getWorksheet(sheetName);
-      const sheetInfo = KOORDINAT_HARITASI[sheetName];
-      const subeVerisi = toplamlar[key];
-
-      if (sheetInfo.tip === "boylu") {
-        Object.entries(subeVerisi).forEach(([sube, boyMap]) => {
-          const kolonlar = koorBulundu.boyKolonlari[sube];
-          if (!kolonlar) { atlananSubeler.add(sube + " (" + key.split("|")[1] + ")"); return; }
-          Object.entries(boyMap).forEach(([boy, miktar]) => {
-            const col = kolonlar[boy];
-            if (col && miktar) ws.getCell(koorBulundu.row, col).value = miktar;
-          });
-        });
-      } else {
-        Object.entries(subeVerisi).forEach(([sube, miktar]) => {
-          const col = koorBulundu.branches[sube];
-          if (!col) { atlananSubeler.add(sube + " (" + key.split("|")[1] + ")"); return; }
-          if (miktar) ws.getCell(koorBulundu.row, col).value = miktar;
-        });
-      }
-    });
-
-    if (eslesmeyenler.length > 0) {
-      console.warn("Şablonda karşılığı bulunamayan ürünler:", eslesmeyenler);
-    }
-    if (atlananSubeler.size > 0) {
-      console.warn("Şablonda o kategori için sütunu olmayan şube/ürün kombinasyonları:", [...atlananSubeler]);
-    }
-
-    const outBuf = await wb.xlsx.writeBuffer();
-    const blob = new Blob([outBuf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `siparis-listesi_${tarih}.xlsx`;
+    a.download = `uretim-dagitim-raporu_${bas}${bit !== bas ? "_" + bit : ""}.xlsx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-
-    if (eslesmeyenler.length > 0 || atlananSubeler.size > 0) {
-      goster("hata", "Dosya indirildi, ama bazı kalemler şablonda eşleşmedi (Geliştirici Konsolu'nda ayrıntı var).");
-    }
   } catch (err) {
     goster("hata", "Dosya oluşturulamadı: " + err.message);
   } finally {
     indirOrijinalBtn.disabled = false;
-    indirOrijinalBtn.textContent = "Orijinal Formatında İndir (.xlsx)";
+    indirOrijinalBtn.textContent = "Üretim & Dağıtım Raporu (.xlsx)";
   }
+}
+
+function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
+  const ws = wb.addWorksheet(sayfaAdi.substring(0, 31));
+  const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
+
+  const ustBaslik = ws.getCell(1, 1);
+  ustBaslik.value = `${sayfaAdi} — ${tarihBaslik}`;
+  ustBaslik.font = { bold: true, size: 16 };
+  ws.getRow(1).height = 26;
+
+  const headerRow = 3;
+  ws.getRow(headerRow).height = 22;
+  const urunBaslik = ws.getCell(headerRow, 1);
+  urunBaslik.value = "ÜRÜN";
+  hucreStilVer(urunBaslik, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: 12 });
+  subeler.forEach((s, i) => {
+    const c = ws.getCell(headerRow, 2 + i);
+    c.value = s.toLocaleUpperCase("tr");
+    hucreStilVer(c, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: 12, hizalama: { horizontal: "center" } });
+  });
+  const toplamCol = 2 + subeler.length;
+  const toplamBaslik = ws.getCell(headerRow, toplamCol);
+  toplamBaslik.value = "TOPLAM";
+  hucreStilVer(toplamBaslik, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: 12, hizalama: { horizontal: "center" } });
+
+  const grid = {};
+  const birimler = {};
+  kayitlar.forEach(k => {
+    const etiket = urunEtiketi(k);
+    grid[etiket + "|" + k.sube] = (grid[etiket + "|" + k.sube] || 0) + Number(k.miktar || 0);
+    birimler[etiket] = k.birim;
+  });
+
+  const kategoriler = [...new Set(kayitlar.map(k => k.kategori))].sort((a, b) => {
+    const ia = KATEGORI_SIRASI.indexOf(a), ib = KATEGORI_SIRASI.indexOf(b);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+
+  let r = headerRow + 1;
+  kategoriler.forEach(kategori => {
+    const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+    const urunEtiketleri = [...new Set(kategoriKayitlari.map(urunEtiketi))];
+
+    ws.getRow(r).height = 20;
+    const kc = ws.getCell(r, 1);
+    kc.value = kategori;
+    hucreStilVer(kc, { fill: RENK_KATEGORI, bold: true, boyut: 12, kenarlik: false });
+    for (let c = 2; c <= toplamCol; c++) {
+      hucreStilVer(ws.getCell(r, c), { fill: RENK_KATEGORI, kenarlik: false });
+    }
+    r++;
+
+    urunEtiketleri.forEach(etiket => {
+      ws.getRow(r).height = 18;
+      const ad = ws.getCell(r, 1);
+      ad.value = etiket + (birimler[etiket] ? ` (${birimler[etiket]})` : "");
+      hucreStilVer(ad, { boyut: 12 });
+      let toplam = 0;
+      subeler.forEach((sube, i) => {
+        const miktar = grid[etiket + "|" + sube] || 0;
+        toplam += miktar;
+        const c = ws.getCell(r, 2 + i);
+        c.value = miktar || null;
+        hucreStilVer(c, { boyut: 12, hizalama: { horizontal: "center" } });
+      });
+      const tc = ws.getCell(r, toplamCol);
+      tc.value = toplam;
+      hucreStilVer(tc, { bold: true, boyut: 13, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center" } });
+      r++;
+    });
+  });
+
+  ws.getRow(r).height = 22;
+  const genelToplamAd = ws.getCell(r, 1);
+  genelToplamAd.value = "GENEL TOPLAM";
+  hucreStilVer(genelToplamAd, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: 13 });
+  let genelToplam = 0;
+  subeler.forEach((sube, i) => {
+    let subeToplam = 0;
+    Object.keys(grid).forEach(key => {
+      if (key.endsWith("|" + sube)) subeToplam += grid[key];
+    });
+    genelToplam += subeToplam;
+    const c = ws.getCell(r, 2 + i);
+    c.value = subeToplam;
+    hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: 13, hizalama: { horizontal: "center" } });
+  });
+  const gc = ws.getCell(r, toplamCol);
+  gc.value = genelToplam;
+  hucreStilVer(gc, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: 13, hizalama: { horizontal: "center" } });
+
+  ws.getColumn(1).width = 34;
+  for (let i = 2; i <= toplamCol; i++) ws.getColumn(i).width = 12;
+  ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
 
 function goster(tur, mesaj) {
