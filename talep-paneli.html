@@ -39,6 +39,38 @@
   .ozet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;}
   .ozet-hucre{background:var(--paper);border-radius:8px;padding:8px 10px;font-size:13px;display:flex;justify-content:space-between;}
   .ozet-hucre b{font-variant-numeric:tabular-nums;}
+
+  /* --- Yazdırma görünümü: ekranda gizli, yazdırırken Excel'deki
+         Üretim/Dağıtım sayfalarının aynısı, her biri ayrı A4 sayfasında. --- */
+  #yazdirAlani{display:none;}
+  @media print{
+    @page{size:A4 landscape;margin:8mm;}
+    body{background:#fff;}
+    .wrap{display:none !important;}
+    #yazdirAlani{display:block;}
+    .yazdir-sayfa{page-break-after:always;break-after:page;}
+    .yazdir-sayfa:last-child{page-break-after:auto;break-after:auto;}
+    .yazdir-sayfa h2{font-size:13pt;margin:0 0 4mm;font-weight:700;}
+    .yazdir-sayfa table{width:100%;border-collapse:collapse;table-layout:fixed;}
+    .yazdir-sayfa th,.yazdir-sayfa td{border:1px solid #333;padding:2mm 1.5mm;text-align:center;
+      word-wrap:break-word;overflow-wrap:anywhere;line-height:1.15;}
+    .yazdir-sayfa th{background:#7F1D1D !important;color:#fff !important;font-weight:700;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .yazdir-sayfa th.toplam-bas{background:#1F2937 !important;}
+    .yazdir-sayfa td.urun{text-align:left;}
+    .yazdir-sayfa tr.kategori td{background:#FEF3C7 !important;font-weight:700;text-align:left;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .yazdir-sayfa td.toplam-h{background:#FEF9C3 !important;font-weight:700;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .yazdir-sayfa tr.genel td{background:#1F2937 !important;color:#fff !important;font-weight:700;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    /* Sütun sayısına göre punto: az sütunda çok büyük, çok sütunda sığacak kadar */
+    .yazdir-sayfa.p-xl table{font-size:26pt;}
+    .yazdir-sayfa.p-l  table{font-size:19pt;}
+    .yazdir-sayfa.p-m  table{font-size:14pt;}
+    .yazdir-sayfa.p-s  table{font-size:10.5pt;}
+    .yazdir-sayfa.p-xs table{font-size:8pt;}
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 </head>
@@ -59,11 +91,13 @@
     <button id="yenile">Yenile</button>
     <button id="indir">CSV İndir</button>
     <button id="indirOrijinal">Üretim &amp; Dağıtım Raporu (.xlsx)</button>
+    <button id="yazdir">Yazdır</button>
   </div>
 
   <div class="durum" id="durum"></div>
   <div id="icerik"></div>
 </div>
+<div id="yazdirAlani"></div>
 
 <script>
 // ---- AYARLAR: sube-talep.html ile AYNI Apps Script URL'sini kullan ----
@@ -95,6 +129,8 @@ const icerikEl = document.getElementById("icerik");
 const yenileBtn = document.getElementById("yenile");
 const indirBtn = document.getElementById("indir");
 const indirOrijinalBtn = document.getElementById("indirOrijinal");
+const yazdirBtn = document.getElementById("yazdir");
+const yazdirAlaniEl = document.getElementById("yazdirAlani");
 
 const yarin = new Date();
 yarin.setDate(yarin.getDate() + 1);
@@ -106,6 +142,7 @@ bitisInput.addEventListener("change", ciz);
 yenileBtn.addEventListener("click", yukleVeCiz);
 indirBtn.addEventListener("click", csvIndir);
 indirOrijinalBtn.addEventListener("click", uretimRaporuIndir);
+yazdirBtn.addEventListener("click", raporuYazdir);
 
 let TUM_KAYITLAR = [];
 let SON_GORUNTULENEN = [];
@@ -1079,6 +1116,363 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   ws.getColumn(1).width = 62;
   for (let i = 2; i <= toplamCol; i++) ws.getColumn(i).width = 24;
   ws.views = [{ state: "frozen", xSplit: 1, ySplit: r2 }];
+}
+
+// ---- Panelden doğrudan yazdırma -------------------------------------
+// Excel raporundaki sayfaların aynısını HTML olarak kurar; her sayfa
+// ayrı bir A4 yaprağına basılır. Excel fonksiyonlarıyla aynı veri
+// hazırlama mantığını kullanır, sadece çıktı biçimi farklıdır.
+
+function htmlKac(s) {
+  return String(s === undefined || s === null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Sütun sayısına göre yazdırma puntosu — az sütunda büyük, çok sütunda sığacak kadar.
+function puntoSinifi(sutunSayisi) {
+  if (sutunSayisi <= 3) return "p-xl";
+  if (sutunSayisi <= 6) return "p-l";
+  if (sutunSayisi <= 10) return "p-m";
+  if (sutunSayisi <= 16) return "p-s";
+  return "p-xs";
+}
+
+function yazdirSayfasi(baslik, sutunSayisi, tabloHtml) {
+  const bolum = document.createElement("section");
+  bolum.className = "yazdir-sayfa " + puntoSinifi(sutunSayisi);
+  bolum.innerHTML = `<h2>${htmlKac(baslik)}</h2><table>${tabloHtml}</table>`;
+  return bolum;
+}
+
+function yazdirDuzUretim(sayfaAdi, kayitlar, tarihBaslik) {
+  const { grid, birimler, kategoriler } = flatVeriHazirla(kayitlar);
+  const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
+  const boyGrid = {};
+  kayitlar.forEach(k => {
+    if (!BOYLU_SUBE_BOYLARI[k.kategori]) return;
+    const key = k.urun + "|" + boyDeger(k);
+    boyGrid[key] = (boyGrid[key] || 0) + Number(k.miktar || 0);
+  });
+  const tumBoylar = [...new Set(kayitlar.filter(k => BOYLU_SUBE_BOYLARI[k.kategori]).map(boyDeger))].sort((a, b) => a - b);
+  const sutunSayisi = 2 + tumBoylar.length;
+
+  let html = '<thead><tr><th style="width:46%">ÜRÜN</th><th class="toplam-bas">TOPLAM</th>';
+  tumBoylar.forEach(boy => (html += `<th class="toplam-bas">NO:${boy}</th>`));
+  html += "</tr></thead><tbody>";
+
+  kategoriler.forEach(kategori => {
+    const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+    const boylu = !!BOYLU_SUBE_BOYLARI[kategori];
+    html += `<tr class="kategori"><td colspan="${sutunSayisi}">${htmlKac(kategori)}</td></tr>`;
+
+    if (boylu) {
+      const urunBirimleri = {};
+      kategoriKayitlari.forEach(k => { urunBirimleri[k.urun] = k.birim; });
+      [...new Set(kategoriKayitlari.map(k => k.urun))].forEach(urun => {
+        let toplam = 0;
+        tumBoylar.forEach(boy => { toplam += boyGrid[urun + "|" + boy] || 0; });
+        html += `<tr><td class="urun">${htmlKac(urun)}${urunBirimleri[urun] ? " (" + htmlKac(urunBirimleri[urun]) + ")" : ""}</td>`;
+        html += `<td class="toplam-h">${toplam}</td>`;
+        tumBoylar.forEach(boy => {
+          const v = boyGrid[urun + "|" + boy] || 0;
+          html += `<td class="toplam-h">${v || ""}</td>`;
+        });
+        html += "</tr>";
+      });
+    } else {
+      [...new Set(kategoriKayitlari.map(urunEtiketi))].forEach(etiket => {
+        let toplam = 0;
+        Object.keys(grid).forEach(key => { if (key.startsWith(etiket + "|")) toplam += grid[key]; });
+        html += `<tr><td class="urun">${htmlKac(etiket)}${birimler[etiket] ? " (" + htmlKac(birimler[etiket]) + ")" : ""}</td>`;
+        html += `<td class="toplam-h">${toplam}</td>`;
+        tumBoylar.forEach(() => (html += "<td></td>"));
+        html += "</tr>";
+      });
+    }
+  });
+
+  let genelToplam = 0;
+  Object.values(grid).forEach(v => { genelToplam += v; });
+  html += `<tr class="genel"><td class="urun">GENEL TOPLAM</td><td>${genelToplam}</td>`;
+  tumBoylar.forEach(boy => {
+    let t = 0;
+    Object.keys(boyGrid).forEach(key => { if (key.endsWith("|" + boy)) t += boyGrid[key]; });
+    html += `<td>${t}</td>`;
+  });
+  html += "</tr></tbody>";
+
+  return yazdirSayfasi(`${sayfaAdi} — Üretim — ${tarihBaslik}`, sutunSayisi, html);
+}
+
+function yazdirDuzDagitim(sayfaAdi, kayitlar, tarihBaslik) {
+  const { subeler, grid, birimler, kategoriler } = flatVeriHazirla(kayitlar);
+  const boyluVarMi = kategoriler.some(k => BOYLU_SUBE_BOYLARI[k]);
+
+  if (!boyluVarMi) {
+    const sutunSayisi = 1 + subeler.length;
+    let html = '<thead><tr><th style="width:40%">ÜRÜN</th>';
+    subeler.forEach(s => (html += `<th>${htmlKac(s.toLocaleUpperCase("tr"))}</th>`));
+    html += "</tr></thead><tbody>";
+
+    kategoriler.forEach(kategori => {
+      const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+      html += `<tr class="kategori"><td colspan="${sutunSayisi}">${htmlKac(kategori)}</td></tr>`;
+      [...new Set(kategoriKayitlari.map(urunEtiketi))].forEach(etiket => {
+        html += `<tr><td class="urun">${htmlKac(etiket)}${birimler[etiket] ? " (" + htmlKac(birimler[etiket]) + ")" : ""}</td>`;
+        subeler.forEach(sube => {
+          const m = grid[etiket + "|" + sube] || 0;
+          html += `<td>${m || ""}</td>`;
+        });
+        html += "</tr>";
+      });
+    });
+
+    html += '<tr class="genel"><td class="urun">GENEL TOPLAM</td>';
+    subeler.forEach(sube => {
+      let t = 0;
+      Object.keys(grid).forEach(key => { if (key.endsWith("|" + sube)) t += grid[key]; });
+      html += `<td>${t}</td>`;
+    });
+    html += "</tr></tbody>";
+    return yazdirSayfasi(`${sayfaAdi} — Dağıtım — ${tarihBaslik}`, sutunSayisi, html);
+  }
+
+  const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
+  const rowKey = k => (BOYLU_SUBE_BOYLARI[k.kategori] ? k.urun : urunEtiketi(k));
+
+  const subeBoylari = {};
+  subeler.forEach(sube => {
+    const kanonikListeleri = kategoriler.filter(k => BOYLU_SUBE_BOYLARI[k]).map(k => BOYLU_SUBE_BOYLARI[k][sube] || [0]);
+    const kanonik = kanonikListeleri.length ? [].concat(...kanonikListeleri) : [0];
+    const mevcut = kayitlar.filter(k => k.sube === sube).map(boyDeger);
+    subeBoylari[sube] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
+  });
+
+  const boyluGrid = {};
+  const boyluBirimler = {};
+  kayitlar.forEach(k => {
+    const key = rowKey(k) + "|" + k.sube + "|" + boyDeger(k);
+    boyluGrid[key] = (boyluGrid[key] || 0) + Number(k.miktar || 0);
+    boyluBirimler[rowKey(k)] = k.birim;
+  });
+
+  const sutunSayisi = 1 + subeler.reduce((t, s) => t + subeBoylari[s].length, 0);
+
+  let html = '<thead><tr><th rowspan="2" style="width:26%">ÜRÜN</th>';
+  subeler.forEach(sube => (html += `<th colspan="${subeBoylari[sube].length}">${htmlKac(sube.toLocaleUpperCase("tr"))}</th>`));
+  html += "</tr><tr>";
+  subeler.forEach(sube => {
+    const boylar = subeBoylari[sube];
+    boylar.forEach(boy => (html += `<th>${boylar.length > 1 ? "Boy " + boy : "&nbsp;"}</th>`));
+  });
+  html += "</tr></thead><tbody>";
+
+  kategoriler.forEach(kategori => {
+    const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+    const boylu = !!BOYLU_SUBE_BOYLARI[kategori];
+    const etiketler = boylu
+      ? [...new Set(kategoriKayitlari.map(k => k.urun))]
+      : [...new Set(kategoriKayitlari.map(urunEtiketi))];
+
+    html += `<tr class="kategori"><td colspan="${sutunSayisi}">${htmlKac(kategori)}</td></tr>`;
+    etiketler.forEach(etiket => {
+      html += `<tr><td class="urun">${htmlKac(etiket)}${boyluBirimler[etiket] ? " (" + htmlKac(boyluBirimler[etiket]) + ")" : ""}</td>`;
+      subeler.forEach(sube => {
+        subeBoylari[sube].forEach(boy => {
+          const v = boyluGrid[etiket + "|" + sube + "|" + boy] || 0;
+          html += `<td>${v || ""}</td>`;
+        });
+      });
+      html += "</tr>";
+    });
+  });
+
+  html += '<tr class="genel"><td class="urun">GENEL TOPLAM</td>';
+  subeler.forEach(sube => {
+    subeBoylari[sube].forEach(boy => {
+      let t = 0;
+      Object.keys(boyluGrid).forEach(key => { if (key.endsWith("|" + sube + "|" + boy)) t += boyluGrid[key]; });
+      html += `<td>${t}</td>`;
+    });
+  });
+  html += "</tr></tbody>";
+
+  return yazdirSayfasi(`${sayfaAdi} — Dağıtım — ${tarihBaslik}`, sutunSayisi, html);
+}
+
+function yazdirBoyluUretim(sayfaAdi, kayitlar, tarihBaslik) {
+  const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
+  const subeBoylariKanonik = BOYLU_SUBE_BOYLARI[sayfaAdi] || {};
+  const urunSirasi = BOYLU_URUN_SIRALARI[sayfaAdi] || [];
+  const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
+
+  const subeBoylari = {};
+  subeler.forEach(sube => {
+    const kanonik = subeBoylariKanonik[sube] || [0];
+    const mevcut = kayitlar.filter(k => k.sube === sube).map(boyDeger);
+    subeBoylari[sube] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
+  });
+  const tumBoylar = [...new Set(subeler.flatMap(s => subeBoylari[s]))].sort((a, b) => a - b);
+
+  const grid = {};
+  kayitlar.forEach(k => {
+    const key = k.urun + "|" + k.sube + "|" + boyDeger(k);
+    grid[key] = (grid[key] || 0) + Number(k.miktar || 0);
+  });
+
+  const urunlerVar = urunSirasi.filter(urun => kayitlar.some(k => k.urun === urun));
+  kayitlar.forEach(k => { if (!urunlerVar.includes(k.urun)) urunlerVar.push(k.urun); });
+
+  const sutunSayisi = 1 + tumBoylar.length;
+  let html = '<thead><tr><th style="width:46%">ÜRÜN</th>';
+  tumBoylar.forEach(boy => (html += `<th class="toplam-bas">NO:${boy}</th>`));
+  html += "</tr></thead><tbody>";
+
+  urunlerVar.forEach(urun => {
+    html += `<tr><td class="urun">${htmlKac(urun)}</td>`;
+    tumBoylar.forEach(boy => {
+      let t = 0;
+      subeler.forEach(sube => { t += grid[urun + "|" + sube + "|" + boy] || 0; });
+      html += `<td class="toplam-h">${t || ""}</td>`;
+    });
+    html += "</tr>";
+  });
+
+  html += '<tr class="genel"><td class="urun">GENEL TOPLAM</td>';
+  tumBoylar.forEach(boy => {
+    let t = 0;
+    subeler.forEach(sube => { urunlerVar.forEach(urun => { t += grid[urun + "|" + sube + "|" + boy] || 0; }); });
+    html += `<td>${t}</td>`;
+  });
+  html += "</tr></tbody>";
+
+  return yazdirSayfasi(`${sayfaAdi} — Üretim — ${tarihBaslik}`, sutunSayisi, html);
+}
+
+function yazdirBoyluDagitim(sayfaAdi, kayitlar, tarihBaslik) {
+  const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
+  const subeBoylariKanonik = BOYLU_SUBE_BOYLARI[sayfaAdi] || {};
+  const urunSirasi = BOYLU_URUN_SIRALARI[sayfaAdi] || [];
+  const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
+
+  const subeBoylari = {};
+  subeler.forEach(sube => {
+    const kanonik = subeBoylariKanonik[sube] || [0];
+    const mevcut = kayitlar.filter(k => k.sube === sube).map(boyDeger);
+    subeBoylari[sube] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
+  });
+
+  const grid = {};
+  kayitlar.forEach(k => {
+    const key = k.urun + "|" + k.sube + "|" + boyDeger(k);
+    grid[key] = (grid[key] || 0) + Number(k.miktar || 0);
+  });
+
+  const urunlerVar = urunSirasi.filter(urun => kayitlar.some(k => k.urun === urun));
+  kayitlar.forEach(k => { if (!urunlerVar.includes(k.urun)) urunlerVar.push(k.urun); });
+
+  const sutunSayisi = 1 + subeler.reduce((t, s) => t + subeBoylari[s].length, 0);
+
+  let html = '<thead><tr><th rowspan="2" style="width:26%">ÜRÜN</th>';
+  subeler.forEach(sube => (html += `<th colspan="${subeBoylari[sube].length}">${htmlKac(sube.toLocaleUpperCase("tr"))}</th>`));
+  html += "</tr><tr>";
+  subeler.forEach(sube => {
+    subeBoylari[sube].forEach(boy => (html += `<th>Boy ${boy}</th>`));
+  });
+  html += "</tr></thead><tbody>";
+
+  urunlerVar.forEach(urun => {
+    html += `<tr><td class="urun">${htmlKac(urun)}</td>`;
+    subeler.forEach(sube => {
+      subeBoylari[sube].forEach(boy => {
+        const v = grid[urun + "|" + sube + "|" + boy] || 0;
+        html += `<td>${v || ""}</td>`;
+      });
+    });
+    html += "</tr>";
+  });
+
+  html += '<tr class="genel"><td class="urun">GENEL TOPLAM</td>';
+  subeler.forEach(sube => {
+    subeBoylari[sube].forEach(boy => {
+      let t = 0;
+      urunlerVar.forEach(urun => { t += grid[urun + "|" + sube + "|" + boy] || 0; });
+      html += `<td>${t}</td>`;
+    });
+  });
+  html += "</tr></tbody>";
+
+  return yazdirSayfasi(`${sayfaAdi} — Dağıtım — ${tarihBaslik}`, sutunSayisi, html);
+}
+
+// Tatlı/Tuzlu Kurabiye: tek sayfa, şube sütunları + TOPLAM birlikte.
+function yazdirBirlesikSayfa(sayfaAdi, kayitlar, tarihBaslik) {
+  const { subeler, grid, birimler, kategoriler } = flatVeriHazirla(kayitlar);
+  const sutunSayisi = 2 + subeler.length;
+
+  let html = '<thead><tr><th style="width:30%">ÜRÜN</th>';
+  subeler.forEach(s => (html += `<th>${htmlKac(s.toLocaleUpperCase("tr"))}</th>`));
+  html += '<th class="toplam-bas">TOPLAM</th></tr></thead><tbody>';
+
+  kategoriler.forEach(kategori => {
+    const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+    html += `<tr class="kategori"><td colspan="${sutunSayisi}">${htmlKac(kategori)}</td></tr>`;
+    [...new Set(kategoriKayitlari.map(urunEtiketi))].forEach(etiket => {
+      html += `<tr><td class="urun">${htmlKac(etiket)}${birimler[etiket] ? " (" + htmlKac(birimler[etiket]) + ")" : ""}</td>`;
+      let satirToplam = 0;
+      subeler.forEach(sube => {
+        const m = grid[etiket + "|" + sube] || 0;
+        satirToplam += m;
+        html += `<td>${m || ""}</td>`;
+      });
+      html += `<td class="toplam-h">${satirToplam}</td></tr>`;
+    });
+  });
+
+  let genelToplam = 0;
+  html += '<tr class="genel"><td class="urun">GENEL TOPLAM</td>';
+  subeler.forEach(sube => {
+    let t = 0;
+    Object.keys(grid).forEach(key => { if (key.endsWith("|" + sube)) t += grid[key]; });
+    genelToplam += t;
+    html += `<td>${t}</td>`;
+  });
+  html += `<td>${genelToplam}</td></tr></tbody>`;
+
+  return yazdirSayfasi(`${sayfaAdi} — ${tarihBaslik}`, sutunSayisi, html);
+}
+
+function raporuYazdir() {
+  const bas = baslangicInput.value;
+  const bit = bitisInput.value || bas;
+  if (!bas) {
+    goster("hata", "Önce bir tarih seçin.");
+    return;
+  }
+  const kayitlar = TUM_KAYITLAR.filter(k => k.tarih >= bas && k.tarih <= bit && k.urun !== "NOT");
+  if (kayitlar.length === 0) {
+    goster("hata", "Bu tarih aralığı için yazdırılacak talep yok.");
+    return;
+  }
+
+  const tarihBaslik = bas === bit ? bas : `${bas} — ${bit}`;
+  yazdirAlaniEl.innerHTML = "";
+
+  RAPOR_SAYFA_SIRASI.forEach(sayfaAdi => {
+    const sayfaKayitlari = kayitlar.filter(k => KATEGORI_SAYFA_ESLEME[k.kategori] === sayfaAdi);
+    if (sayfaKayitlari.length === 0) return;
+    if (BOYLU_URUN_SIRALARI[sayfaAdi]) {
+      yazdirAlaniEl.appendChild(yazdirBoyluUretim(sayfaAdi, sayfaKayitlari, tarihBaslik));
+      yazdirAlaniEl.appendChild(yazdirBoyluDagitim(sayfaAdi, sayfaKayitlari, tarihBaslik));
+    } else if (SPLIT_KATEGORILER.includes(sayfaAdi)) {
+      yazdirAlaniEl.appendChild(yazdirDuzUretim(sayfaAdi, sayfaKayitlari, tarihBaslik));
+      yazdirAlaniEl.appendChild(yazdirDuzDagitim(sayfaAdi, sayfaKayitlari, tarihBaslik));
+    } else {
+      yazdirAlaniEl.appendChild(yazdirBirlesikSayfa(sayfaAdi, sayfaKayitlari, tarihBaslik));
+    }
+  });
+
+  window.print();
 }
 
 function goster(tur, mesaj) {
