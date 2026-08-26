@@ -240,7 +240,8 @@ const KATALOG = [
   },
   {
     "kategori": "Bütün Cheesecake",
-    "boylu": false,
+    "boylu": true,
+    "boyMax": 2,
     "urunler": [
       {
         "ad": "Frambuazlı (Bütün)",
@@ -275,6 +276,7 @@ const KATALOG = [
   {
     "kategori": "Klasik Pastalar (Boylu)",
     "boylu": true,
+    "boyMax": 3,
     "urunler": [
       {
         "ad": "*Fıstık Çikolata Dekora",
@@ -1108,6 +1110,11 @@ const SUBE_GIZLI_URUNLER = {
     "Börekli Taş & Poğaça Grubu|Üzümlü Cevizli Kepekli",
     "Börekli Taş & Poğaça Grubu|Üzümlü Kepekli",
     "Börekli Taş & Poğaça Grubu|İtalyan Galeta",
+    "Bütün Cheesecake|Frambuazlı (Bütün)",
+    "Bütün Cheesecake|Limonlu (Bütün)",
+    "Bütün Cheesecake|Yaban Mersinli (Bütün)",
+    "Bütün Cheesecake|Çikolatalı (Bütün)",
+    "Bütün Cheesecake|Çilekli (Bütün)",
     "Bütün Cheesecake|Lotuslu (Bütün)",
     "Bütün Cheesecake|Mangolu (Bütün)",
     "Dilim Cheesecake|Frambuazlı (Dilim)",
@@ -1238,6 +1245,11 @@ const SUBE_GIZLI_URUNLER = {
     "Börekli Taş & Poğaça Grubu|Üzümlü Cevizli Kepekli",
     "Börekli Taş & Poğaça Grubu|Üzümlü Kepekli",
     "Börekli Taş & Poğaça Grubu|İtalyan Galeta",
+    "Bütün Cheesecake|Frambuazlı (Bütün)",
+    "Bütün Cheesecake|Limonlu (Bütün)",
+    "Bütün Cheesecake|Yaban Mersinli (Bütün)",
+    "Bütün Cheesecake|Çikolatalı (Bütün)",
+    "Bütün Cheesecake|Çilekli (Bütün)",
     "Bütün Cheesecake|Lotuslu (Bütün)",
     "Bütün Cheesecake|Mangolu (Bütün)",
     "Dilim Cheesecake|Frambuazlı (Dilim)",
@@ -1368,6 +1380,11 @@ const SUBE_GIZLI_URUNLER = {
     "Börekli Taş & Poğaça Grubu|Üzümlü Cevizli Kepekli",
     "Börekli Taş & Poğaça Grubu|Üzümlü Kepekli",
     "Börekli Taş & Poğaça Grubu|İtalyan Galeta",
+    "Bütün Cheesecake|Frambuazlı (Bütün)",
+    "Bütün Cheesecake|Limonlu (Bütün)",
+    "Bütün Cheesecake|Yaban Mersinli (Bütün)",
+    "Bütün Cheesecake|Çikolatalı (Bütün)",
+    "Bütün Cheesecake|Çilekli (Bütün)",
     "Bütün Cheesecake|Lotuslu (Bütün)",
     "Bütün Cheesecake|Mangolu (Bütün)",
     "Dilim Cheesecake|Frambuazlı (Dilim)",
@@ -1523,7 +1540,8 @@ KATALOG.forEach((kategori, ki) => {
     if (kategori.boylu) {
       row.className = "urun-row boylu-row";
       let boyHtml = "";
-      for (let b = 0; b <= 3; b++) {
+      const boyMax = kategori.boyMax !== undefined ? kategori.boyMax : 3;
+      for (let b = 0; b <= boyMax; b++) {
         boyHtml += `<div class="boy-input"><label>Boy ${b}</label><input type="number" min="0" inputmode="numeric" placeholder="0" data-ki="${ki}" data-ui="${ui}" data-boy="${b}"></div>`;
       }
       row.innerHTML = `<div class="urun-ad">${urun.ad}</div><div class="boy-grid">${boyHtml}</div>`;
