@@ -166,7 +166,11 @@ function ciz() {
       });
     kategoriler.forEach(kategori => {
       const kategoriKayitlari = talepler.filter(t => t.kategori === kategori);
-      icerikEl.appendChild(pivotTablosuOlustur(kategori, kategoriKayitlari));
+      if (BOYLU_KATEGORILER.includes(kategori)) {
+        icerikEl.appendChild(pivotTablosuBoyluOlustur(kategori, kategoriKayitlari));
+      } else {
+        icerikEl.appendChild(pivotTablosuOlustur(kategori, kategoriKayitlari));
+      }
     });
   }
   if (notlar.length > 0) {
@@ -238,6 +242,85 @@ function pivotTablosuOlustur(kategoriAdi, talepler) {
     urunEtiketleri.forEach(etiket => (subeToplam += grid[etiket + "|" + sube] || 0));
     genelToplam += subeToplam;
     html += `<td>${subeToplam}</td>`;
+  });
+  html += `<td class="toplam-sutun">${genelToplam}</td></tr>`;
+  html += "</tbody></table>";
+
+  scrollWrap.innerHTML = html;
+  kart.appendChild(scrollWrap);
+  return kart;
+}
+
+// Boylu kategoriler panelde şube başına Boy alt sütunlarıyla gösterilir
+// (Excel raporundaki "- Dağıtım" sayfalarıyla aynı mantık), "Ürün (Boy X)"
+// diye ayrı satırlara bölünmez.
+const BOYLU_KATEGORILER = ["Klasik Pastalar (Boylu)", "Bütün Cheesecake"];
+function kategoriSubeBoyKanonik(kategoriAdi, sube) {
+  if (kategoriAdi === "Klasik Pastalar (Boylu)") return PASTA_KLASIK_SUBE_BOYLARI[sube] || [0];
+  return [0, 1, 2];
+}
+
+function pivotTablosuBoyluOlustur(kategoriAdi, talepler) {
+  const subeler = subeSirala([...new Set(talepler.map(t => t.sube))]);
+  const boyDeger = t => (t.boy === "" || t.boy === undefined || t.boy === null ? 0 : Number(t.boy));
+  const subeBoylari = {};
+  subeler.forEach(sube => {
+    const kanonik = kategoriSubeBoyKanonik(kategoriAdi, sube);
+    const mevcut = talepler.filter(t => t.sube === sube).map(boyDeger);
+    subeBoylari[sube] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
+  });
+
+  const urunler = [...new Set(talepler.map(t => t.urun))];
+  const birimler = {};
+  const grid = {};
+  talepler.forEach(t => {
+    const boy = boyDeger(t);
+    const key = t.urun + "|" + t.sube + "|" + boy;
+    grid[key] = (grid[key] || 0) + Number(t.miktar || 0);
+    birimler[t.urun] = t.birim;
+  });
+
+  const kart = document.createElement("div");
+  kart.className = "kart";
+  const baslik = document.createElement("h2");
+  baslik.className = "kategori-baslik";
+  baslik.textContent = kategoriAdi;
+  kart.appendChild(baslik);
+
+  const scrollWrap = document.createElement("div");
+  scrollWrap.className = "tablo-scroll";
+
+  let html = '<table><thead><tr><th rowspan="2">Ürün</th>';
+  subeler.forEach(sube => (html += `<th colspan="${subeBoylari[sube].length}">${sube}</th>`));
+  html += '<th rowspan="2">Toplam</th></tr><tr>';
+  subeler.forEach(sube => {
+    subeBoylari[sube].forEach(boy => (html += `<th>Boy ${boy}</th>`));
+  });
+  html += "</tr></thead><tbody>";
+
+  urunler.forEach(urun => {
+    const birim = birimler[urun] ? ` <span style="color:var(--muted);font-weight:400;">(${birimler[urun]})</span>` : "";
+    html += `<tr><td>${urun}${birim}</td>`;
+    let satirToplam = 0;
+    subeler.forEach(sube => {
+      subeBoylari[sube].forEach(boy => {
+        const miktar = grid[urun + "|" + sube + "|" + boy] || 0;
+        satirToplam += miktar;
+        html += `<td>${miktar ? miktar : "–"}</td>`;
+      });
+    });
+    html += `<td class="toplam-sutun">${satirToplam}</td></tr>`;
+  });
+
+  html += `<tr class="toplam-satir"><td>Şube Toplamı</td>`;
+  let genelToplam = 0;
+  subeler.forEach(sube => {
+    let subeToplam = 0;
+    subeBoylari[sube].forEach(boy => {
+      urunler.forEach(urun => { subeToplam += grid[urun + "|" + sube + "|" + boy] || 0; });
+    });
+    genelToplam += subeToplam;
+    html += `<td colspan="${subeBoylari[sube].length}">${subeToplam}</td>`;
   });
   html += `<td class="toplam-sutun">${genelToplam}</td></tr>`;
   html += "</tbody></table>";
