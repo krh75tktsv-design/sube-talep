@@ -309,6 +309,26 @@ const KATEGORI_SAYFA_ESLEME = {
 };
 const RAPOR_SAYFA_SIRASI = ["Pasta Fransız", "Pasta Klasik", "Tatlı Kurabiye", "Tuzlu Kurabiye", "Porsiyon Tatlılar"];
 
+// Pasta Klasik sayfası orijinal excel dosyasındaki düzeni birebir izler:
+// her şube kendi Boy 0/1/2/3 alt sütunlarıyla, ürünler sabit orijinal sırayla.
+const PASTA_KLASIK_URUN_SIRASI = [
+  "*Fıstık Çikolata Dekora", "*Krokanlı Çikolata", "Ganaj (Klasik)", "*Frambuaz Siyah Çikolata",
+  "*Frambuaz Beyaz Çikolata", "Pasta Latte", "*Kırmızı Meyvalı Naked", "Hasbahçe (Klasik)",
+  "*Kestaneli Fıstık", "Muzlu Beyaz Çikolatalı", "Muzlu Siyah Çikolatalı", "Profiterol Siyah Çikolatalı",
+  "Muz Krokan", "Çilekli Siyah Çikolatalı", "Çilekli Beyaz Çikolatalı", "*Vişne Siyah Çikolatalı",
+  "*Frambuaz Muz Naked", "Frambuaz Çilek Beyaz", "Muz Çilek Naked", "Mois Pasta", "Hasbahçe Siyah",
+  "*Vişne Beyaz", "Badem Krokan", "San Sebastian (Klasik)",
+];
+const PASTA_KLASIK_SUBE_BOYLARI = {
+  "Nişantaşı": [0, 1, 2],
+  "Fulya": [0, 1, 2],
+  "Maslak": [0, 1, 2, 3],
+  "Kireçburnu": [0, 1],
+  "S.beyli": [0, 1],
+  "Z.burnu": [0, 1],
+  "Beykent": [0, 1],
+};
+
 const RENK_SUBE_BASLIK = "FF7F1D1D";
 const RENK_KATEGORI = "FFFEF3C7";
 const RENK_TOPLAM_SATIR = "FF1F2937";
@@ -349,7 +369,11 @@ async function uretimRaporuIndir() {
     RAPOR_SAYFA_SIRASI.forEach(sayfaAdi => {
       const sayfaKayitlari = kayitlar.filter(k => KATEGORI_SAYFA_ESLEME[k.kategori] === sayfaAdi);
       if (sayfaKayitlari.length === 0) return;
-      raporSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
+      if (sayfaAdi === "Pasta Klasik") {
+        pastaKlasikSayfasiOlustur(wb, sayfaKayitlari, tarihBaslik);
+      } else {
+        raporSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
+      }
     });
 
     const buf = await wb.xlsx.writeBuffer();
@@ -463,6 +487,129 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   ws.getColumn(1).width = 34;
   for (let i = 2; i <= toplamCol; i++) ws.getColumn(i).width = 12;
   ws.views = [{ state: "frozen", ySplit: headerRow }];
+}
+
+function pastaKlasikSayfasiOlustur(wb, kayitlar, tarihBaslik) {
+  const ws = wb.addWorksheet("Pasta Klasik");
+  const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
+
+  const ustBaslik = ws.getCell(1, 1);
+  ustBaslik.value = `Pasta Klasik — ${tarihBaslik}`;
+  ustBaslik.font = { bold: true, size: 16 };
+  ws.getRow(1).height = 26;
+
+  const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
+
+  const subeBoylari = {};
+  subeler.forEach(sube => {
+    const kanonik = PASTA_KLASIK_SUBE_BOYLARI[sube] || [0];
+    const mevcut = kayitlar.filter(k => k.sube === sube).map(boyDeger);
+    subeBoylari[sube] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
+  });
+  const tumBoylar = [...new Set(subeler.flatMap(s => subeBoylari[s]))].sort((a, b) => a - b);
+
+  const r1 = 2, r2 = 3;
+  ws.getRow(r1).height = 20;
+  ws.getRow(r2).height = 20;
+
+  const urunBaslik = ws.getCell(r1, 1);
+  urunBaslik.value = "ÜRÜN";
+  ws.mergeCells(r1, 1, r2, 1);
+  hucreStilVer(urunBaslik, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: 12, hizalama: { vertical: "middle" } });
+  hucreStilVer(ws.getCell(r2, 1), { fill: RENK_SUBE_BASLIK });
+
+  let col = 2;
+  const subeBaslangic = {};
+  subeler.forEach(sube => {
+    const boylar = subeBoylari[sube];
+    subeBaslangic[sube] = col;
+    const bas = col, bit = col + boylar.length - 1;
+    if (bit > bas) ws.mergeCells(r1, bas, r1, bit);
+    const c1 = ws.getCell(r1, bas);
+    c1.value = sube.toLocaleUpperCase("tr");
+    hucreStilVer(c1, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: 12, hizalama: { horizontal: "center", vertical: "middle" } });
+    for (let i = bas + 1; i <= bit; i++) hucreStilVer(ws.getCell(r1, i), { fill: RENK_SUBE_BASLIK });
+    boylar.forEach((boy, i) => {
+      const c2 = ws.getCell(r2, bas + i);
+      c2.value = "Boy " + boy;
+      hucreStilVer(c2, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: 11, hizalama: { horizontal: "center" } });
+    });
+    col = bit + 1;
+  });
+
+  const toplamBas = col, toplamBit = col + tumBoylar.length - 1;
+  if (toplamBit > toplamBas) ws.mergeCells(r1, toplamBas, r1, toplamBit);
+  const tBaslik = ws.getCell(r1, toplamBas);
+  tBaslik.value = "TOPLAM ADET";
+  hucreStilVer(tBaslik, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: 12, hizalama: { horizontal: "center", vertical: "middle" } });
+  for (let i = toplamBas + 1; i <= toplamBit; i++) hucreStilVer(ws.getCell(r1, i), { fill: RENK_TOPLAM_SATIR });
+  tumBoylar.forEach((boy, i) => {
+    const c2 = ws.getCell(r2, toplamBas + i);
+    c2.value = "NO:" + boy;
+    hucreStilVer(c2, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: 11, hizalama: { horizontal: "center" } });
+  });
+  const toplamCol = toplamBit;
+
+  const grid = {};
+  kayitlar.forEach(k => {
+    const key = k.urun + "|" + k.sube + "|" + boyDeger(k);
+    grid[key] = (grid[key] || 0) + Number(k.miktar || 0);
+  });
+
+  const urunlerVar = PASTA_KLASIK_URUN_SIRASI.filter(urun => kayitlar.some(k => k.urun === urun));
+  kayitlar.forEach(k => {
+    if (!urunlerVar.includes(k.urun)) urunlerVar.push(k.urun);
+  });
+
+  let r = r2 + 1;
+  urunlerVar.forEach(urun => {
+    ws.getRow(r).height = 18;
+    const ad = ws.getCell(r, 1);
+    ad.value = urun;
+    hucreStilVer(ad, { boyut: 12 });
+    subeler.forEach(sube => {
+      subeBoylari[sube].forEach((boy, i) => {
+        const c = ws.getCell(r, subeBaslangic[sube] + i);
+        c.value = grid[urun + "|" + sube + "|" + boy] || null;
+        hucreStilVer(c, { boyut: 12, hizalama: { horizontal: "center" } });
+      });
+    });
+    tumBoylar.forEach((boy, i) => {
+      let toplam = 0;
+      subeler.forEach(sube => { toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
+      const c = ws.getCell(r, toplamBas + i);
+      c.value = toplam || null;
+      hucreStilVer(c, { bold: true, boyut: 12, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center" } });
+    });
+    r++;
+  });
+
+  ws.getRow(r).height = 22;
+  const genelAd = ws.getCell(r, 1);
+  genelAd.value = "GENEL TOPLAM";
+  hucreStilVer(genelAd, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: 13 });
+  subeler.forEach(sube => {
+    subeBoylari[sube].forEach((boy, i) => {
+      let toplam = 0;
+      urunlerVar.forEach(urun => { toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
+      const c = ws.getCell(r, subeBaslangic[sube] + i);
+      c.value = toplam;
+      hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: 12, hizalama: { horizontal: "center" } });
+    });
+  });
+  tumBoylar.forEach((boy, i) => {
+    let toplam = 0;
+    subeler.forEach(sube => {
+      urunlerVar.forEach(urun => { toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
+    });
+    const c = ws.getCell(r, toplamBas + i);
+    c.value = toplam;
+    hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: 12, hizalama: { horizontal: "center" } });
+  });
+
+  ws.getColumn(1).width = 30;
+  for (let i = 2; i <= toplamCol; i++) ws.getColumn(i).width = 9;
+  ws.views = [{ state: "frozen", xSplit: 1, ySplit: r2 }];
 }
 
 function goster(tur, mesaj) {
