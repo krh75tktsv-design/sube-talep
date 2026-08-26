@@ -322,7 +322,7 @@ async function orijinalFormattaIndir() {
   indirOrijinalBtn.textContent = "Hazırlanıyor...";
 
   try {
-    const res = await fetch(SABLON_URL);
+    const res = await fetch(SABLON_URL + "?v=" + Date.now(), { cache: "no-store" });
     if (!res.ok) throw new Error("Şablon dosyası yüklenemedi (HTTP " + res.status + ")");
     const buf = await res.arrayBuffer();
     const wb = new ExcelJS.Workbook();
