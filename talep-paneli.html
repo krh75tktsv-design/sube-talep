@@ -382,7 +382,7 @@ const KATEGORI_SAYFA_ESLEME = {
   "Tek Pastalar (Fransız)": "Pasta Fransız",
   "Fransız Ekler": "Pasta Fransız",
   "Dilim Cheesecake": "Pasta Fransız",
-  "Bütün Cheesecake": "Pasta Fransız",
+  "Bütün Cheesecake": "Bütün Cheesecake",
   "Klasik Pastalar (Boylu)": "Pasta Klasik",
   "Tatlı Kurabiyeler": "Tatlı Kurabiye",
   "Kekler": "Tatlı Kurabiye",
@@ -390,7 +390,7 @@ const KATEGORI_SAYFA_ESLEME = {
   "Galeta / Kıtır / Cips / Diğer Tuzlu": "Tuzlu Kurabiye",
   "Porsiyon Tatlılar": "Porsiyon Tatlılar",
 };
-const RAPOR_SAYFA_SIRASI = ["Pasta Fransız", "Pasta Klasik", "Tatlı Kurabiye", "Tuzlu Kurabiye", "Porsiyon Tatlılar"];
+const RAPOR_SAYFA_SIRASI = ["Pasta Fransız", "Bütün Cheesecake", "Pasta Klasik", "Tatlı Kurabiye", "Tuzlu Kurabiye", "Porsiyon Tatlılar"];
 
 // Pasta Klasik sayfası orijinal excel dosyasındaki düzeni birebir izler:
 // her şube kendi Boy 0/1/2/3 alt sütunlarıyla, ürünler sabit orijinal sırayla.
@@ -410,6 +410,29 @@ const PASTA_KLASIK_SUBE_BOYLARI = {
   "S.beyli": [0, 1],
   "Z.burnu": [0, 1],
   "Beykent": [0, 1],
+};
+
+// Bütün Cheesecake de boylu bir kategori (Boy 0/1/2), sadece 4 şubede satılıyor —
+// Pasta Klasik ile aynı şube+boy sütunlu sayfa düzenini kullanır, kendi sayfasında.
+const BUTUN_CHEESECAKE_URUN_SIRASI = [
+  "Frambuazlı (Bütün)", "Limonlu (Bütün)", "Yaban Mersinli (Bütün)",
+  "Çikolatalı (Bütün)", "Çilekli (Bütün)", "Lotuslu (Bütün)", "Mangolu (Bütün)",
+];
+const BUTUN_CHEESECAKE_SUBE_BOYLARI = {
+  "Nişantaşı": [0, 1, 2],
+  "Fulya": [0, 1, 2],
+  "Maslak": [0, 1, 2],
+  "Kireçburnu": [0, 1, 2],
+};
+
+// Şube+boy sütunlu sayfa düzeni kullanan kategoriler, sayfa adına göre.
+const BOYLU_URUN_SIRALARI = {
+  "Pasta Klasik": PASTA_KLASIK_URUN_SIRASI,
+  "Bütün Cheesecake": BUTUN_CHEESECAKE_URUN_SIRASI,
+};
+const BOYLU_SUBE_BOYLARI = {
+  "Pasta Klasik": PASTA_KLASIK_SUBE_BOYLARI,
+  "Bütün Cheesecake": BUTUN_CHEESECAKE_SUBE_BOYLARI,
 };
 
 const RENK_SUBE_BASLIK = "FF7F1D1D";
@@ -465,9 +488,9 @@ async function uretimRaporuIndir() {
     RAPOR_SAYFA_SIRASI.forEach(sayfaAdi => {
       const sayfaKayitlari = kayitlar.filter(k => KATEGORI_SAYFA_ESLEME[k.kategori] === sayfaAdi);
       if (sayfaKayitlari.length === 0) return;
-      if (sayfaAdi === "Pasta Klasik") {
-        pastaKlasikUretimSayfasiOlustur(wb, sayfaKayitlari, tarihBaslik);
-        pastaKlasikDagitimSayfasiOlustur(wb, sayfaKayitlari, tarihBaslik);
+      if (BOYLU_URUN_SIRALARI[sayfaAdi]) {
+        boyluUretimSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
+        boyluDagitimSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
       } else if (SPLIT_KATEGORILER.includes(sayfaAdi)) {
         duzUretimSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
         duzDagitimSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
@@ -728,20 +751,22 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
 
-function pastaKlasikUretimSayfasiOlustur(wb, kayitlar, tarihBaslik) {
-  const ws = wb.addWorksheet("Pasta Klasik - Üretim");
+function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
+  const ws = wb.addWorksheet((sayfaAdi + " - Üretim").substring(0, 31));
   sayfaYazdirmaAyarla(ws);
   const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
+  const subeBoylariKanonik = BOYLU_SUBE_BOYLARI[sayfaAdi] || {};
+  const urunSirasi = BOYLU_URUN_SIRALARI[sayfaAdi] || [];
 
   const ustBaslik = ws.getCell(1, 1);
-  ustBaslik.value = `Pasta Klasik — Üretim — ${tarihBaslik}`;
+  ustBaslik.value = `${sayfaAdi} — Üretim — ${tarihBaslik}`;
   ustBaslik.font = { bold: true, size: 16 };
   ws.getRow(1).height = 26;
 
   const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
   const subeBoylari = {};
   subeler.forEach(sube => {
-    const kanonik = PASTA_KLASIK_SUBE_BOYLARI[sube] || [0];
+    const kanonik = subeBoylariKanonik[sube] || [0];
     const mevcut = kayitlar.filter(k => k.sube === sube).map(boyDeger);
     subeBoylari[sube] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
   });
@@ -753,7 +778,7 @@ function pastaKlasikUretimSayfasiOlustur(wb, kayitlar, tarihBaslik) {
     grid[key] = (grid[key] || 0) + Number(k.miktar || 0);
   });
 
-  const urunlerVar = PASTA_KLASIK_URUN_SIRASI.filter(urun => kayitlar.some(k => k.urun === urun));
+  const urunlerVar = urunSirasi.filter(urun => kayitlar.some(k => k.urun === urun));
   kayitlar.forEach(k => {
     if (!urunlerVar.includes(k.urun)) urunlerVar.push(k.urun);
   });
@@ -803,13 +828,15 @@ function pastaKlasikUretimSayfasiOlustur(wb, kayitlar, tarihBaslik) {
   ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
 
-function pastaKlasikDagitimSayfasiOlustur(wb, kayitlar, tarihBaslik) {
-  const ws = wb.addWorksheet("Pasta Klasik - Dağıtım");
+function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
+  const ws = wb.addWorksheet((sayfaAdi + " - Dağıtım").substring(0, 31));
   sayfaYazdirmaAyarla(ws);
   const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
+  const subeBoylariKanonik = BOYLU_SUBE_BOYLARI[sayfaAdi] || {};
+  const urunSirasi = BOYLU_URUN_SIRALARI[sayfaAdi] || [];
 
   const ustBaslik = ws.getCell(1, 1);
-  ustBaslik.value = `Pasta Klasik — Dağıtım — ${tarihBaslik}`;
+  ustBaslik.value = `${sayfaAdi} — Dağıtım — ${tarihBaslik}`;
   ustBaslik.font = { bold: true, size: 16 };
   ws.getRow(1).height = 26;
 
@@ -817,7 +844,7 @@ function pastaKlasikDagitimSayfasiOlustur(wb, kayitlar, tarihBaslik) {
 
   const subeBoylari = {};
   subeler.forEach(sube => {
-    const kanonik = PASTA_KLASIK_SUBE_BOYLARI[sube] || [0];
+    const kanonik = subeBoylariKanonik[sube] || [0];
     const mevcut = kayitlar.filter(k => k.sube === sube).map(boyDeger);
     subeBoylari[sube] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
   });
@@ -858,7 +885,7 @@ function pastaKlasikDagitimSayfasiOlustur(wb, kayitlar, tarihBaslik) {
     grid[key] = (grid[key] || 0) + Number(k.miktar || 0);
   });
 
-  const urunlerVar = PASTA_KLASIK_URUN_SIRASI.filter(urun => kayitlar.some(k => k.urun === urun));
+  const urunlerVar = urunSirasi.filter(urun => kayitlar.some(k => k.urun === urun));
   kayitlar.forEach(k => {
     if (!urunlerVar.includes(k.urun)) urunlerVar.push(k.urun);
   });
