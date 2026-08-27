@@ -1526,6 +1526,14 @@ tarihInput.value = yarin.toISOString().slice(0, 10);
 
 const kategorilerEl = document.getElementById("kategoriler");
 
+// iPhone klavyesinde ondalık ayracı virgül çıktığı için miktar alanları metin
+// girişi; burada hem "0,5" hem "0.5" sayıya çevrilir, geçersiz giriş NaN döner.
+function miktarOku(deger) {
+  const s = String(deger == null ? "" : deger).trim().replace(",", ".");
+  if (!/^\d*\.?\d+$/.test(s)) return NaN;
+  return parseFloat(s);
+}
+
 // "Ekstra sos" isteği kutucuğu — işaretlenirse rapora ayrı satır olarak düşer.
 function sosKutusu(urun, ki, ui) {
   if (!urun.ekstraSos) return "";
@@ -1551,7 +1559,7 @@ KATALOG.forEach((kategori, ki) => {
       let boyHtml = "";
       const boyMax = kategori.boyMax !== undefined ? kategori.boyMax : 3;
       for (let b = 0; b <= boyMax; b++) {
-        boyHtml += `<div class="boy-input"><label>Boy ${b}</label><input type="number" min="0" inputmode="numeric" placeholder="0" data-ki="${ki}" data-ui="${ui}" data-boy="${b}"></div>`;
+        boyHtml += `<div class="boy-input"><label>Boy ${b}</label><input type="text" inputmode="decimal" class="miktar-alani" placeholder="0" data-ki="${ki}" data-ui="${ui}" data-boy="${b}"></div>`;
       }
       row.innerHTML = `<div class="urun-ad">${urun.ad}</div><div class="boy-grid">${boyHtml}</div>`;
     } else {
@@ -1562,7 +1570,7 @@ KATALOG.forEach((kategori, ki) => {
           <div class="urun-birim">${urun.birim}</div>
           ${sosKutusu(urun, ki, ui)}
         </div>
-        <input type="number" class="miktar-input" min="0" inputmode="numeric" placeholder="0" data-ki="${ki}" data-ui="${ui}">
+        <input type="text" inputmode="decimal" class="miktar-input miktar-alani" placeholder="0" data-ki="${ki}" data-ui="${ui}">
       `;
     }
     icerik.appendChild(row);
@@ -1593,7 +1601,7 @@ KATALOG.forEach((kategori, ki) => {
         <div class="urun-ad">${urun.ad}</div>
         <div class="urun-birim">${urun.birim}</div>
       </div>
-      <input type="number" class="miktar-input" min="0" inputmode="numeric" placeholder="0" data-zayi-ki="${ki}" data-zayi-ui="${ui}">
+      <input type="text" inputmode="decimal" class="miktar-input miktar-alani" placeholder="0" data-zayi-ki="${ki}" data-zayi-ui="${ui}">
     `;
     icerik.appendChild(row);
   });
@@ -1620,6 +1628,16 @@ function subeGizlemeUygula() {
 }
 subeSelect.addEventListener("change", subeGizlemeUygula);
 subeGizlemeUygula();
+
+// Miktar alanları metin girişi olduğu için yazılanı rakam + tek ayraçla sınırlar.
+document.addEventListener("input", (olay) => {
+  const el = olay.target;
+  if (!el.classList || !el.classList.contains("miktar-alani")) return;
+  let v = el.value.replace(/[^\d.,]/g, "");
+  const ilk = v.search(/[.,]/);
+  if (ilk !== -1) v = v.slice(0, ilk + 1) + v.slice(ilk + 1).replace(/[.,]/g, "");
+  if (v !== el.value) el.value = v;
+});
 
 const araInput = document.getElementById("ara");
 araInput.addEventListener("input", () => {
@@ -1662,16 +1680,16 @@ async function gonder(tip) {
 
   const kalemler = [];
   if (zayiMi) {
-    document.querySelectorAll('input[type=number][data-zayi-ki]').forEach(inp => {
-      const miktar = parseFloat(inp.value);
+    document.querySelectorAll('input[data-zayi-ki]').forEach(inp => {
+      const miktar = miktarOku(inp.value);
       if (!(miktar > 0)) return;
       const kategori = KATALOG[inp.dataset.zayiKi];
       const urun = kategori.urunler[inp.dataset.zayiUi];
       kalemler.push({ kategori: "ZAYİ · " + kategori.kategori, urun: urun.ad, miktar, birim: urun.birim });
     });
   } else {
-    document.querySelectorAll('input[type=number][data-ki]').forEach(inp => {
-      const miktar = parseFloat(inp.value);
+    document.querySelectorAll('input[data-ki]').forEach(inp => {
+      const miktar = miktarOku(inp.value);
       if (!(miktar > 0)) return;
       const kategori = KATALOG[inp.dataset.ki];
       const urun = kategori.urunler[inp.dataset.ui];
@@ -1715,10 +1733,10 @@ async function gonder(tip) {
 
     if (zayiMi) {
       goster("basarili", `Zayi bildiriminiz gönderildi (${kalemler.length} kalem). Teşekkürler!`, durum);
-      document.querySelectorAll('input[type=number][data-zayi-ki]').forEach(inp => (inp.value = ""));
+      document.querySelectorAll('input[data-zayi-ki]').forEach(inp => (inp.value = ""));
     } else {
       goster("basarili", `Talebiniz gönderildi (${kalemler.length} kalem). Teşekkürler!`, durum);
-      document.querySelectorAll('input[type=number][data-ki]').forEach(inp => (inp.value = ""));
+      document.querySelectorAll('input[data-ki]').forEach(inp => (inp.value = ""));
       document.querySelectorAll('input[type=checkbox][data-sos-ki]').forEach(cb => (cb.checked = false));
       document.getElementById("not").value = "";
     }
