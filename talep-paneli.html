@@ -206,7 +206,7 @@ const URUN_SIRASI = [
   "Fransız Çikolatalı Bütün Kek", "Çikolatalı Muffin", "Havuçlu Muffin", "Frambuazlı Muffin",
   "Limonlu Muffin", "Peynirli Böreklitaş", "Dereotlu Peynirli", "Zeytinli", "Patatesli", "Kornet Dereotlu",
   "Dereotlu Sufle", "Sebzeli", "Patlıcanlı", "Mini Pizza", "Minik Simit", "Düz Örgü", "Yuvarlak Örgü",
-  "Burgu Susamlı Haşhaşlı", "Diyet Kurabiyeler (Tuzlu)", "Burgu Tahıllı", "Ayçekirdekli Galeta",
+  "Burgu Susamlı Haşhaşlı", "Burgu Tahıllı", "Ayçekirdekli Galeta",
   "Parmesan Galeta", "İtalyan Galeta", "Biberiyeli Zeytinli Galeta", "Çekirdekli Kokteyl", "Üzümlü Kepekli",
   "Üzümlü Cevizli Kepekli", "Kuru Üzümlü Yassı Tahıllı", "Granola Bar Tepsi", "Tahinli Susamlı",
   "Granola Dökme", "Kalp Denge Tahıllı", "Paskalya", "Paskalya Çikolatalı", "Tahinli Çörek", "Beze Büyük",
@@ -231,6 +231,8 @@ URUN_SIRASI.forEach((ad, i) => { URUN_SIRA_INDEX[ad] = i; });
 const KALDIRILAN_URUNLER = new Set([
   "Frambuazlı Tek (Cheesecake)", "Limonlu Tek (Cheesecake)",
   "Çilekli Tek (Cheesecake)", "Çikolatalı Tek (Cheesecake)",
+  // Artık bir bölüm başlığı; ürün olarak sipariş edilmiyor.
+  "Diyet Kurabiyeler (Tuzlu)",
 ]);
 
 // "Ürün (Boy 2)" gibi etiketlerde de temel ürün adına göre sıralar.
@@ -562,6 +564,60 @@ const SPLIT_KATEGORILER = ["Pasta Fransız", "Pasta Klasik", "Porsiyon Tatlılar
 const BUYUK_SATIR_YUKSEKLIGI = 90;
 const BUYUK_PUNTO = 42;
 
+// --- Rapor bölümleri -------------------------------------------------
+// Çıktıda bazı kategoriler alt bölümlere ayrılır (kullanıcının düzenlediği
+// örnek dosyadaki gibi). Burada listelenmeyen ürün kendi kategorisinde kalır.
+// Bölümler kategorinin ait olduğu sayfayı değiştirmez, sadece sayfa içindeki
+// gruplamayı belirler.
+const URUN_BOLUMU = {};
+function bolumeAta(bolum, urunler) {
+  urunler.forEach(u => { URUN_BOLUMU[u] = bolum; });
+}
+// Porsiyon Tatlılar sayfası
+bolumeAta("Minik Tatlılar", [
+  "Çikolatalı Ekler (Porsiyon)", "Limonlu Ekler (Porsiyon)", "Beyaz Ekler", "Petifür",
+  "Rulo Petifür Çilek", "Rulo Petifür Muzlu", "Çiko Limon Parfe", "Krokanlı Şu Topu",
+  "Çilekli Şu Topu", "Trileçe Karamel", "Trileçe Frambuaz", "Çilekli Adet Rulo", "Muzlu Adet Rulo",
+]);
+bolumeAta("Sütlü Tatlı", ["Sütlaç", "Kazandibi", "Aşure"]);
+// Tatlı Kurabiye sayfası
+bolumeAta("Unsuz", [
+  "Unsuz Kakao Chia", "Unsuz Limonlu Chia", "Unsuz Yaban Mersinli", "Unsuz Dereotlu Mekik",
+  "Unsuz Keçiboynuzu Mekik", "Hurmalı Browni", "Hurmalı Dilim", "Havuçlu Browni",
+  "Kakaolu Browni", "Frambuazlı Browni", "Çikolata Cips (Tatlı)", "Portakallı Çikolata", "Japon Cipsi",
+]);
+// Tuzlu Kurabiye sayfası
+bolumeAta("Diyet Kurabiyeler", [
+  "Ayçekirdekli Galeta", "Parmesan Galeta", "İtalyan Galeta", "Biberiyeli Zeytinli Galeta",
+  "Çekirdekli Kokteyl", "Üzümlü Kepekli", "Üzümlü Cevizli Kepekli", "Burgu Tahıllı",
+  "Kuru Üzümlü Yassı Tahıllı", "Granola Bar Tepsi", "Granola Dökme", "Kalp Denge Tahıllı",
+  "Tahinli Susamlı", "Tahinli Çörek",
+]);
+bolumeAta("Adet Ürünler", [
+  "Ayçöreği", "Acıbadem", "Acıbadem Minik", "Beze Büyük", "Beze Beyaz Minik", "Beze Renkli Minik",
+  "Paskalya", "Paskalya Çikolatalı",
+]);
+
+// Bölümlerin çıktıdaki sırası (sayfa içinde bu sıraya göre dizilir).
+const BOLUM_SIRASI = [
+  "Tek Pastalar (Fransız)", "Fransız Ekler", "Dilim Cheesecake", "Bütün Cheesecake",
+  "Klasik Pastalar (Boylu)",
+  "Tatlı Kurabiyeler", "Unsuz", "Kekler",
+  "Börekli Taş & Poğaça Grubu", "Diyet Kurabiyeler", "Adet Ürünler", "Galeta / Kıtır / Cips / Diğer Tuzlu",
+  "Porsiyon Tatlılar", "Minik Tatlılar", "Sütlü Tatlı",
+];
+
+function urunBolumu(kayit) {
+  return URUN_BOLUMU[kayit.urun] || kayit.kategori;
+}
+function bolumSirala(bolumler) {
+  return [...bolumler].sort((a, b) => {
+    const ia = BOLUM_SIRASI.indexOf(a), ib = BOLUM_SIRASI.indexOf(b);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+}
+// ---------------------------------------------------------------------
+
 // Sayfaya göre punto / satır yüksekliği. Kullanıcı çıktı üzerinde her sayfa
 // için ayrı değer belirtti; burada tanımlı olmayan sayfalar varsayılanı kullanır.
 const SAYFA_BICIMI = {
@@ -675,14 +731,11 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     birimler[etiket] = k.birim;
   });
 
-  const kategoriler = [...new Set(kayitlar.map(k => k.kategori))].sort((a, b) => {
-    const ia = KATEGORI_SIRASI.indexOf(a), ib = KATEGORI_SIRASI.indexOf(b);
-    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-  });
+  const kategoriler = bolumSirala(new Set(kayitlar.map(urunBolumu)));
 
   let r = headerRow + 1;
   kategoriler.forEach(kategori => {
-    const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+    const kategoriKayitlari = kayitlar.filter(k => urunBolumu(k) === kategori);
     const urunEtiketleri = urunSirala(new Set(kategoriKayitlari.map(urunEtiketi)));
 
     ws.getRow(r).height = BY;
@@ -747,10 +800,7 @@ function flatVeriHazirla(kayitlar) {
     grid[etiket + "|" + k.sube] = (grid[etiket + "|" + k.sube] || 0) + Number(k.miktar || 0);
     birimler[etiket] = k.birim;
   });
-  const kategoriler = [...new Set(kayitlar.map(k => k.kategori))].sort((a, b) => {
-    const ia = KATEGORI_SIRASI.indexOf(a), ib = KATEGORI_SIRASI.indexOf(b);
-    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-  });
+  const kategoriler = bolumSirala(new Set(kayitlar.map(urunBolumu)));
   return { subeler, grid, birimler, kategoriler };
 }
 
@@ -778,7 +828,7 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     const harita = BOYLU_SUBE_BOYLARI[kategori];
     if (!harita) return;
     const kanonik = [].concat(...Object.keys(harita).map(s => harita[s]));
-    const mevcut = kayitlar.filter(k => k.kategori === kategori).map(boyDeger);
+    const mevcut = kayitlar.filter(k => urunBolumu(k) === kategori).map(boyDeger);
     kategoriBoylari[kategori] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
   });
   const enFazlaBoy = Object.keys(kategoriBoylari).reduce((m, k) => Math.max(m, kategoriBoylari[k].length), 1);
@@ -801,7 +851,7 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
 
   let r = headerRow + 1;
   kategoriler.forEach(kategori => {
-    const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+    const kategoriKayitlari = kayitlar.filter(k => urunBolumu(k) === kategori);
     const boylar = kategoriBoylari[kategori];
     const boylu = !!boylar;
 
@@ -898,7 +948,7 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
 
     let r = headerRow + 1;
     kategoriler.forEach(kategori => {
-      const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+      const kategoriKayitlari = kayitlar.filter(k => urunBolumu(k) === kategori);
       const urunEtiketleri = urunSirala(new Set(kategoriKayitlari.map(urunEtiketi)));
 
       ws.getRow(r).height = BY;
@@ -997,7 +1047,7 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
 
   let r = r2 + 1;
   kategoriler.forEach(kategori => {
-    const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+    const kategoriKayitlari = kayitlar.filter(k => urunBolumu(k) === kategori);
     const boylu = !!BOYLU_SUBE_BOYLARI[kategori];
     const etiketler = boylu
       ? urunSirala(new Set(kategoriKayitlari.map(k => k.urun)))
@@ -1261,7 +1311,7 @@ function yazdirDuzUretim(sayfaAdi, kayitlar, tarihBaslik) {
     const harita = BOYLU_SUBE_BOYLARI[kategori];
     if (!harita) return;
     const kanonik = [].concat(...Object.keys(harita).map(s => harita[s]));
-    const mevcut = kayitlar.filter(k => k.kategori === kategori).map(boyDeger);
+    const mevcut = kayitlar.filter(k => urunBolumu(k) === kategori).map(boyDeger);
     kategoriBoylari[kategori] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
   });
   const enFazlaBoy = Object.keys(kategoriBoylari).reduce((m, k) => Math.max(m, kategoriBoylari[k].length), 1);
@@ -1272,7 +1322,7 @@ function yazdirDuzUretim(sayfaAdi, kayitlar, tarihBaslik) {
   html += "</tr></thead><tbody>";
 
   kategoriler.forEach(kategori => {
-    const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+    const kategoriKayitlari = kayitlar.filter(k => urunBolumu(k) === kategori);
     const boylar = kategoriBoylari[kategori];
     const boylu = !!boylar;
 
@@ -1329,7 +1379,7 @@ function yazdirDuzDagitim(sayfaAdi, kayitlar, tarihBaslik) {
     html += "</tr></thead><tbody>";
 
     kategoriler.forEach(kategori => {
-      const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+      const kategoriKayitlari = kayitlar.filter(k => urunBolumu(k) === kategori);
       html += `<tr class="kategori"><td colspan="${sutunSayisi}">${htmlKac(kategori)}</td></tr>`;
       urunSirala(new Set(kategoriKayitlari.map(urunEtiketi))).forEach(etiket => {
         html += `<tr><td class="urun">${htmlKac(etiket)}${birimler[etiket] ? " (" + htmlKac(birimler[etiket]) + ")" : ""}</td>`;
@@ -1382,7 +1432,7 @@ function yazdirDuzDagitim(sayfaAdi, kayitlar, tarihBaslik) {
   html += "</tr></thead><tbody>";
 
   kategoriler.forEach(kategori => {
-    const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+    const kategoriKayitlari = kayitlar.filter(k => urunBolumu(k) === kategori);
     const boylu = !!BOYLU_SUBE_BOYLARI[kategori];
     const etiketler = boylu
       ? urunSirala(new Set(kategoriKayitlari.map(k => k.urun)))
@@ -1529,7 +1579,7 @@ function yazdirBirlesikSayfa(sayfaAdi, kayitlar, tarihBaslik) {
   html += '<th class="toplam-bas">TOPLAM</th></tr></thead><tbody>';
 
   kategoriler.forEach(kategori => {
-    const kategoriKayitlari = kayitlar.filter(k => k.kategori === kategori);
+    const kategoriKayitlari = kayitlar.filter(k => urunBolumu(k) === kategori);
     html += `<tr class="kategori"><td colspan="${sutunSayisi}">${htmlKac(kategori)}</td></tr>`;
     urunSirala(new Set(kategoriKayitlari.map(urunEtiketi))).forEach(etiket => {
       html += `<tr><td class="urun">${htmlKac(etiket)}${birimler[etiket] ? " (" + htmlKac(birimler[etiket]) + ")" : ""}</td>`;
