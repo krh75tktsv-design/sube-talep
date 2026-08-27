@@ -23,6 +23,8 @@
   .urun-row.gizli{display:none;}
   .urun-row.sube-gizli{display:none;}
   .urun-ad{font-size:13.5px;font-weight:500;}
+  .sos-kutu{display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-size:12px;font-weight:600;color:var(--brass);background:#FEF3C7;border-radius:8px;padding:3px 9px;cursor:pointer;}
+  .sos-kutu input{width:15px;height:15px;margin:0;accent-color:var(--brass);cursor:pointer;}
   .urun-birim{font-size:11.5px;color:var(--muted);}
   .miktar-input{width:72px;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:15px;text-align:center;font-family:inherit;flex-shrink:0;}
   .boylu-row{flex-direction:column;align-items:stretch;}
@@ -377,7 +379,8 @@ const KATALOG = [
       {
         "ad": "San Sebastian (Klasik)",
         "birim": "adet",
-        "boysuz": true
+        "boysuz": true,
+        "ekstraSos": true
       }
     ]
   },
@@ -1496,6 +1499,12 @@ tarihInput.value = yarin.toISOString().slice(0, 10);
 
 const kategorilerEl = document.getElementById("kategoriler");
 
+// "Ekstra sos" isteği kutucuğu — işaretlenirse rapora ayrı satır olarak düşer.
+function sosKutusu(urun, ki, ui) {
+  if (!urun.ekstraSos) return "";
+  return `<label class="sos-kutu"><input type="checkbox" data-sos-ki="${ki}" data-sos-ui="${ui}"> Ekstra sos</label>`;
+}
+
 KATALOG.forEach((kategori, ki) => {
   const det = document.createElement("details");
   const summary = document.createElement("summary");
@@ -1524,6 +1533,7 @@ KATALOG.forEach((kategori, ki) => {
         <div>
           <div class="urun-ad">${urun.ad}</div>
           <div class="urun-birim">${urun.birim}</div>
+          ${sosKutusu(urun, ki, ui)}
         </div>
         <input type="number" class="miktar-input" min="0" inputmode="numeric" placeholder="0" data-ki="${ki}" data-ui="${ui}">
       `;
@@ -1587,6 +1597,14 @@ gonderBtn.addEventListener("click", async () => {
       if (inp.dataset.boy !== undefined) kalem.boy = inp.dataset.boy;
       kalemler.push(kalem);
     }
+  });
+
+  // İşaretlenen "Ekstra sos" kutucukları ayrı kalem olarak gider.
+  document.querySelectorAll('input[type=checkbox][data-sos-ki]').forEach(cb => {
+    if (!cb.checked) return;
+    const kategori = KATALOG[cb.dataset.sosKi];
+    const urun = kategori.urunler[cb.dataset.sosUi];
+    kalemler.push({ kategori: kategori.kategori, urun: urun.ad + " — Ekstra Sos", miktar: 1, birim: "istek" });
   });
 
   if (!sube || !tarih) {

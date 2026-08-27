@@ -256,6 +256,8 @@ const RAPOR_DUZENI = [
   ["Pasta Klasik", "Klasik Pastalar (Boylu)", "*Vişne Beyaz"],
   ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Badem Krokan"],
   ["Pasta Klasik", "Klasik Pastalar (Boylu)", "San Sebastian (Klasik)"],
+  // Şube formundaki "Ekstra sos" kutucuğu işaretlenince oluşan istek satırı.
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "San Sebastian (Klasik) — Ekstra Sos"],
   // Tatlı Kurabiye / Tatlı Kurabiyeler
   ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "İncirli Coco"],
   ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Kayısılı Coco"],
@@ -447,7 +449,11 @@ const KALDIRILAN_URUNLER = new Set([
 
 // Boylu bir bölümde olsa da tek boy üretilen ürünler: raporda ve panelde
 // boy kırılımına girmez, tek sütunda toplanır.
-const BOYSUZ_URUNLER = new Set(["San Sebastian (Klasik)"]);
+const BOYSUZ_URUNLER = new Set(["San Sebastian (Klasik)", "San Sebastian (Klasik) — Ekstra Sos"]);
+
+// Ürün değil, şubenin işaretlediği bir istek olan satırlar: raporda görünür
+// ama GENEL TOPLAM'a katılmaz (adet sayısını şişirmesin).
+const ISTEK_URUNLERI = new Set(["San Sebastian (Klasik) — Ekstra Sos"]);
 
 // Adı değişen ürünler: eski kayıtlar yeni adla gösterilir.
 const URUN_ADI_ESKI_YENI = {
@@ -1325,7 +1331,7 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   tumBoylar.forEach((boy, i) => {
     let toplam = 0;
     subeler.forEach(sube => {
-      urunlerVar.forEach(urun => { toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
+      urunlerVar.forEach(urun => { if (!ISTEK_URUNLERI.has(urun)) toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
     });
     const c = ws.getCell(r, 2 + i);
     c.value = toplam;
@@ -1428,7 +1434,7 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   subeler.forEach(sube => {
     subeBoylari[sube].forEach((boy, i) => {
       let toplam = 0;
-      urunlerVar.forEach(urun => { toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
+      urunlerVar.forEach(urun => { if (!ISTEK_URUNLERI.has(urun)) toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
       const c = ws.getCell(r, subeBaslangic[sube] + i);
       c.value = toplam;
       hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
@@ -1681,7 +1687,7 @@ function yazdirBoyluUretim(sayfaAdi, kayitlar, tarihBaslik) {
   html += '<tr class="genel"><td class="urun">GENEL TOPLAM</td>';
   tumBoylar.forEach(boy => {
     let t = 0;
-    subeler.forEach(sube => { urunlerVar.forEach(urun => { t += grid[urun + "|" + sube + "|" + boy] || 0; }); });
+    subeler.forEach(sube => { urunlerVar.forEach(urun => { if (!ISTEK_URUNLERI.has(urun)) t += grid[urun + "|" + sube + "|" + boy] || 0; }); });
     html += `<td>${t}</td>`;
   });
   html += "</tr></tbody>";
@@ -1736,7 +1742,7 @@ function yazdirBoyluDagitim(sayfaAdi, kayitlar, tarihBaslik) {
   subeler.forEach(sube => {
     subeBoylari[sube].forEach(boy => {
       let t = 0;
-      urunlerVar.forEach(urun => { t += grid[urun + "|" + sube + "|" + boy] || 0; });
+      urunlerVar.forEach(urun => { if (!ISTEK_URUNLERI.has(urun)) t += grid[urun + "|" + sube + "|" + boy] || 0; });
       html += `<td>${t}</td>`;
     });
   });
