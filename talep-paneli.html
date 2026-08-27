@@ -161,7 +161,11 @@ async function yukleVeCiz() {
     const res = await fetch(APPS_SCRIPT_URL, { method: "GET" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
-    TUM_KAYITLAR = (data.kayitlar || []).filter(k => !KALDIRILAN_URUNLER.has(k.urun));
+    // Adı değişen ürünlerin eski kayıtları yeni adla gösterilir; katalogdan
+    // kaldırılan ürünler hiç gösterilmez.
+    TUM_KAYITLAR = (data.kayitlar || [])
+      .map(k => (URUN_ADI_ESKI_YENI[k.urun] ? { ...k, urun: URUN_ADI_ESKI_YENI[k.urun] } : k))
+      .filter(k => !KALDIRILAN_URUNLER.has(k.urun));
     ciz();
   } catch (err) {
     goster("hata", "Veriler yüklenemedi, internet bağlantınızı kontrol edip tekrar deneyin.");
@@ -172,68 +176,290 @@ async function yukleVeCiz() {
 }
 
 
-// Ürün gösterim sırası: sube-talep.html'deki KATALOG sırası. Raporlarda ve
-// panelde ürünler veri geliş sırasına göre değil, bu sabit sıraya göre listelenir.
-const URUN_SIRASI = [
-  "Tiramisu", "Karpatka", "Ballı Rus Pastası", "Fraisier (Çilekli Beyaz)", "Fraisier (Siyah)",
-  "Hasbahçe (Fransız)", "Vişneli", "Profiterol Pasta", "Ganaj (Fransız)", "Frambuaz Siyah", "Frambuaz Beyaz",
-  "Karamel Banana", "Kestaneli Pasta", "Fıstıklı Pasta", "Portakal Küp", "Snickers", "Limonlu Yaz Pastası",
-  "Mangolu Pasta", "Glutensiz Çikolatalı Pasta", "Panna Cotta Mango", "Panna Cotta Frambuaz",
-  "Portakallı Fit Kek", "Yaban Mersinli Pasta", "Çilekli Tart", "Çikolatalı Ekler (Fransız)",
-  "Tiramisulu Ekler", "Frambuazlı Ekler (Fransız)", "Fıstıklı Ekler", "Karamel Ekler", "Lavanta Ekler",
-  "Limonlu Ekler (Fransız)", "Çilekli Milföy", "Frambuazlı (Dilim)", "Limonlu (Dilim)", "Çikolatalı (Dilim)",
-  "Çilekli (Dilim)", "Yaban Mersinli (Dilim)", "Mangolu (Dilim)", "Frambuazlı (Bütün)", "Limonlu (Bütün)",
-  "Yaban Mersinli (Bütün)", "Çikolatalı (Bütün)", "Çilekli (Bütün)", "Lotuslu (Bütün)", "Mangolu (Bütün)",
-  "*Fıstık Çikolata Dekora", "*Krokanlı Çikolata", "Ganaj (Klasik)", "*Frambuaz Siyah Çikolata",
-  "*Frambuaz Beyaz Çikolata", "Pasta Latte", "*Kırmızı Meyvalı Naked", "Hasbahçe (Klasik)",
-  "*Kestaneli Fıstık", "Muzlu Beyaz Çikolatalı", "Muzlu Siyah Çikolatalı", "Profiterol Siyah Çikolatalı",
-  "Muz Krokan", "Çilekli Siyah Çikolatalı", "Çilekli Beyaz Çikolatalı", "*Vişne Siyah Çikolatalı",
-  "*Frambuaz Muz Naked", "Frambuaz Çilek Beyaz", "Muz Çilek Naked", "Mois Pasta", "Hasbahçe Siyah",
-  "*Vişne Beyaz", "Badem Krokan", "San Sebastian (Klasik)", "İncirli Coco", "Kayısılı Coco",
-  "Coco Hindistan Cevizli", "Sufle Sade", "Sufle Vişneli", "Vişneli Mekik Büyük", "Mini Mekik",
-  "Mini Bademli Mekik", "Mantar", "Tarçınlı Portakal", "Kestaneli Maringedeze", "Sable Bademli (Sade)",
-  "Sable Bademli (Kakaolu)", "Kavala Kurabiyesi", "Kukunari Siyah", "Kukinari Beyaz",
-  "Hindistan Cevizli Top", "Fıstıklı Top", "Pirinç Fındıklı Top", "Bireçel Beyaz", "Bireçel Siyah",
-  "Fındıklı Biscotti", "Kahveli Bar", "Limonlu Bar", "Vişneli Bar", "Kakaolu Browni", "Frambuazlı Browni",
-  "Karamelli Yıldız Kurabiye", "Şekilli Kurabiye", "Elmalı Kurabiye", "Vişneli Kurabiye",
-  "Bademli Un Kurabiyesi", "Damalı", "Marmelatlı Kalp", "Dökme Çikolatalı Kalp", "Fındıklı Dökme Çiko Kalp",
-  "Layd Hand Siyah", "Layd Hand Beyaz", "Selanik Gevreği", "Damla Sakızlı Kurabiye",
-  "Portakallı Un Kurabiyesi", "Kayısılı İncirli Biscotti", "Unsuz Dereotlu Mekik", "Unsuz Keçiboynuzu Mekik",
-  "Unsuz Kakao Chia", "Unsuz Limonlu Chia", "Unsuz Yaban Mersinli", "Hurmalı Browni", "Hurmalı Dilim",
-  "Havuçlu Browni", "Portakallı Çikolata", "Çikolata Cips (Tatlı)", "Japon Cipsi", "Havuçlu Mable",
-  "Üzümlü Mable", "Limonlu Mable", "Portakallı Mable", "Zebra Mable", "Çikolata Mable", "Şekersiz Mable",
-  "Kırmızı Meyvalı Mable", "Bademli Portakallı Bütün Kek", "Havuçlu Bütün Kek", "Vişneli Bütün Kek",
-  "Fransız Çikolatalı Bütün Kek", "Çikolatalı Muffin", "Havuçlu Muffin", "Frambuazlı Muffin",
-  "Limonlu Muffin", "Peynirli Böreklitaş", "Dereotlu Peynirli", "Zeytinli", "Patatesli", "Kornet Dereotlu",
-  "Dereotlu Sufle", "Sebzeli", "Patlıcanlı", "Mini Pizza", "Minik Simit", "Düz Örgü", "Yuvarlak Örgü",
-  "Burgu Susamlı Haşhaşlı", "Burgu Tahıllı", "Ayçekirdekli Galeta",
-  "Parmesan Galeta", "İtalyan Galeta", "Biberiyeli Zeytinli Galeta", "Çekirdekli Kokteyl", "Üzümlü Kepekli",
-  "Üzümlü Cevizli Kepekli", "Kuru Üzümlü Yassı Tahıllı", "Granola Bar Tepsi", "Tahinli Susamlı",
-  "Granola Dökme", "Kalp Denge Tahıllı", "Paskalya", "Paskalya Çikolatalı", "Tahinli Çörek", "Beze Büyük",
-  "Beze Beyaz Minik", "Beze Renkli Minik", "Acıbadem", "Acıbadem Minik", "Ayçöreği", "Batonsale Sade",
-  "Batonsale Çörekotlu", "Batonsale Kaşarlı", "Batonsale Susamlı", "Batonsale Anasonlu",
-  "Kırık Kırak Susamlı", "Galet Kaşarlı", "Galet Çörekotlu", "Galet Susamlı", "Galet Anasonlu",
-  "Baharatlı Kıtır", "Kaşarlı Kıtır", "Zencefilli Kıtır", "Acılı Kıtır", "Haşhaşlı Cips", "İrmikli Cips",
-  "Parmesanlı Cips", "Tam Buğday Cips", "Tiramisu Dilim", "Magnolia Çilek", "Magnolia Muzlu",
-  "Magnolia Oreolu", "Dubai Magnolia", "Supangle", "Profiterol Kase", "Mozaik", "Vişneli Tek",
-  "Hasbahçe Tek", "Fıstıklı Çikolatalı Tek", "Kestaneli Tek", "Profiterol Tek", "Ganaj Tek",
-  "Frambuaz Siyah Tek", "Frambuaz Beyaz Tek", "Latte (Porsiyon)", "Kazandibi", "Sütlaç", "Trileçe Frambuaz",
-  "Trileçe Karamel", "Aşure", "Çikolatalı Ekler (Porsiyon)", "Limonlu Ekler (Porsiyon)", "Beyaz Ekler",
-  "Petifür", "Rulo Petifür Muzlu", "Rulo Petifür Çilek", "Çiko Limon Parfe", "Çilekli Adet Rulo",
-  "Muzlu Adet Rulo", "Krokanlı Şu Topu", "Çilekli Şu Topu"
+// Raporun sayfa/bölüm/ürün düzeni — kullanıcının doldurduğu
+// rapor-duzeni.xlsx dosyasından birebir üretildi. Rapor ve panel bu
+// tabloya göre çalışır: burada olmayan ürün raporda çıkmaz.
+const RAPOR_DUZENI = [
+  // Pasta Fransız / Tek Pastalar (Fransız)
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Tiramisu"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Fraisier (Çilekli Beyaz)"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Fraisier (Siyah)"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Hasbahçe (Fransız)"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Vişneli"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Profiterol Pasta"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Ganaj (Fransız)"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Frambuaz Siyah"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Frambuaz Beyaz"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Karamel Banana"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Kestaneli Pasta"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Fıstıklı Pasta"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Portakal Küp"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Snickers"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Ballı Rus Pastası"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Limonlu Yaz Pastası"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Mangolu Pasta"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Glutensiz Çikolatalı Pasta"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Panna Cotta Mango"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Panna Cotta Frambuaz"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Yaban Mersinli Pasta"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Çilekli Tart"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Çilekli Milföy"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Portakallı Fit Kek"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Karpatka"],
+  // Pasta Fransız / Fransız Ekler
+  ["Pasta Fransız", "Fransız Ekler", "Çikolatalı Ekler"],
+  ["Pasta Fransız", "Fransız Ekler", "Tiramisulu Ekler"],
+  ["Pasta Fransız", "Fransız Ekler", "Frambuazlı Ekler"],
+  ["Pasta Fransız", "Fransız Ekler", "Fıstıklı Ekler"],
+  ["Pasta Fransız", "Fransız Ekler", "Karamel Ekler"],
+  ["Pasta Fransız", "Fransız Ekler", "Lavanta Ekler"],
+  ["Pasta Fransız", "Fransız Ekler", "Limonlu Ekler"],
+  // Pasta Fransız / Dilim Cheesecake
+  ["Pasta Fransız", "Dilim Cheesecake", "Frambuazlı (Dilim)"],
+  ["Pasta Fransız", "Dilim Cheesecake", "Limonlu (Dilim)"],
+  ["Pasta Fransız", "Dilim Cheesecake", "Çikolatalı (Dilim)"],
+  ["Pasta Fransız", "Dilim Cheesecake", "Çilekli (Dilim)"],
+  ["Pasta Fransız", "Dilim Cheesecake", "Yaban Mersinli (Dilim)"],
+  ["Pasta Fransız", "Dilim Cheesecake", "Mangolu (Dilim)"],
+  ["Pasta Fransız", "Dilim Cheesecake", "Lotuslu (Dilim)"],
+  // Pasta Fransız / Bütün Cheesecake
+  ["Pasta Fransız", "Bütün Cheesecake", "Frambuazlı (Bütün)"],
+  ["Pasta Fransız", "Bütün Cheesecake", "Limonlu (Bütün)"],
+  ["Pasta Fransız", "Bütün Cheesecake", "Yaban Mersinli (Bütün)"],
+  ["Pasta Fransız", "Bütün Cheesecake", "Çikolatalı (Bütün)"],
+  ["Pasta Fransız", "Bütün Cheesecake", "Çilekli (Bütün)"],
+  ["Pasta Fransız", "Bütün Cheesecake", "Lotuslu (Bütün)"],
+  ["Pasta Fransız", "Bütün Cheesecake", "Mangolu (Bütün)"],
+  // Pasta Klasik / Klasik Pastalar (Boylu)
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "*Fıstık Çikolata Dekora"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "*Krokanlı Çikolata"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Ganaj (Klasik)"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "*Frambuaz Siyah Çikolata"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "*Frambuaz Beyaz Çikolata"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Pasta Latte"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "*Kırmızı Meyvalı Naked"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Hasbahçe (Klasik)"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "*Kestaneli Fıstık"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Muzlu Beyaz Çikolatalı"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Muzlu Siyah Çikolatalı"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Profiterol Siyah Çikolatalı"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Muz Krokan"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Çilekli Siyah Çikolatalı"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Çilekli Beyaz Çikolatalı"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "*Vişne Siyah Çikolatalı"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "*Frambuaz Muz Naked"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Frambuaz Çilek Beyaz"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Muz Çilek Naked"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Mois Pasta"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Hasbahçe Siyah"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "*Vişne Beyaz"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Badem Krokan"],
+  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "San Sebastian (Klasik)"],
+  // Tatlı Kurabiye / Tatlı Kurabiyeler
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "İncirli Coco"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Kayısılı Coco"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Coco Hindistan Cevizli"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Sufle Sade"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Sufle Vişneli"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Vişneli Mekik Büyük"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Mini Mekik"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Mini Bademli Mekik"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Mantar"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Tarçınlı Portakal"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Kestaneli Maringedeze"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Sable Bademli (Sade)"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Sable Bademli (Kakaolu)"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Kavala Kurabiyesi"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Kukunari Siyah"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Kukinari Beyaz"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Hindistan Cevizli Top"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Fıstıklı Top"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Pirinç Fındıklı Top"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Bireçel Beyaz"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Bireçel Siyah"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Fındıklı Biscotti"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Kahveli Bar"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Limonlu Bar"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Vişneli Bar"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Karamelli Yıldız Kurabiye"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Şekilli Kurabiye"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Elmalı Kurabiye"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Vişneli Kurabiye"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Bademli Un Kurabiyesi"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Damalı"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Marmelatlı Kalp"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Dökme Çikolatalı Kalp"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Fındıklı Dökme Çiko Kalp"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Layd Hand Siyah"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Layd Hand Beyaz"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Selanik Gevreği"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Damla Sakızlı Kurabiye"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Portakallı Un Kurabiyesi"],
+  ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Kayısılı İncirli Biscotti"],
+  // Tatlı Kurabiye / Unsuz
+  ["Tatlı Kurabiye", "Unsuz", "Kakaolu Browni"],
+  ["Tatlı Kurabiye", "Unsuz", "Frambuazlı Browni"],
+  ["Tatlı Kurabiye", "Unsuz", "Unsuz Dereotlu Mekik"],
+  ["Tatlı Kurabiye", "Unsuz", "Unsuz Keçiboynuzu Mekik"],
+  ["Tatlı Kurabiye", "Unsuz", "Unsuz Kakao Chia"],
+  ["Tatlı Kurabiye", "Unsuz", "Unsuz Limonlu Chia"],
+  ["Tatlı Kurabiye", "Unsuz", "Unsuz Yaban Mersinli"],
+  ["Tatlı Kurabiye", "Unsuz", "Hurmalı Browni"],
+  ["Tatlı Kurabiye", "Unsuz", "Hurmalı Dilim"],
+  ["Tatlı Kurabiye", "Unsuz", "Havuçlu Browni"],
+  ["Tatlı Kurabiye", "Unsuz", "Portakallı Çikolata"],
+  ["Tatlı Kurabiye", "Unsuz", "Çikolata Cips (Tatlı)"],
+  ["Tatlı Kurabiye", "Unsuz", "Japon Cipsi"],
+  // Tatlı Kurabiye / Kekler
+  ["Tatlı Kurabiye", "Kekler", "Havuçlu Mable"],
+  ["Tatlı Kurabiye", "Kekler", "Üzümlü Mable"],
+  ["Tatlı Kurabiye", "Kekler", "Limonlu Mable"],
+  ["Tatlı Kurabiye", "Kekler", "Portakallı Mable"],
+  ["Tatlı Kurabiye", "Kekler", "Zebra Mable"],
+  ["Tatlı Kurabiye", "Kekler", "Çikolata Mable"],
+  ["Tatlı Kurabiye", "Kekler", "Şekersiz Mable"],
+  ["Tatlı Kurabiye", "Kekler", "Kırmızı Meyvalı Mable"],
+  ["Tatlı Kurabiye", "Kekler", "Bademli Portakallı Bütün Kek"],
+  ["Tatlı Kurabiye", "Kekler", "Havuçlu Bütün Kek"],
+  ["Tatlı Kurabiye", "Kekler", "Vişneli Bütün Kek"],
+  ["Tatlı Kurabiye", "Kekler", "Fransız Çikolatalı Bütün Kek"],
+  ["Tatlı Kurabiye", "Kekler", "Çikolatalı Muffin"],
+  ["Tatlı Kurabiye", "Kekler", "Havuçlu Muffin"],
+  ["Tatlı Kurabiye", "Kekler", "Frambuazlı Muffin"],
+  ["Tatlı Kurabiye", "Kekler", "Limonlu Muffin"],
+  // Tuzlu Kurabiye / Börekli Taş & Poğaça Grubu
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Peynirli Böreklitaş"],
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Dereotlu Peynirli"],
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Zeytinli"],
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Patatesli"],
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Kornet Dereotlu"],
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Dereotlu Sufle"],
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Sebzeli"],
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Patlıcanlı"],
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Mini Pizza"],
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Minik Simit"],
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Düz Örgü"],
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Yuvarlak Örgü"],
+  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Burgu Susamlı Haşhaşlı"],
+  // Tuzlu Kurabiye / Diyet Kurabiyeler
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "Burgu Tahıllı"],
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "Ayçekirdekli Galeta"],
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "Parmesan Galeta"],
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "İtalyan Galeta"],
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "Biberiyeli Zeytinli Galeta"],
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "Çekirdekli Kokteyl"],
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "Üzümlü Kepekli"],
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "Üzümlü Cevizli Kepekli"],
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "Kuru Üzümlü Yassı Tahıllı"],
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "Granola Bar Tepsi"],
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "Tahinli Susamlı"],
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "Granola Dökme"],
+  ["Tuzlu Kurabiye", "Diyet Kurabiyeler", "Kalp Denge Tahıllı"],
+  // Tuzlu Kurabiye / Adet Ürünler
+  ["Tuzlu Kurabiye", "Adet Ürünler", "Paskalya"],
+  ["Tuzlu Kurabiye", "Adet Ürünler", "Paskalya Çikolatalı"],
+  ["Tuzlu Kurabiye", "Adet Ürünler", "Tahinli Çörek"],
+  ["Tuzlu Kurabiye", "Adet Ürünler", "Acıbadem"],
+  ["Tuzlu Kurabiye", "Adet Ürünler", "Acıbadem Minik"],
+  ["Tuzlu Kurabiye", "Adet Ürünler", "Ayçöreği"],
+  ["Tuzlu Kurabiye", "Adet Ürünler", "Beze Büyük"],
+  ["Tuzlu Kurabiye", "Adet Ürünler", "Beze Beyaz Minik"],
+  ["Tuzlu Kurabiye", "Adet Ürünler", "Beze Renkli Minik"],
+  // Tuzlu Kurabiye / Galeta / Kıtır / Cips / Diğer Tuzlu
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Batonsale Sade"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Batonsale Çörekotlu"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Batonsale Kaşarlı"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Kırık Kırak Susamlı"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Galet Kaşarlı"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Galet Çörekotlu"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Galet Susamlı"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Baharatlı Kıtır"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Kaşarlı Kıtır"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Zencefilli Kıtır"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Acılı Kıtır"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Haşhaşlı Cips"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "İrmikli Cips"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Parmesanlı Cips"],
+  ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Tam Buğday Cips"],
+  // Porsiyon Tatlılar / Porsiyon Tatlılar
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Tiramisu Dilim"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Magnolia Çilek"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Magnolia Muzlu"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Magnolia Oreolu"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Dubai Magnolia"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Supangle"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Profiterol Kase"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Mozaik"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Vişneli Tek"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Hasbahçe Tek"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Fıstıklı Çikolatalı Tek"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Kestaneli Tek"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Profiterol Tek"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Ganaj Tek"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Frambuaz Siyah Tek"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Frambuaz Beyaz Tek"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Latte (Porsiyon)"],
+  // Porsiyon Tatlılar / Minik Tatlılar
+  ["Porsiyon Tatlılar", "Minik Tatlılar", "Çikolatalı Ekler (Porsiyon)"],
+  ["Porsiyon Tatlılar", "Minik Tatlılar", "Limonlu Ekler (Porsiyon)"],
+  ["Porsiyon Tatlılar", "Minik Tatlılar", "Beyaz Ekler"],
+  ["Porsiyon Tatlılar", "Minik Tatlılar", "Petifür"],
+  ["Porsiyon Tatlılar", "Minik Tatlılar", "Rulo Petifür Muzlu"],
+  ["Porsiyon Tatlılar", "Minik Tatlılar", "Rulo Petifür Çilek"],
+  ["Porsiyon Tatlılar", "Minik Tatlılar", "Çiko Limon Parfe"],
+  ["Porsiyon Tatlılar", "Minik Tatlılar", "Çilekli Adet Rulo"],
+  ["Porsiyon Tatlılar", "Minik Tatlılar", "Muzlu Adet Rulo"],
+  ["Porsiyon Tatlılar", "Minik Tatlılar", "Krokanlı Şu Topu"],
+  ["Porsiyon Tatlılar", "Minik Tatlılar", "Çilekli Şu Topu"],
+  // Porsiyon Tatlılar / Sütlü Tatlı
+  ["Porsiyon Tatlılar", "Sütlü Tatlı", "Trileçe Frambuaz"],
+  ["Porsiyon Tatlılar", "Sütlü Tatlı", "Trileçe Karamel"],
+  ["Porsiyon Tatlılar", "Sütlü Tatlı", "Kazandibi"],
+  ["Porsiyon Tatlılar", "Sütlü Tatlı", "Sütlaç"],
+  ["Porsiyon Tatlılar", "Sütlü Tatlı", "Aşure"],
 ];
-const URUN_SIRA_INDEX = {};
-URUN_SIRASI.forEach((ad, i) => { URUN_SIRA_INDEX[ad] = i; });
 
-// Katalogdan kaldırılan ürünler: Porsiyon Tatlılar'daki cheesecake'ler
-// Dilim Cheesecake ile aynı ürünlerdi. Kataloğdan çıkarıldılar; daha önce
-// girilmiş kayıtlar da panelde ve raporda gösterilmez.
+const URUN_SAYFA = {};       // ürün -> rapor sayfası
+const URUN_BOLUM = {};       // ürün -> sayfa içindeki bölüm
+const URUN_SIRA_INDEX = {};  // ürün -> tablodaki genel sıra
+const RAPOR_SAYFA_SIRASI = [];
+const BOLUM_SIRASI = [];
+RAPOR_DUZENI.forEach(([sayfa, bolum, urun], i) => {
+  URUN_SAYFA[urun] = sayfa;
+  URUN_BOLUM[urun] = bolum;
+  URUN_SIRA_INDEX[urun] = i;
+  if (!RAPOR_SAYFA_SIRASI.includes(sayfa)) RAPOR_SAYFA_SIRASI.push(sayfa);
+  if (!BOLUM_SIRASI.includes(bolum)) BOLUM_SIRASI.push(bolum);
+});
+
+// Katalogdan kaldırılan ürünler: daha önce girilmiş kayıtlar da panelde ve
+// raporda gösterilmez (Google E-Tablo'daki veriye dokunulmaz).
 const KALDIRILAN_URUNLER = new Set([
+  // Porsiyon Tatlılar'daki cheesecake'ler Dilim Cheesecake ile aynı ürünlerdi.
   "Frambuazlı Tek (Cheesecake)", "Limonlu Tek (Cheesecake)",
   "Çilekli Tek (Cheesecake)", "Çikolatalı Tek (Cheesecake)",
   // Artık bir bölüm başlığı; ürün olarak sipariş edilmiyor.
   "Diyet Kurabiyeler (Tuzlu)",
+  // Katalogdan çıkarıldı.
+  "Batonsale Susamlı", "Batonsale Anasonlu", "Galet Anasonlu",
 ]);
+
+// Adı değişen ürünler: eski kayıtlar yeni adla gösterilir.
+const URUN_ADI_ESKI_YENI = {
+  "Çikolatalı Ekler (Fransız)": "Çikolatalı Ekler",
+  "Frambuazlı Ekler (Fransız)": "Frambuazlı Ekler",
+  "Limonlu Ekler (Fransız)": "Limonlu Ekler",
+};
+
+function urunBolumu(kayit) {
+  return URUN_BOLUM[kayit.urun] || kayit.kategori;
+}
+function bolumSirala(bolumler) {
+  return [...bolumler].sort((a, b) => {
+    const ia = BOLUM_SIRASI.indexOf(a), ib = BOLUM_SIRASI.indexOf(b);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+}
 
 // "Ürün (Boy 2)" gibi etiketlerde de temel ürün adına göre sıralar.
 function urunSirala(etiketler) {
@@ -504,18 +730,8 @@ const KATEGORI_SAYFA_ESLEME = {
   "Galeta / Kıtır / Cips / Diğer Tuzlu": "Tuzlu Kurabiye",
   "Porsiyon Tatlılar": "Porsiyon Tatlılar",
 };
-const RAPOR_SAYFA_SIRASI = ["Pasta Fransız", "Pasta Klasik", "Tatlı Kurabiye", "Tuzlu Kurabiye", "Porsiyon Tatlılar"];
 
-// Pasta Klasik sayfası orijinal excel dosyasındaki düzeni birebir izler:
-// her şube kendi Boy 0/1/2/3 alt sütunlarıyla, ürünler sabit orijinal sırayla.
-const PASTA_KLASIK_URUN_SIRASI = [
-  "*Fıstık Çikolata Dekora", "*Krokanlı Çikolata", "Ganaj (Klasik)", "*Frambuaz Siyah Çikolata",
-  "*Frambuaz Beyaz Çikolata", "Pasta Latte", "*Kırmızı Meyvalı Naked", "Hasbahçe (Klasik)",
-  "*Kestaneli Fıstık", "Muzlu Beyaz Çikolatalı", "Muzlu Siyah Çikolatalı", "Profiterol Siyah Çikolatalı",
-  "Muz Krokan", "Çilekli Siyah Çikolatalı", "Çilekli Beyaz Çikolatalı", "*Vişne Siyah Çikolatalı",
-  "*Frambuaz Muz Naked", "Frambuaz Çilek Beyaz", "Muz Çilek Naked", "Mois Pasta", "Hasbahçe Siyah",
-  "*Vişne Beyaz", "Badem Krokan", "San Sebastian (Klasik)",
-];
+// Hangi şubenin hangi boyları sattığı (ürün sırası RAPOR_DUZENI'den gelir).
 const PASTA_KLASIK_SUBE_BOYLARI = {
   "Nişantaşı": [0, 1, 2],
   "Fulya": [0, 1, 2],
@@ -526,12 +742,6 @@ const PASTA_KLASIK_SUBE_BOYLARI = {
   "Beykent": [0, 1],
 };
 
-// Bütün Cheesecake de boylu bir kategori (Boy 0/1/2), sadece 4 şubede satılıyor —
-// Pasta Klasik ile aynı şube+boy sütunlu sayfa düzenini kullanır, kendi sayfasında.
-const BUTUN_CHEESECAKE_URUN_SIRASI = [
-  "Frambuazlı (Bütün)", "Limonlu (Bütün)", "Yaban Mersinli (Bütün)",
-  "Çikolatalı (Bütün)", "Çilekli (Bütün)", "Lotuslu (Bütün)", "Mangolu (Bütün)",
-];
 const BUTUN_CHEESECAKE_SUBE_BOYLARI = {
   "Nişantaşı": [0, 1, 2],
   "Fulya": [0, 1, 2],
@@ -540,10 +750,13 @@ const BUTUN_CHEESECAKE_SUBE_BOYLARI = {
 };
 
 // Şube+boy sütunlu sayfa düzeni kullanan kategoriler, sayfa adına göre.
-const BOYLU_URUN_SIRALARI = {
-  "Pasta Klasik": PASTA_KLASIK_URUN_SIRASI,
-  "Bütün Cheesecake": BUTUN_CHEESECAKE_URUN_SIRASI,
-};
+// Ürün listeleri RAPOR_DUZENI tablosundan türetilir, ayrıca tanımlanmaz.
+const BOYLU_URUN_SIRALARI = {};
+["Pasta Klasik", "Bütün Cheesecake"].forEach(ad => {
+  BOYLU_URUN_SIRALARI[ad] = RAPOR_DUZENI
+    .filter(([sayfa, bolum]) => sayfa === ad || bolum === ad)
+    .map(([, , urun]) => urun);
+});
 const BOYLU_SUBE_BOYLARI = {
   "Pasta Klasik": PASTA_KLASIK_SUBE_BOYLARI,
   "Bütün Cheesecake": BUTUN_CHEESECAKE_SUBE_BOYLARI,
@@ -563,60 +776,6 @@ const SPLIT_KATEGORILER = ["Pasta Fransız", "Pasta Klasik", "Porsiyon Tatlılar
 // Çıktı alındığında rahat okunsun diye bu 6 sayfada büyük punto/satır kullanılır.
 const BUYUK_SATIR_YUKSEKLIGI = 90;
 const BUYUK_PUNTO = 42;
-
-// --- Rapor bölümleri -------------------------------------------------
-// Çıktıda bazı kategoriler alt bölümlere ayrılır (kullanıcının düzenlediği
-// örnek dosyadaki gibi). Burada listelenmeyen ürün kendi kategorisinde kalır.
-// Bölümler kategorinin ait olduğu sayfayı değiştirmez, sadece sayfa içindeki
-// gruplamayı belirler.
-const URUN_BOLUMU = {};
-function bolumeAta(bolum, urunler) {
-  urunler.forEach(u => { URUN_BOLUMU[u] = bolum; });
-}
-// Porsiyon Tatlılar sayfası
-bolumeAta("Minik Tatlılar", [
-  "Çikolatalı Ekler (Porsiyon)", "Limonlu Ekler (Porsiyon)", "Beyaz Ekler", "Petifür",
-  "Rulo Petifür Çilek", "Rulo Petifür Muzlu", "Çiko Limon Parfe", "Krokanlı Şu Topu",
-  "Çilekli Şu Topu", "Trileçe Karamel", "Trileçe Frambuaz", "Çilekli Adet Rulo", "Muzlu Adet Rulo",
-]);
-bolumeAta("Sütlü Tatlı", ["Sütlaç", "Kazandibi", "Aşure"]);
-// Tatlı Kurabiye sayfası
-bolumeAta("Unsuz", [
-  "Unsuz Kakao Chia", "Unsuz Limonlu Chia", "Unsuz Yaban Mersinli", "Unsuz Dereotlu Mekik",
-  "Unsuz Keçiboynuzu Mekik", "Hurmalı Browni", "Hurmalı Dilim", "Havuçlu Browni",
-  "Kakaolu Browni", "Frambuazlı Browni", "Çikolata Cips (Tatlı)", "Portakallı Çikolata", "Japon Cipsi",
-]);
-// Tuzlu Kurabiye sayfası
-bolumeAta("Diyet Kurabiyeler", [
-  "Ayçekirdekli Galeta", "Parmesan Galeta", "İtalyan Galeta", "Biberiyeli Zeytinli Galeta",
-  "Çekirdekli Kokteyl", "Üzümlü Kepekli", "Üzümlü Cevizli Kepekli", "Burgu Tahıllı",
-  "Kuru Üzümlü Yassı Tahıllı", "Granola Bar Tepsi", "Granola Dökme", "Kalp Denge Tahıllı",
-  "Tahinli Susamlı", "Tahinli Çörek",
-]);
-bolumeAta("Adet Ürünler", [
-  "Ayçöreği", "Acıbadem", "Acıbadem Minik", "Beze Büyük", "Beze Beyaz Minik", "Beze Renkli Minik",
-  "Paskalya", "Paskalya Çikolatalı",
-]);
-
-// Bölümlerin çıktıdaki sırası (sayfa içinde bu sıraya göre dizilir).
-const BOLUM_SIRASI = [
-  "Tek Pastalar (Fransız)", "Fransız Ekler", "Dilim Cheesecake", "Bütün Cheesecake",
-  "Klasik Pastalar (Boylu)",
-  "Tatlı Kurabiyeler", "Unsuz", "Kekler",
-  "Börekli Taş & Poğaça Grubu", "Diyet Kurabiyeler", "Adet Ürünler", "Galeta / Kıtır / Cips / Diğer Tuzlu",
-  "Porsiyon Tatlılar", "Minik Tatlılar", "Sütlü Tatlı",
-];
-
-function urunBolumu(kayit) {
-  return URUN_BOLUMU[kayit.urun] || kayit.kategori;
-}
-function bolumSirala(bolumler) {
-  return [...bolumler].sort((a, b) => {
-    const ia = BOLUM_SIRASI.indexOf(a), ib = BOLUM_SIRASI.indexOf(b);
-    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-  });
-}
-// ---------------------------------------------------------------------
 
 // Sayfaya göre punto / satır yüksekliği. Kullanıcı çıktı üzerinde her sayfa
 // için ayrı değer belirtti; burada tanımlı olmayan sayfalar varsayılanı kullanır.
@@ -667,7 +826,7 @@ async function uretimRaporuIndir() {
     const tarihBaslik = bas === bit ? bas : `${bas} — ${bit}`;
 
     RAPOR_SAYFA_SIRASI.forEach(sayfaAdi => {
-      const sayfaKayitlari = kayitlar.filter(k => KATEGORI_SAYFA_ESLEME[k.kategori] === sayfaAdi);
+      const sayfaKayitlari = kayitlar.filter(k => URUN_SAYFA[k.urun] === sayfaAdi);
       if (sayfaKayitlari.length === 0) return;
       if (BOYLU_URUN_SIRALARI[sayfaAdi]) {
         boyluUretimSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
@@ -1623,7 +1782,7 @@ function raporuYazdir() {
   yazdirAlaniEl.innerHTML = "";
 
   RAPOR_SAYFA_SIRASI.forEach(sayfaAdi => {
-    const sayfaKayitlari = kayitlar.filter(k => KATEGORI_SAYFA_ESLEME[k.kategori] === sayfaAdi);
+    const sayfaKayitlari = kayitlar.filter(k => URUN_SAYFA[k.urun] === sayfaAdi);
     if (sayfaKayitlari.length === 0) return;
     if (BOYLU_URUN_SIRALARI[sayfaAdi]) {
       yazdirAlaniEl.appendChild(yazdirBoyluUretim(sayfaAdi, sayfaKayitlari, tarihBaslik));
