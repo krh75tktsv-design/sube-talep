@@ -1096,6 +1096,7 @@ const SUBE_GIZLI_URUNLER = {
     "Dilim Cheesecake|Frambuazlı (Dilim)",
     "Dilim Cheesecake|Limonlu (Dilim)",
     "Dilim Cheesecake|Mangolu (Dilim)",
+    "Dilim Cheesecake|Lotuslu (Dilim)",
     "Dilim Cheesecake|Yaban Mersinli (Dilim)",
     "Dilim Cheesecake|Çikolatalı (Dilim)",
     "Dilim Cheesecake|Çilekli (Dilim)",
@@ -1234,6 +1235,7 @@ const SUBE_GIZLI_URUNLER = {
     "Dilim Cheesecake|Frambuazlı (Dilim)",
     "Dilim Cheesecake|Limonlu (Dilim)",
     "Dilim Cheesecake|Mangolu (Dilim)",
+    "Dilim Cheesecake|Lotuslu (Dilim)",
     "Dilim Cheesecake|Yaban Mersinli (Dilim)",
     "Dilim Cheesecake|Çikolatalı (Dilim)",
     "Dilim Cheesecake|Çilekli (Dilim)",
@@ -1372,6 +1374,7 @@ const SUBE_GIZLI_URUNLER = {
     "Dilim Cheesecake|Frambuazlı (Dilim)",
     "Dilim Cheesecake|Limonlu (Dilim)",
     "Dilim Cheesecake|Mangolu (Dilim)",
+    "Dilim Cheesecake|Lotuslu (Dilim)",
     "Dilim Cheesecake|Yaban Mersinli (Dilim)",
     "Dilim Cheesecake|Çikolatalı (Dilim)",
     "Dilim Cheesecake|Çilekli (Dilim)",
@@ -1563,8 +1566,11 @@ function subeGizlemeUygula() {
   document.querySelectorAll("details").forEach(det => {
     const toplam = det.querySelectorAll(".kategori-icerik > div[data-gizli-key]").length;
     const gizli = det.querySelectorAll(".kategori-icerik > div.sube-gizli").length;
+    const kalan = toplam - gizli;
     const sayac = det.querySelector(".sayac");
-    if (sayac) sayac.textContent = `${toplam - gizli} ürün`;
+    if (sayac) sayac.textContent = `${kalan} ürün`;
+    // O şubede hiçbir ürünü kalmayan kategori hiç gösterilmez.
+    det.style.display = kalan === 0 ? "none" : "";
   });
 }
 subeSelect.addEventListener("change", subeGizlemeUygula);
@@ -1584,7 +1590,8 @@ araInput.addEventListener("input", () => {
     det.style.display = varMi ? "" : "none";
   });
   if (!q) {
-    document.querySelectorAll("details").forEach(det => det.style.display = "");
+    // Arama temizlenince kategori görünürlüğünü şube gizleme kuralına bırak.
+    subeGizlemeUygula();
   }
 });
 
