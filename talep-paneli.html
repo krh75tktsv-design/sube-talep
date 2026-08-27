@@ -16,6 +16,7 @@
   label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em;}
   input[type=date]{padding:11px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff;font-family:inherit;}
   button{padding:11px 18px;background:var(--ink);color:#fff;border:0;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;}
+  button.ikincil{background:#fff;color:var(--ink);border:1.5px solid var(--line);}
   button:disabled{opacity:.5;cursor:default;}
   .durum{margin:14px 0;padding:12px;border-radius:10px;font-size:14px;display:none;}
   .durum.hata{display:block;background:#FEF2F2;color:#991B1B;}
@@ -93,6 +94,7 @@
     <button id="indirOrijinal">Üretim &amp; Dağıtım Raporu (.xlsx)</button>
     <button id="indirZayi">Zayi Raporu (.xlsx)</button>
     <button id="yazdir">Yazdır</button>
+    <button id="etabloAc" class="ikincil" title="Yanlış girilen bir kaydı düzeltmek için E-Tablo'yu açar. Bağlantıyı değiştirmek için Shift ile tıklayın.">Google E-Tablo'yu Aç</button>
   </div>
 
   <div class="durum" id="durum"></div>
@@ -132,6 +134,7 @@ const indirBtn = document.getElementById("indir");
 const indirOrijinalBtn = document.getElementById("indirOrijinal");
 const indirZayiBtn = document.getElementById("indirZayi");
 const yazdirBtn = document.getElementById("yazdir");
+const etabloAcBtn = document.getElementById("etabloAc");
 const yazdirAlaniEl = document.getElementById("yazdirAlani");
 
 const yarin = new Date();
@@ -146,6 +149,7 @@ indirBtn.addEventListener("click", csvIndir);
 indirOrijinalBtn.addEventListener("click", uretimRaporuIndir);
 indirZayiBtn.addEventListener("click", zayiRaporuIndir);
 yazdirBtn.addEventListener("click", raporuYazdir);
+etabloAcBtn.addEventListener("click", etabloyuAc);
 
 let TUM_KAYITLAR = [];
 let ZAYI_KAYITLARI = [];
@@ -1841,6 +1845,32 @@ function raporuYazdir() {
   });
 
   window.print();
+}
+
+// Kayıtların tutulduğu Google E-Tablo. Buraya adres yazılırsa doğrudan
+// kullanılır; boşsa ilk tıklamada bir kez sorulup tarayıcıda saklanır.
+const ETABLO_URL = "";
+
+function etabloyuAc(olay) {
+  let url = ETABLO_URL;
+  if (!url) {
+    try { url = localStorage.getItem("etabloUrl") || ""; } catch (e) { url = ""; }
+  }
+  // Shift ile tıklanırsa kayıtlı adresi değiştirmek için tekrar sorar.
+  if (!url || (olay && olay.shiftKey)) {
+    const girilen = (prompt(
+      "Google E-Tablo bağlantısını yapıştırın:\n(tarayıcıda e-tabloyu açıp adres çubuğundan kopyalayın)",
+      url || "https://docs.google.com/spreadsheets/d/"
+    ) || "").trim();
+    if (!girilen) return;
+    if (!/^https:\/\/docs\.google\.com\/spreadsheets\//.test(girilen)) {
+      goster("hata", "Bu bir Google E-Tablo bağlantısı değil.");
+      return;
+    }
+    url = girilen;
+    try { localStorage.setItem("etabloUrl", url); } catch (e) {}
+  }
+  window.open(url, "_blank", "noopener");
 }
 
 async function zayiRaporuIndir() {
