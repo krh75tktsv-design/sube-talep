@@ -38,6 +38,7 @@
   .boy-input label{margin:0 0 3px;font-size:10.5px;}
   .boy-input input{width:100%;padding:8px 4px;border:1px solid var(--line);border-radius:8px;font-size:14px;text-align:center;font-family:inherit;}
   button{width:100%;padding:15px;margin-top:24px;background:var(--ink);color:#fff;border:0;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;}
+  button.ikincil{background:#fff;color:var(--brass);border:1.5px solid var(--brass);}
   button:disabled{opacity:.5;}
   .durum{margin-top:14px;padding:12px;border-radius:10px;font-size:14px;text-align:center;display:none;}
   .durum.basarili{display:block;background:#ECFDF5;color:#065F46;}
@@ -64,13 +65,17 @@
   <label for="not">Ek Not (opsiyonel)</label>
   <textarea id="not" rows="2" placeholder="Katalog dışı bir istek varsa buraya yazın"></textarea>
 
+  <button id="gonderTalep">Talep Gönder</button>
+  <div class="durum" id="durumTalep"></div>
+
   <div class="zayi-baslik">Zayi Bildirimi <span>opsiyonel</span></div>
   <div class="zayi-aciklama">Zayi olan ürünleri girin. Bu miktarlar üretim
-    talebine eklenmez, ayrı zayi raporunda görünür.</div>
+    talebine eklenmez, ayrı zayi raporunda görünür. Talebinizi gönderdikten
+    sonra da ayrıca gönderebilirsiniz.</div>
   <div id="zayiKategoriler"></div>
 
-  <button id="gonder">Gönder</button>
-  <div class="durum" id="durum"></div>
+  <button id="gonderZayi" class="ikincil">Zayi Gönder</button>
+  <div class="durum" id="durumZayi"></div>
 </div>
 
 <script>
@@ -1635,59 +1640,70 @@ araInput.addEventListener("input", () => {
   }
 });
 
-const durumEl = document.getElementById("durum");
-const gonderBtn = document.getElementById("gonder");
+const durumTalepEl = document.getElementById("durumTalep");
+const durumZayiEl = document.getElementById("durumZayi");
+const gonderTalepBtn = document.getElementById("gonderTalep");
+const gonderZayiBtn = document.getElementById("gonderZayi");
 
-gonderBtn.addEventListener("click", async () => {
+gonderTalepBtn.addEventListener("click", () => gonder("talep"));
+gonderZayiBtn.addEventListener("click", () => gonder("zayi"));
+
+// Talep ve zayi ayrı ayrı gönderilir; şube talebini yolladıktan sonra
+// zayiyi tek başına gönderebilsin, talep ikinci kez kaydedilmesin diye.
+async function gonder(tip) {
+  const zayiMi = tip === "zayi";
+  const btn = zayiMi ? gonderZayiBtn : gonderTalepBtn;
+  const durum = zayiMi ? durumZayiEl : durumTalepEl;
+  const etiket = zayiMi ? "Zayi Gönder" : "Talep Gönder";
+
   const sube = subeSelect.value;
   const tarih = tarihInput.value;
-  const not = document.getElementById("not").value.trim();
+  const not = zayiMi ? "" : document.getElementById("not").value.trim();
 
   const kalemler = [];
-  document.querySelectorAll('input[type=number][data-ki]').forEach(inp => {
-    const miktar = parseFloat(inp.value);
-    if (miktar > 0) {
+  if (zayiMi) {
+    document.querySelectorAll('input[type=number][data-zayi-ki]').forEach(inp => {
+      const miktar = parseFloat(inp.value);
+      if (!(miktar > 0)) return;
+      const kategori = KATALOG[inp.dataset.zayiKi];
+      const urun = kategori.urunler[inp.dataset.zayiUi];
+      kalemler.push({ kategori: "ZAYİ · " + kategori.kategori, urun: urun.ad, miktar, birim: urun.birim });
+    });
+  } else {
+    document.querySelectorAll('input[type=number][data-ki]').forEach(inp => {
+      const miktar = parseFloat(inp.value);
+      if (!(miktar > 0)) return;
       const kategori = KATALOG[inp.dataset.ki];
       const urun = kategori.urunler[inp.dataset.ui];
       const kalem = { kategori: kategori.kategori, urun: urun.ad, miktar, birim: urun.birim };
       if (inp.dataset.boy !== undefined) kalem.boy = inp.dataset.boy;
       kalemler.push(kalem);
-    }
-  });
-
-  // Zayi girişleri, kategorisi "ZAYİ · " önekiyle ayrı kalem olarak gider;
-  // panel bu öneke bakıp üretim raporundan ayırır.
-  document.querySelectorAll('input[type=number][data-zayi-ki]').forEach(inp => {
-    const miktar = parseFloat(inp.value);
-    if (!(miktar > 0)) return;
-    const kategori = KATALOG[inp.dataset.zayiKi];
-    const urun = kategori.urunler[inp.dataset.zayiUi];
-    kalemler.push({ kategori: "ZAYİ · " + kategori.kategori, urun: urun.ad, miktar, birim: urun.birim });
-  });
-
-  // İşaretlenen "Ekstra sos" kutucukları ayrı kalem olarak gider.
-  document.querySelectorAll('input[type=checkbox][data-sos-ki]').forEach(cb => {
-    if (!cb.checked) return;
-    const kategori = KATALOG[cb.dataset.sosKi];
-    const urun = kategori.urunler[cb.dataset.sosUi];
-    kalemler.push({ kategori: kategori.kategori, urun: urun.ad + " — Ekstra Sos", miktar: 1, birim: "istek" });
-  });
+    });
+    // İşaretlenen "Ekstra sos" kutucukları ayrı kalem olarak gider.
+    document.querySelectorAll('input[type=checkbox][data-sos-ki]').forEach(cb => {
+      if (!cb.checked) return;
+      const kategori = KATALOG[cb.dataset.sosKi];
+      const urun = kategori.urunler[cb.dataset.sosUi];
+      kalemler.push({ kategori: kategori.kategori, urun: urun.ad + " — Ekstra Sos", miktar: 1, birim: "istek" });
+    });
+  }
 
   if (!sube || !tarih) {
-    goster("hata", "Lütfen şube ve tarih seçin.");
+    goster("hata", "Lütfen şube ve tarih seçin.", durum);
     return;
   }
   if (kalemler.length === 0 && !not) {
-    goster("hata", "En az bir ürün için miktar girin.");
+    goster("hata", zayiMi ? "En az bir ürün için zayi miktarı girin."
+                          : "En az bir ürün için miktar girin.", durum);
     return;
   }
   if (APPS_SCRIPT_URL.includes("BURAYA_")) {
-    goster("hata", "Kurulum tamamlanmadı: APPS_SCRIPT_URL henüz ayarlanmamış.");
+    goster("hata", "Kurulum tamamlanmadı: APPS_SCRIPT_URL henüz ayarlanmamış.", durum);
     return;
   }
 
-  gonderBtn.disabled = true;
-  gonderBtn.textContent = "Gönderiliyor...";
+  btn.disabled = true;
+  btn.textContent = "Gönderiliyor...";
 
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
@@ -1697,20 +1713,27 @@ gonderBtn.addEventListener("click", async () => {
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
 
-    goster("basarili", `Talebiniz gönderildi (${kalemler.length} kalem). Teşekkürler!`);
-    document.querySelectorAll('input[type=number][data-ki]').forEach(inp => (inp.value = ""));
-    document.getElementById("not").value = "";
+    if (zayiMi) {
+      goster("basarili", `Zayi bildiriminiz gönderildi (${kalemler.length} kalem). Teşekkürler!`, durum);
+      document.querySelectorAll('input[type=number][data-zayi-ki]').forEach(inp => (inp.value = ""));
+    } else {
+      goster("basarili", `Talebiniz gönderildi (${kalemler.length} kalem). Teşekkürler!`, durum);
+      document.querySelectorAll('input[type=number][data-ki]').forEach(inp => (inp.value = ""));
+      document.querySelectorAll('input[type=checkbox][data-sos-ki]').forEach(cb => (cb.checked = false));
+      document.getElementById("not").value = "";
+    }
   } catch (err) {
-    goster("hata", "Gönderilemedi, internet bağlantınızı kontrol edip tekrar deneyin.");
+    goster("hata", "Gönderilemedi, internet bağlantınızı kontrol edip tekrar deneyin.", durum);
   } finally {
-    gonderBtn.disabled = false;
-    gonderBtn.textContent = "Gönder";
+    btn.disabled = false;
+    btn.textContent = etiket;
   }
-});
+}
 
-function goster(tur, mesaj) {
-  durumEl.className = "durum " + tur;
-  durumEl.textContent = mesaj;
+function goster(tur, mesaj, hedef) {
+  const el = hedef || durumTalepEl;
+  el.className = "durum " + tur;
+  el.textContent = mesaj;
 }
 </script>
 </body>
