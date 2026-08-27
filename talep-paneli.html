@@ -1432,7 +1432,13 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
 
   ws.getColumn(1).width = BC.urunGen;
   for (let i = 2; i <= toplamCol; i++) ws.getColumn(i).width = BC.veriGen;
-  ayiracSutunlari.forEach(i => { ws.getColumn(i).width = ayiracGen; });
+  // Şube ayraç sütunları: ince ve koyu dolgulu — tablo boyunca dikey çizgi gibi durur.
+  ayiracSutunlari.forEach(i => {
+    ws.getColumn(i).width = ayiracGen;
+    for (let sr = r1; sr <= r; sr++) {
+      hucreStilVer(ws.getCell(sr, i), { fill: RENK_TOPLAM_SATIR, kenarlik: false });
+    }
+  });
   ws.views = [{ state: "frozen", xSplit: 1, ySplit: r2 }];
 }
 
