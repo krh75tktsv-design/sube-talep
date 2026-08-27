@@ -165,6 +165,7 @@ async function yukleVeCiz() {
     // kaldırılan ürünler hiç gösterilmez.
     TUM_KAYITLAR = (data.kayitlar || [])
       .map(k => (URUN_ADI_ESKI_YENI[k.urun] ? { ...k, urun: URUN_ADI_ESKI_YENI[k.urun] } : k))
+      .map(k => (BOYSUZ_URUNLER.has(k.urun) && k.boy !== "" ? { ...k, boy: "" } : k))
       .filter(k => !KALDIRILAN_URUNLER.has(k.urun));
     ciz();
   } catch (err) {
@@ -443,6 +444,10 @@ const KALDIRILAN_URUNLER = new Set([
   // Katalogdan çıkarıldı.
   "Batonsale Susamlı", "Batonsale Anasonlu", "Galet Anasonlu",
 ]);
+
+// Boylu bir bölümde olsa da tek boy üretilen ürünler: raporda ve panelde
+// boy kırılımına girmez, tek sütunda toplanır.
+const BOYSUZ_URUNLER = new Set(["San Sebastian (Klasik)"]);
 
 // Adı değişen ürünler: eski kayıtlar yeni adla gösterilir.
 const URUN_ADI_ESKI_YENI = {
@@ -1293,7 +1298,7 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   ws.getCell(headerRow, 1).value = "ÜRÜN";
   tumBoylar.forEach((boy, i) => {
     const c = ws.getCell(headerRow, 2 + i);
-    c.value = "no " + boy;
+    c.value = "NO " + boy;
     hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
   });
   const toplamCol = 1 + tumBoylar.length;

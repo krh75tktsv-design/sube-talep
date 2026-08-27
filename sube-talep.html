@@ -376,7 +376,8 @@ const KATALOG = [
       },
       {
         "ad": "San Sebastian (Klasik)",
-        "birim": "adet"
+        "birim": "adet",
+        "boysuz": true
       }
     ]
   },
@@ -1509,7 +1510,7 @@ KATALOG.forEach((kategori, ki) => {
     row.dataset.ad = urun.ad.toLocaleLowerCase("tr");
     row.dataset.gizliKey = kategori.kategori + "|" + urun.ad;
 
-    if (kategori.boylu) {
+    if (kategori.boylu && !urun.boysuz) {
       row.className = "urun-row boylu-row";
       let boyHtml = "";
       const boyMax = kategori.boyMax !== undefined ? kategori.boyMax : 3;
