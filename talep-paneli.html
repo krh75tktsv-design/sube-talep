@@ -1851,26 +1851,47 @@ function raporuYazdir() {
 // kullanılır; boşsa ilk tıklamada bir kez sorulup tarayıcıda saklanır.
 const ETABLO_URL = "";
 
+// Yapıştırılan adresten e-tablo kimliğini çıkarıp standart /edit adresine
+// çevirir; kimlik bulunamazsa null döner.
+function etabloAdresiniDuzelt(girilen) {
+  // Çok hesaplı kullanıcılarda adres /spreadsheets/u/0/d/... biçiminde olur;
+  // doğru hesapla açılsın diye o kısım korunur.
+  const m = String(girilen).match(/\/spreadsheets\/(u\/\d+\/)?d\/([a-zA-Z0-9-_]{20,})/);
+  if (!m) return null;
+  return `https://docs.google.com/spreadsheets/${m[1] || ""}d/${m[2]}/edit`;
+}
+
+function etabloAdresiSor(oncekiUrl) {
+  const girilen = prompt(
+    "Google E-Tablo bağlantısını yapıştırın.\n\n" +
+    "E-tabloyu tarayıcıda açın ve adres çubuğundaki adresin tamamını kopyalayın:\n" +
+    "https://docs.google.com/spreadsheets/d/.../edit",
+    oncekiUrl || ""
+  );
+  if (girilen === null) return null;
+  const url = etabloAdresiniDuzelt(girilen.trim());
+  if (!url) {
+    goster("hata", "Bu bir Google E-Tablo bağlantısı değil. Adres çubuğundaki tam adresi kopyalayın.");
+    return null;
+  }
+  try { localStorage.setItem("etabloUrl", url); } catch (e) {}
+  return url;
+}
+
 function etabloyuAc(olay) {
   let url = ETABLO_URL;
   if (!url) {
     try { url = localStorage.getItem("etabloUrl") || ""; } catch (e) { url = ""; }
   }
-  // Shift ile tıklanırsa kayıtlı adresi değiştirmek için tekrar sorar.
+  // Shift ile tıklanırsa kayıtlı adres değiştirilir.
   if (!url || (olay && olay.shiftKey)) {
-    const girilen = (prompt(
-      "Google E-Tablo bağlantısını yapıştırın:\n(tarayıcıda e-tabloyu açıp adres çubuğundan kopyalayın)",
-      url || "https://docs.google.com/spreadsheets/d/"
-    ) || "").trim();
-    if (!girilen) return;
-    if (!/^https:\/\/docs\.google\.com\/spreadsheets\//.test(girilen)) {
-      goster("hata", "Bu bir Google E-Tablo bağlantısı değil.");
-      return;
-    }
-    url = girilen;
-    try { localStorage.setItem("etabloUrl", url); } catch (e) {}
+    url = etabloAdresiSor(url);
+    if (!url) return;
   }
   window.open(url, "_blank", "noopener");
+  // Yanlış adres kaydedilmişse nasıl düzeltileceği görünür olsun.
+  goster("bos", "E-Tablo yeni sekmede açıldı. Yanlış dosya açıldıysa butona " +
+                "Shift ile tıklayıp bağlantıyı değiştirin.");
 }
 
 async function zayiRaporuIndir() {
