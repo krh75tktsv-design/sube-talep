@@ -1849,7 +1849,7 @@ function raporuYazdir() {
 
 // Kayıtların tutulduğu Google E-Tablo. Buraya adres yazılırsa doğrudan
 // kullanılır; boşsa ilk tıklamada bir kez sorulup tarayıcıda saklanır.
-const ETABLO_URL = "";
+const ETABLO_URL = "https://docs.google.com/spreadsheets/d/1zS4gBS1z0jgTTz0je4BspyVyfA16_1rhZBAVozp21KY/edit";
 
 // Yapıştırılan adresten e-tablo kimliğini çıkarıp standart /edit adresine
 // çevirir; kimlik bulunamazsa null döner.
@@ -1879,17 +1879,20 @@ function etabloAdresiSor(oncekiUrl) {
 }
 
 function etabloyuAc(olay) {
-  let url = ETABLO_URL;
-  if (!url) {
-    try { url = localStorage.getItem("etabloUrl") || ""; } catch (e) { url = ""; }
+  // Adres koda yazılıysa her zaman o kullanılır (tarayıcıda eski/hatalı bir
+  // kayıt varsa devre dışı kalır); yazılı değilse bir kez sorulup saklanır.
+  if (ETABLO_URL) {
+    window.open(ETABLO_URL, "_blank", "noopener");
+    goster("bos", "E-Tablo yeni sekmede açıldı. Düzeltmeden sonra Yenile'ye basın.");
+    return;
   }
-  // Shift ile tıklanırsa kayıtlı adres değiştirilir.
+  let url = "";
+  try { url = localStorage.getItem("etabloUrl") || ""; } catch (e) { url = ""; }
   if (!url || (olay && olay.shiftKey)) {
     url = etabloAdresiSor(url);
     if (!url) return;
   }
   window.open(url, "_blank", "noopener");
-  // Yanlış adres kaydedilmişse nasıl düzeltileceği görünür olsun.
   goster("bos", "E-Tablo yeni sekmede açıldı. Yanlış dosya açıldıysa butona " +
                 "Shift ile tıklayıp bağlantıyı değiştirin.");
 }
