@@ -23,6 +23,11 @@
   .urun-row.gizli{display:none;}
   .urun-row.sube-gizli{display:none;}
   .urun-ad{font-size:13.5px;font-weight:500;}
+  .zayi-baslik{margin:26px 0 4px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;}
+  .zayi-baslik span{font-size:11px;font-weight:600;color:var(--muted);background:#fff;
+    border:1px solid var(--line);border-radius:99px;padding:2px 8px;text-transform:uppercase;letter-spacing:.04em;}
+  .zayi-aciklama{font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.45;}
+  #zayiKategoriler summary{background:#FFF7ED;}
   .sos-kutu{display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-size:12px;font-weight:600;color:var(--brass);background:#FEF3C7;border-radius:8px;padding:3px 9px;cursor:pointer;}
   .sos-kutu input{width:15px;height:15px;margin:0;accent-color:var(--brass);cursor:pointer;}
   .urun-birim{font-size:11.5px;color:var(--muted);}
@@ -55,6 +60,11 @@
   <input type="search" id="ara" placeholder="ürün adı yazın…">
 
   <div id="kategoriler" style="margin-top:16px;"></div>
+
+  <div class="zayi-baslik">Zayi Bildirimi <span>opsiyonel</span></div>
+  <div class="zayi-aciklama">Zayi olan ürünleri girin. Bu miktarlar üretim
+    talebine eklenmez, ayrı zayi raporunda görünür.</div>
+  <div id="zayiKategoriler"></div>
 
   <label for="not">Ek Not (opsiyonel)</label>
   <textarea id="not" rows="2" placeholder="Katalog dışı bir istek varsa buraya yazın"></textarea>
@@ -1557,6 +1567,36 @@ KATALOG.forEach((kategori, ki) => {
   kategorilerEl.appendChild(det);
 });
 
+// Zayi bölümü: aynı katalog, ürün başına tek miktar kutusu (boy kırılımı yok).
+const zayiKategorilerEl = document.getElementById("zayiKategoriler");
+KATALOG.forEach((kategori, ki) => {
+  const det = document.createElement("details");
+  const summary = document.createElement("summary");
+  summary.innerHTML = `<span>${kategori.kategori}</span><span class="sayac">${kategori.urunler.length} ürün</span>`;
+  det.appendChild(summary);
+
+  const icerik = document.createElement("div");
+  icerik.className = "kategori-icerik";
+
+  kategori.urunler.forEach((urun, ui) => {
+    const row = document.createElement("div");
+    row.className = "urun-row";
+    row.dataset.ad = urun.ad.toLocaleLowerCase("tr");
+    row.dataset.gizliKey = kategori.kategori + "|" + urun.ad;
+    row.innerHTML = `
+      <div>
+        <div class="urun-ad">${urun.ad}</div>
+        <div class="urun-birim">${urun.birim}</div>
+      </div>
+      <input type="number" class="miktar-input" min="0" inputmode="numeric" placeholder="0" data-zayi-ki="${ki}" data-zayi-ui="${ui}">
+    `;
+    icerik.appendChild(row);
+  });
+
+  det.appendChild(icerik);
+  zayiKategorilerEl.appendChild(det);
+});
+
 // Şubede satılmayan ürünleri gizler: sube-talep.html'e özgü, panel/rapor etkilenmez.
 function subeGizlemeUygula() {
   const gizliSet = new Set(SUBE_GIZLI_URUNLER[subeSelect.value] || []);
@@ -1613,6 +1653,16 @@ gonderBtn.addEventListener("click", async () => {
       if (inp.dataset.boy !== undefined) kalem.boy = inp.dataset.boy;
       kalemler.push(kalem);
     }
+  });
+
+  // Zayi girişleri, kategorisi "ZAYİ · " önekiyle ayrı kalem olarak gider;
+  // panel bu öneke bakıp üretim raporundan ayırır.
+  document.querySelectorAll('input[type=number][data-zayi-ki]').forEach(inp => {
+    const miktar = parseFloat(inp.value);
+    if (!(miktar > 0)) return;
+    const kategori = KATALOG[inp.dataset.zayiKi];
+    const urun = kategori.urunler[inp.dataset.zayiUi];
+    kalemler.push({ kategori: "ZAYİ · " + kategori.kategori, urun: urun.ad, miktar, birim: urun.birim });
   });
 
   // İşaretlenen "Ekstra sos" kutucukları ayrı kalem olarak gider.

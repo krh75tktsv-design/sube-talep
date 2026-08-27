@@ -91,6 +91,7 @@
     <button id="yenile">Yenile</button>
     <button id="indir">CSV İndir</button>
     <button id="indirOrijinal">Üretim &amp; Dağıtım Raporu (.xlsx)</button>
+    <button id="indirZayi">Zayi Raporu (.xlsx)</button>
     <button id="yazdir">Yazdır</button>
   </div>
 
@@ -129,6 +130,7 @@ const icerikEl = document.getElementById("icerik");
 const yenileBtn = document.getElementById("yenile");
 const indirBtn = document.getElementById("indir");
 const indirOrijinalBtn = document.getElementById("indirOrijinal");
+const indirZayiBtn = document.getElementById("indirZayi");
 const yazdirBtn = document.getElementById("yazdir");
 const yazdirAlaniEl = document.getElementById("yazdirAlani");
 
@@ -142,9 +144,11 @@ bitisInput.addEventListener("change", ciz);
 yenileBtn.addEventListener("click", yukleVeCiz);
 indirBtn.addEventListener("click", csvIndir);
 indirOrijinalBtn.addEventListener("click", uretimRaporuIndir);
+indirZayiBtn.addEventListener("click", zayiRaporuIndir);
 yazdirBtn.addEventListener("click", raporuYazdir);
 
 let TUM_KAYITLAR = [];
+let ZAYI_KAYITLARI = [];
 let SON_GORUNTULENEN = [];
 
 yukleVeCiz();
@@ -163,10 +167,14 @@ async function yukleVeCiz() {
     const data = await res.json();
     // Adı değişen ürünlerin eski kayıtları yeni adla gösterilir; katalogdan
     // kaldırılan ürünler hiç gösterilmez.
-    TUM_KAYITLAR = (data.kayitlar || [])
+    const hepsi = (data.kayitlar || [])
       .map(k => (URUN_ADI_ESKI_YENI[k.urun] ? { ...k, urun: URUN_ADI_ESKI_YENI[k.urun] } : k))
       .map(k => (BOYSUZ_URUNLER.has(k.urun) && k.boy !== "" ? { ...k, boy: "" } : k))
       .filter(k => !KALDIRILAN_URUNLER.has(k.urun));
+    // Zayi kayıtları üretim/dağıtım raporundan tamamen ayrı tutulur.
+    TUM_KAYITLAR = hepsi.filter(k => !zayiMi(k));
+    ZAYI_KAYITLARI = hepsi.filter(zayiMi)
+      .map(k => ({ ...k, kategori: String(k.kategori).slice(ZAYI_ONEK.length), boy: "" }));
     ciz();
   } catch (err) {
     goster("hata", "Veriler yüklenemedi, internet bağlantınızı kontrol edip tekrar deneyin.");
@@ -449,6 +457,12 @@ const KALDIRILAN_URUNLER = new Set([
 
 // Boylu bir bölümde olsa da tek boy üretilen ürünler: raporda ve panelde
 // boy kırılımına girmez, tek sütunda toplanır.
+// Şube formundaki zayi bölümünden gelen kayıtlar kategorilerinde bu öneki taşır.
+const ZAYI_ONEK = "ZAYİ · ";
+function zayiMi(kayit) {
+  return typeof kayit.kategori === "string" && kayit.kategori.startsWith(ZAYI_ONEK);
+}
+
 const BOYSUZ_URUNLER = new Set(["San Sebastian (Klasik)", "San Sebastian (Klasik) — Ekstra Sos"]);
 
 // Ürün değil, şubenin işaretlediği bir istek olan satırlar: raporda görünür
@@ -526,6 +540,14 @@ function ciz() {
   }
   if (notlar.length > 0) {
     icerikEl.appendChild(notlarKartiOlustur(notlar));
+  }
+
+  // Zayi bildirimleri ayrı bir kartta; üretim tablolarına karışmaz.
+  const zayiler = ZAYI_KAYITLARI.filter(k => k.tarih >= bas && k.tarih <= bit);
+  if (zayiler.length > 0) {
+    const kart = pivotTablosuOlustur("Zayi Bildirimleri", zayiler);
+    kart.querySelector(".kategori-baslik").style.background = "#FFF7ED";
+    icerikEl.appendChild(kart);
   }
 }
 
@@ -1819,6 +1841,41 @@ function raporuYazdir() {
   });
 
   window.print();
+}
+
+async function zayiRaporuIndir() {
+  const bas = baslangicInput.value;
+  const bit = bitisInput.value || bas;
+  if (!bas) { goster("hata", "Önce bir tarih seçin."); return; }
+  const kayitlar = ZAYI_KAYITLARI.filter(k => k.tarih >= bas && k.tarih <= bit);
+  if (kayitlar.length === 0) {
+    goster("hata", "Bu tarih aralığında zayi bildirimi yok.");
+    return;
+  }
+
+  indirZayiBtn.disabled = true;
+  indirZayiBtn.textContent = "Hazırlanıyor...";
+  try {
+    const wb = new ExcelJS.Workbook();
+    const tarihBaslik = bas === bit ? bas : `${bas} — ${bit}`;
+    raporSayfasiOlustur(wb, "Zayi", kayitlar, tarihBaslik);
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `zayi-raporu_${bas}${bit !== bas ? "_" + bit : ""}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    goster("hata", "Zayi raporu oluşturulamadı: " + err.message);
+  } finally {
+    indirZayiBtn.disabled = false;
+    indirZayiBtn.textContent = "Zayi Raporu (.xlsx)";
+  }
 }
 
 function goster(tur, mesaj) {
