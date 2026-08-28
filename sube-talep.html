@@ -23,6 +23,13 @@
   .urun-row.gizli{display:none;}
   .urun-row.sube-gizli{display:none;}
   .urun-ad{font-size:13.5px;font-weight:500;}
+  .gecmis-tablo{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;font-size:13.5px;margin-top:12px;}
+  .gecmis-tablo th{background:#FAFAF8;font-size:11px;text-transform:uppercase;letter-spacing:.03em;
+    color:var(--muted);font-weight:700;padding:9px 12px;text-align:left;}
+  .gecmis-tablo td{padding:9px 12px;border-top:1px solid var(--line);}
+  .gecmis-tablo td:last-child,.gecmis-tablo th:last-child{text-align:right;}
+  .gecmis-tablo tr.gecmis-grup td{background:#FEF3C7;font-weight:700;font-size:12px;text-align:left;}
   .zayi-baslik{margin:26px 0 4px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;}
   .zayi-baslik span{font-size:11px;font-weight:600;color:var(--muted);background:#fff;
     border:1px solid var(--line);border-radius:99px;padding:2px 8px;text-transform:uppercase;letter-spacing:.04em;}
@@ -76,6 +83,13 @@
 
   <button id="gonderZayi" class="ikincil">Zayi Gönder</button>
   <div class="durum" id="durumZayi"></div>
+
+  <div class="zayi-baslik" style="margin-top:34px;">Gönderdiklerim</div>
+  <div class="zayi-aciklama">Seçili talep tarihi için şubenizin gönderdiği
+    kayıtları listeler. Bir hata görürseniz merkeze bildirin.</div>
+  <button id="gonderilenleriGoster" class="ikincil">Gönderdiklerimi Göster</button>
+  <div class="durum" id="durumGecmis"></div>
+  <div id="gecmisListesi"></div>
 </div>
 
 <script>
@@ -1745,6 +1759,68 @@ async function gonder(tip) {
   } finally {
     btn.disabled = false;
     btn.textContent = etiket;
+  }
+}
+
+const gonderilenBtn = document.getElementById("gonderilenleriGoster");
+const durumGecmisEl = document.getElementById("durumGecmis");
+const gecmisListesiEl = document.getElementById("gecmisListesi");
+gonderilenBtn.addEventListener("click", gonderilenleriGoster);
+
+function htmlKac(s) {
+  return String(s === undefined || s === null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Seçili tarih için bu şubenin gönderdiği talep + zayi kayıtlarını listeler.
+async function gonderilenleriGoster() {
+  const sube = subeSelect.value;
+  const tarih = tarihInput.value;
+  if (!sube || !tarih) {
+    goster("hata", "Lütfen şube ve tarih seçin.", durumGecmisEl);
+    return;
+  }
+  gonderilenBtn.disabled = true;
+  gonderilenBtn.textContent = "Yükleniyor...";
+  durumGecmisEl.className = "durum";
+  gecmisListesiEl.innerHTML = "";
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, { method: "GET" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const kayitlar = (data.kayitlar || []).filter(k => k.sube === sube && k.tarih === tarih);
+    if (kayitlar.length === 0) {
+      goster("bos", `${tarih} tarihi için henüz kayıt görünmüyor.`, durumGecmisEl);
+      return;
+    }
+    const zayiOnek = "ZAYİ · ";
+    const gruplar = [
+      ["Talep", kayitlar.filter(k => k.urun !== "NOT" && !String(k.kategori).startsWith(zayiOnek))],
+      ["Zayi Bildirimi", kayitlar.filter(k => String(k.kategori).startsWith(zayiOnek))],
+      ["Not", kayitlar.filter(k => k.urun === "NOT")],
+    ];
+    let html = '<table class="gecmis-tablo"><tr><th>Ürün</th><th>Boy</th><th>Miktar</th></tr>';
+    gruplar.forEach(([ad, liste]) => {
+      if (liste.length === 0) return;
+      html += `<tr class="gecmis-grup"><td colspan="3">${ad}</td></tr>`;
+      liste.forEach(k => {
+        const urun = k.urun === "NOT" ? "Ek not" : k.urun;
+        const boy = (k.boy === "" || k.boy === undefined || k.boy === null) ? "" : "Boy " + k.boy;
+        // Miktar sayıysa Türkçe biçimde (0,5) gösterilir; not metni serbest
+        // girildiği için hepsi kaçışlanır.
+        const sayi = Number(k.miktar);
+        const miktar = (k.miktar !== "" && !isNaN(sayi)) ? sayi.toLocaleString("tr-TR") : k.miktar;
+        html += `<tr><td>${htmlKac(urun)}</td><td>${htmlKac(boy)}</td><td>${htmlKac(miktar)}</td></tr>`;
+      });
+    });
+    html += "</table>";
+    gecmisListesiEl.innerHTML = html;
+    goster("basarili", `${tarih} tarihine ${kayitlar.length} kayıt gönderilmiş.`, durumGecmisEl);
+  } catch (err) {
+    goster("hata", "Kayıtlar alınamadı, internet bağlantınızı kontrol edip tekrar deneyin.", durumGecmisEl);
+  } finally {
+    gonderilenBtn.disabled = false;
+    gonderilenBtn.textContent = "Gönderdiklerimi Göster";
   }
 }
 
