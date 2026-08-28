@@ -823,11 +823,15 @@ const BUYUK_PUNTO = 42;
 const SAYFA_BICIMI = {
   "Pasta Fransız - Üretim":     { punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 110.5, veriGen: 32,
                                 yanBlok: ["Dilim Cheesecake", "Bütün Cheesecake"], yanUrunGen: 102.5 },
-  "Pasta Fransız - Dağıtım":    { punto: 55, yukseklik: 95, yon: "portrait",  urunGen: 157.5, veriGen: 58 },
+  "Pasta Fransız - Dağıtım":    { punto: 55, yukseklik: 95, yon: "landscape", urunGen: 157.5, veriGen: 58,
+                                urunPunto: 72, urunYuk: 110,
+                                yanBlok: ["Bütün Cheesecake"], yanUrunGen: 139, yanVeriGen: 31.7 },
   "Pasta Klasik - Üretim":      { punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 90,    veriGen: 26.5 },
-  "Pasta Klasik - Dağıtım":     { punto: 42, yukseklik: 90, yon: "landscape", urunGen: 90,    veriGen: 24, ayirac: 1.6 },
-  "Tatlı Kurabiye":             { punto: 15, yukseklik: 35, yon: "portrait",  urunGen: 34,    veriGen: 12 },
-  "Tuzlu Kurabiye":             { punto: 18, yukseklik: 35, yon: "portrait",  urunGen: 51,    veriGen: 12 },
+  "Pasta Klasik - Dağıtım":     { punto: 42, yukseklik: 90, yon: "landscape", urunGen: 90,    veriGen: 24, ayirac: 1.7 },
+  "Tatlı Kurabiye":             { punto: 15, yukseklik: 35, yon: "portrait",  urunGen: 75.8,  veriGen: 22.5,
+                                urunPunto: 30, urunYuk: 55 },
+  "Tuzlu Kurabiye":             { punto: 18, yukseklik: 35, yon: "portrait",  urunGen: 68.5,  veriGen: 19.5,
+                                urunPunto: 30, urunYuk: 48 },
   "Porsiyon Tatlılar - Üretim": { punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 122,   veriGen: 32 },
   "Porsiyon Tatlılar - Dağıtım":{ punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 122,   veriGen: 42.5 },
 };
@@ -836,7 +840,11 @@ const VARSAYILAN_BICIM = {
   yon: "portrait", urunGen: 110, veriGen: 32,
 };
 function sayfaBicimi(sayfaTamAdi) {
-  return Object.assign({}, VARSAYILAN_BICIM, SAYFA_BICIMI[sayfaTamAdi] || {});
+  const b = Object.assign({}, VARSAYILAN_BICIM, SAYFA_BICIMI[sayfaTamAdi] || {});
+  // Ürün satırları için ayrı punto/yükseklik tanımlanmamışsa genel değer kullanılır.
+  if (b.urunPunto === undefined) b.urunPunto = b.punto;
+  if (b.urunYuk === undefined) b.urunYuk = b.yukseklik;
+  return b;
 }
 
 // Tek sayfaya sığdır; yön sayfaya göre değişir.
@@ -912,6 +920,7 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
   const BC = sayfaBicimi(sayfaAdi);
   const BP = BC.punto, BY = BC.yukseklik;
+  const UP = BC.urunPunto, UY = BC.urunYuk;
   sayfaYazdirmaAyarla(ws, BC.yon);
 
   const ustBaslik = ws.getCell(1, 1);
@@ -959,21 +968,21 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     r++;
 
     urunEtiketleri.forEach(etiket => {
-      ws.getRow(r).height = BY;
+      ws.getRow(r).height = UY;
       const ad = ws.getCell(r, 1);
       ad.value = etiket + (birimler[etiket] ? ` (${birimler[etiket]})` : "");
-      hucreStilVer(ad, { boyut: BP });
+      hucreStilVer(ad, { boyut: UP, hizalama: { vertical: "middle" } });
       let toplam = 0;
       subeler.forEach((sube, i) => {
         const miktar = grid[etiket + "|" + sube] || 0;
         toplam += miktar;
         const c = ws.getCell(r, 2 + i);
         c.value = miktar || null;
-        hucreStilVer(c, { boyut: BP, hizalama: { horizontal: "center" } });
+        hucreStilVer(c, { boyut: UP, hizalama: { horizontal: "center", vertical: "middle" } });
       });
       const tc = ws.getCell(r, toplamCol);
       tc.value = toplam;
-      hucreStilVer(tc, { bold: true, boyut: BP, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center" } });
+      hucreStilVer(tc, { bold: true, boyut: UP, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center" } });
       r++;
     });
   });
@@ -1150,6 +1159,7 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const ws = wb.addWorksheet((sayfaAdi + " - Dağıtım").substring(0, 31));
   const BC = sayfaBicimi(sayfaAdi + " - Dağıtım");
   const BP = BC.punto, BY = BC.yukseklik;
+  const UP = BC.urunPunto, UY = BC.urunYuk;
   sayfaYazdirmaAyarla(ws, BC.yon);
   const { subeler, grid, birimler, kategoriler } = flatVeriHazirla(kayitlar);
   const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
@@ -1159,135 +1169,133 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   ustBaslik.font = { bold: true, size: 16 };
   ws.getRow(1).height = 26;
 
-  // Boylu bölümler (ör. Bütün Cheesecake) sayfanın altına, kendi şube+boy
-  // başlıklı ayrı tablosuyla yazılır; kalan bölümler tek şube sütunlu ana tabloda.
+  // Boylu bölümler (Bütün Cheesecake) ana tablonun sağına, kendi şube+NO
+  // başlıklı ayrı bloğuna yazılır (kullanıcının düzenlediği örnek dosyadaki gibi).
   const boyluBolumler = kategoriler.filter(b => !!BOYLU_SUBE_BOYLARI[b]);
   const duzBolumler = kategoriler.filter(b => !BOYLU_SUBE_BOYLARI[b]);
 
-  let r = 2;
-  let enGenisCol = 1 + subeler.length;
+  const headerRow = 2;
+  ws.getRow(headerRow).height = BY;
+  const h = ws.getCell(headerRow, 1);
+  h.value = "ÜRÜN";
+  hucreStilVer(h, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { vertical: "middle" } });
+  subeler.forEach((s, i) => {
+    const c = ws.getCell(headerRow, 2 + i);
+    c.value = s.toLocaleUpperCase("tr");
+    hucreStilVer(c, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+  });
+  const anaSon = 1 + subeler.length;
 
-  if (duzBolumler.length) {
-    ws.getRow(r).height = BY;
-    const h = ws.getCell(r, 1);
-    h.value = "ÜRÜN";
-    hucreStilVer(h, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { vertical: "middle" } });
-    subeler.forEach((s, i) => {
-      const c = ws.getCell(r, 2 + i);
-      c.value = s.toLocaleUpperCase("tr");
-      hucreStilVer(c, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
-    });
-    r++;
-
-    duzBolumler.forEach(bolum => {
-      const kyt = kayitlar.filter(k => urunBolumu(k) === bolum);
-      ws.getRow(r).height = BY;
-      const bc = ws.getCell(r, 1);
-      bc.value = bolum;
-      hucreStilVer(bc, { fill: RENK_KATEGORI, bold: true, boyut: BP });
-      for (let c = 2; c <= 1 + subeler.length; c++) hucreStilVer(ws.getCell(r, c), { fill: RENK_KATEGORI });
-      r++;
-      urunSirala(new Set(kyt.map(urunEtiketi))).forEach(etiket => {
-        ws.getRow(r).height = BY;
-        const ad = ws.getCell(r, 1);
-        ad.value = etiket + (birimler[etiket] ? ` (${birimler[etiket]})` : "");
-        hucreStilVer(ad, { boyut: BP, hizalama: { vertical: "middle" } });
-        subeler.forEach((sube, i) => {
-          const c = ws.getCell(r, 2 + i);
-          c.value = grid[etiket + "|" + sube] || null;
-          hucreStilVer(c, { boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
-        });
-        r++;
-      });
-    });
-
-    ws.getRow(r).height = BY;
-    const gc = ws.getCell(r, 1);
-    gc.value = "GENEL TOPLAM";
-    hucreStilVer(gc, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { vertical: "middle" } });
-    subeler.forEach((sube, i) => {
-      let t = 0;
-      duzBolumler.forEach(bolum => {
-        kayitlar.filter(k => urunBolumu(k) === bolum && k.sube === sube)
-          .forEach(k => { t += Number(k.miktar || 0); });
-      });
-      const c = ws.getCell(r, 2 + i);
-      c.value = t;
-      hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
-    });
-    r++;
-  }
-
-  // Boylu bölümler için ayrı tablolar
-  boyluBolumler.forEach(bolum => {
-    const harita = BOYLU_SUBE_BOYLARI[bolum];
+  let r = headerRow + 1;
+  duzBolumler.forEach(bolum => {
     const kyt = kayitlar.filter(k => urunBolumu(k) === bolum);
-    const bolumSubeleri = subeSirala(subeler.filter(s => harita[s] || kyt.some(k => k.sube === s)));
-    if (bolumSubeleri.length === 0) return;
-    const subeBoylari = {};
-    bolumSubeleri.forEach(s => {
-      const kanonik = harita[s] || [0];
-      const mevcut = kyt.filter(k => k.sube === s).map(boyDeger);
-      subeBoylari[s] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
-    });
-
-    r++; // araya boş satır
-    const r1 = r, r2 = r + 1;
-    ws.getRow(r1).height = BY;
-    ws.getRow(r2).height = BY;
-
-    let col = 2;
-    const subeBas = {};
-    bolumSubeleri.forEach(sube => {
-      const boylar = subeBoylari[sube];
-      subeBas[sube] = col;
-      const bas = col, bit = col + boylar.length - 1;
-      if (bit > bas) ws.mergeCells(r1, bas, r1, bit);
-      const c1 = ws.getCell(r1, bas);
-      c1.value = sube.toLocaleUpperCase("tr");
-      hucreStilVer(c1, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
-      for (let i = bas + 1; i <= bit; i++) hucreStilVer(ws.getCell(r1, i), { fill: RENK_SUBE_BASLIK });
-      boylar.forEach((boy, i) => {
-        const c2 = ws.getCell(r2, bas + i);
-        c2.value = "NO " + boy;
-        hucreStilVer(c2, { fill: RENK_KATEGORI, bold: true, boyut: BP, hizalama: { horizontal: "center" } });
-      });
-      col = bit + 1;
-    });
-    const sonCol = col - 1;
-    enGenisCol = Math.max(enGenisCol, sonCol);
-
-    hucreStilVer(ws.getCell(r1, 1), { fill: RENK_KATEGORI });
-    const bc = ws.getCell(r2, 1);
+    ws.getRow(r).height = BY;
+    const bc = ws.getCell(r, 1);
     bc.value = bolum;
-    hucreStilVer(bc, { fill: RENK_KATEGORI, bold: true, boyut: BP, hizalama: { vertical: "middle" } });
-    r = r2 + 1;
-
-    const bg = {};
-    const brm = {};
-    kyt.forEach(k => {
-      bg[k.urun + "|" + k.sube + "|" + boyDeger(k)] = (bg[k.urun + "|" + k.sube + "|" + boyDeger(k)] || 0) + Number(k.miktar || 0);
-      brm[k.urun] = k.birim;
-    });
-    urunSirala(new Set(kyt.map(k => k.urun))).forEach(urun => {
-      ws.getRow(r).height = BY;
+    hucreStilVer(bc, { fill: RENK_KATEGORI, bold: true, boyut: BP });
+    for (let c = 2; c <= anaSon; c++) hucreStilVer(ws.getCell(r, c), { fill: RENK_KATEGORI });
+    r++;
+    urunSirala(new Set(kyt.map(urunEtiketi))).forEach(etiket => {
+      ws.getRow(r).height = UY;
       const ad = ws.getCell(r, 1);
-      ad.value = urun + (brm[urun] ? ` (${brm[urun]})` : "");
-      hucreStilVer(ad, { boyut: BP, hizalama: { vertical: "middle" } });
-      bolumSubeleri.forEach(sube => {
-        subeBoylari[sube].forEach((boy, i) => {
-          const c = ws.getCell(r, subeBas[sube] + i);
-          c.value = bg[urun + "|" + sube + "|" + boy] || null;
-          hucreStilVer(c, { boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
-        });
+      ad.value = etiket + (birimler[etiket] ? ` (${birimler[etiket]})` : "");
+      hucreStilVer(ad, { boyut: UP, hizalama: { vertical: "middle" } });
+      subeler.forEach((sube, i) => {
+        const c = ws.getCell(r, 2 + i);
+        c.value = grid[etiket + "|" + sube] || null;
+        hucreStilVer(c, { boyut: UP, hizalama: { horizontal: "center", vertical: "middle" } });
       });
       r++;
     });
   });
 
+  ws.getRow(r).height = BY;
+  const gc = ws.getCell(r, 1);
+  gc.value = "GENEL TOPLAM";
+  hucreStilVer(gc, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { vertical: "middle" } });
+  subeler.forEach((sube, i) => {
+    let t = 0;
+    Object.keys(grid).forEach(key => {
+      if (key.endsWith("|" + sube)) t += grid[key];
+    });
+    const c = ws.getCell(r, 2 + i);
+    c.value = t;
+    hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+  });
+
   ws.getColumn(1).width = BC.urunGen;
-  for (let i = 2; i <= enGenisCol; i++) ws.getColumn(i).width = BC.veriGen;
-  ws.views = [{ state: "frozen", ySplit: 2 }];
+  for (let i = 2; i <= anaSon; i++) ws.getColumn(i).width = BC.veriGen;
+
+  // Sağdaki boylu bloklar: araya bir boş sütun, sonra ürün adı + şube×NO sütunları.
+  let yanBas = anaSon + 2;
+  boyluBolumler.forEach(bolum => {
+    const harita = BOYLU_SUBE_BOYLARI[bolum];
+    const kyt = kayitlar.filter(k => urunBolumu(k) === bolum);
+    if (kyt.length === 0) return;
+    // O gün bu bölümden sipariş veren şubeler (kanonik boy listeleriyle).
+    const blokSubeleri = subeSirala([...new Set(kyt.map(k => k.sube))]);
+    const subeBoylari = {};
+    blokSubeleri.forEach(s => {
+      const kanonik = harita[s] || [0];
+      const mevcut = kyt.filter(k => k.sube === s).map(boyDeger);
+      subeBoylari[s] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
+    });
+
+    const bg = {};
+    const brm = {};
+    kyt.forEach(k => {
+      const key = k.urun + "|" + k.sube + "|" + boyDeger(k);
+      bg[key] = (bg[key] || 0) + Number(k.miktar || 0);
+      brm[k.urun] = k.birim;
+    });
+
+    // Satır 2: şube başlıkları (birleştirilmiş); satır 3: bölüm adı + NO etiketleri
+    let col = yanBas + 1;
+    const subeBas = {};
+    blokSubeleri.forEach(sube => {
+      const boylar = subeBoylari[sube];
+      subeBas[sube] = col;
+      const bas = col, bit = col + boylar.length - 1;
+      if (bit > bas) ws.mergeCells(headerRow, bas, headerRow, bit);
+      const c1 = ws.getCell(headerRow, bas);
+      c1.value = sube.toLocaleUpperCase("tr");
+      hucreStilVer(c1, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+      for (let i = bas + 1; i <= bit; i++) hucreStilVer(ws.getCell(headerRow, i), { fill: RENK_SUBE_BASLIK });
+      boylar.forEach((boy, i) => {
+        const c2 = ws.getCell(headerRow + 1, bas + i);
+        c2.value = "NO " + boy;
+        hucreStilVer(c2, { fill: RENK_KATEGORI, bold: true, boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+      });
+      col = bit + 1;
+    });
+    const yanSon = col - 1;
+
+    const bolumHucre = ws.getCell(headerRow + 1, yanBas);
+    bolumHucre.value = bolum;
+    hucreStilVer(bolumHucre, { fill: RENK_KATEGORI, bold: true, boyut: BP, hizalama: { vertical: "middle" } });
+
+    let yr = headerRow + 2;
+    urunSirala(new Set(kyt.map(k => k.urun))).forEach(urun => {
+      const ad = ws.getCell(yr, yanBas);
+      ad.value = urun + (brm[urun] ? ` (${brm[urun]})` : "");
+      hucreStilVer(ad, { boyut: UP, hizalama: { vertical: "middle" } });
+      blokSubeleri.forEach(sube => {
+        subeBoylari[sube].forEach((boy, i) => {
+          const c = ws.getCell(yr, subeBas[sube] + i);
+          c.value = bg[urun + "|" + sube + "|" + boy] || null;
+          hucreStilVer(c, { boyut: UP, hizalama: { horizontal: "center", vertical: "middle" } });
+        });
+      });
+      if (!ws.getRow(yr).height || ws.getRow(yr).height < UY) ws.getRow(yr).height = UY;
+      yr++;
+    });
+
+    ws.getColumn(yanBas).width = BC.yanUrunGen || BC.urunGen;
+    for (let i = yanBas + 1; i <= yanSon; i++) ws.getColumn(i).width = BC.yanVeriGen || BC.veriGen;
+    yanBas = yanSon + 2;
+  });
+
+  ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
 
 function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
