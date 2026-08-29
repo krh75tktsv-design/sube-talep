@@ -461,6 +461,255 @@ const KALDIRILAN_URUNLER = new Set([
 
 // Boylu bir bölümde olsa da tek boy üretilen ürünler: raporda ve panelde
 // boy kırılımına girmez, tek sütunda toplanır.
+// Raporda ürün adı yerine yazılacak ad (rapor-duzeni.xlsx "GÖRÜNEN AD"
+// sütunu). Boş bırakılan üründe kendi adı kullanılır.
+const URUN_GORUNEN = {
+};
+
+// Ürün adının yanında parantez içinde yazılacak birim
+// (rapor-duzeni.xlsx'teki "birim" sütunu). Boş bırakılan üründe hiç yazılmaz.
+const URUN_BIRIM = {
+  "Tiramisu": "adet",
+  "Karpatka": "adet",
+  "Ballı Rus Pastası": "adet",
+  "Fraisier (Çilekli Beyaz)": "adet",
+  "Fraisier (Siyah)": "adet",
+  "Hasbahçe (Fransız)": "adet",
+  "Vişneli": "adet",
+  "Profiterol Pasta": "adet",
+  "Ganaj (Fransız)": "adet",
+  "Frambuaz Siyah": "adet",
+  "Frambuaz Beyaz": "adet",
+  "Karamel Banana": "adet",
+  "Kestaneli Pasta": "adet",
+  "Fıstıklı Pasta": "adet",
+  "Portakal Küp": "adet",
+  "Snickers": "adet",
+  "Limonlu Yaz Pastası": "adet",
+  "Mangolu Pasta": "adet",
+  "Glutensiz Çikolatalı Pasta": "adet",
+  "Panna Cotta Mango": "adet",
+  "Panna Cotta Frambuaz": "adet",
+  "Portakallı Fit Kek": "adet",
+  "Yaban Mersinli Pasta": "adet",
+  "Çilekli Tart": "adet",
+  "Çilekli Milföy": "adet",
+  "Çikolatalı Ekler ": "adet",
+  "Tiramisulu Ekler": "adet",
+  "Frambuazlı Ekler ": "adet",
+  "Fıstıklı Ekler": "adet",
+  "Karamel Ekler": "adet",
+  "Lavanta Ekler": "adet",
+  "Limonlu Ekler ": "adet",
+  "Frambuazlı (Dilim)": "dilim",
+  "Limonlu (Dilim)": "dilim",
+  "Çikolatalı (Dilim)": "dilim",
+  "Çilekli (Dilim)": "dilim",
+  "Yaban Mersinli (Dilim)": "dilim",
+  "Mangolu (Dilim)": "dilim",
+  "Lotuslu (Dilim)": "dilim",
+  "Frambuazlı (Bütün)": "adet",
+  "Limonlu (Bütün)": "adet",
+  "Yaban Mersinli (Bütün)": "adet",
+  "Çikolatalı (Bütün)": "adet",
+  "Çilekli (Bütün)": "adet",
+  "Lotuslu (Bütün)": "adet",
+  "Mangolu (Bütün)": "adet",
+  "*Fıstık Çikolata Dekora": "adet",
+  "*Krokanlı Çikolata": "adet",
+  "Ganaj (Klasik)": "adet",
+  "*Frambuaz Siyah Çikolata": "adet",
+  "*Frambuaz Beyaz Çikolata": "adet",
+  "Pasta Latte": "adet",
+  "*Kırmızı Meyvalı Naked": "adet",
+  "Hasbahçe (Klasik)": "adet",
+  "*Kestaneli Fıstık": "adet",
+  "Muzlu Beyaz Çikolatalı": "adet",
+  "Muzlu Siyah Çikolatalı": "adet",
+  "Profiterol Siyah Çikolatalı": "adet",
+  "Muz Krokan": "adet",
+  "Çilekli Siyah Çikolatalı": "adet",
+  "Çilekli Beyaz Çikolatalı": "adet",
+  "*Vişne Siyah Çikolatalı": "adet",
+  "*Frambuaz Muz Naked": "adet",
+  "Frambuaz Çilek Beyaz": "adet",
+  "Muz Çilek Naked": "adet",
+  "Mois Pasta": "adet",
+  "Hasbahçe Siyah": "adet",
+  "*Vişne Beyaz": "adet",
+  "Badem Krokan": "adet",
+  "San Sebastian (Klasik)": "adet",
+  "San Sebastian (Klasik) — Ekstra Sos": "istek",
+  "İncirli Coco": "adet",
+  "Kayısılı Coco": "adet",
+  "Coco Hindistan Cevizli": "adet",
+  "Sufle Sade": "adet",
+  "Sufle Vişneli": "adet",
+  "Vişneli Mekik Büyük": "adet",
+  "Mini Mekik": "adet",
+  "Mini Bademli Mekik": "adet",
+  "Mantar": "adet",
+  "Tarçınlı Portakal": "adet",
+  "Kestaneli Maringedeze": "adet",
+  "Sable Bademli (Sade)": "adet",
+  "Sable Bademli (Kakaolu)": "adet",
+  "Kavala Kurabiyesi": "adet",
+  "Kukunari Siyah": "adet",
+  "Kukinari Beyaz": "adet",
+  "Hindistan Cevizli Top": "adet",
+  "Fıstıklı Top": "adet",
+  "Pirinç Fındıklı Top": "adet",
+  "Bireçel Beyaz": "adet",
+  "Bireçel Siyah": "adet",
+  "Fındıklı Biscotti": "adet",
+  "Kahveli Bar": "adet",
+  "Limonlu Bar": "adet",
+  "Vişneli Bar": "adet",
+  "Karamelli Yıldız Kurabiye": "adet",
+  "Şekilli Kurabiye": "adet",
+  "Elmalı Kurabiye": "adet",
+  "Vişneli Kurabiye": "adet",
+  "Bademli Un Kurabiyesi": "adet",
+  "Damalı": "adet",
+  "Marmelatlı Kalp": "adet",
+  "Dökme Çikolatalı Kalp": "adet",
+  "Fındıklı Dökme Çiko Kalp": "adet",
+  "Layd Hand Siyah": "adet",
+  "Layd Hand Beyaz": "adet",
+  "Selanik Gevreği": "adet",
+  "Damla Sakızlı Kurabiye": "adet",
+  "Portakallı Un Kurabiyesi": "adet",
+  "Kayısılı İncirli Biscotti": "adet",
+  "Kakaolu Browni": "adet",
+  "Frambuazlı Browni": "adet",
+  "Unsuz Dereotlu Mekik": "adet",
+  "Unsuz Keçiboynuzu Mekik": "adet",
+  "Unsuz Kakao Chia": "adet",
+  "Unsuz Limonlu Chia": "adet",
+  "Unsuz Yaban Mersinli": "adet",
+  "Hurmalı Browni": "adet",
+  "Hurmalı Dilim": "adet",
+  "Havuçlu Browni": "adet",
+  "Portakallı Çikolata": "adet",
+  "Çikolata Cips (Tatlı)": "adet",
+  "Japon Cipsi": "adet",
+  "Havuçlu Mable": "adet",
+  "Üzümlü Mable": "adet",
+  "Limonlu Mable": "adet",
+  "Portakallı Mable": "adet",
+  "Zebra Mable": "adet",
+  "Çikolata Mable": "adet",
+  "Şekersiz Mable": "adet",
+  "Kırmızı Meyvalı Mable": "adet",
+  "Bademli Portakallı Bütün Kek": "adet",
+  "Havuçlu Bütün Kek": "adet",
+  "Vişneli Bütün Kek": "adet",
+  "Fransız Çikolatalı Bütün Kek": "adet",
+  "Çikolatalı Muffin": "adet",
+  "Havuçlu Muffin": "adet",
+  "Frambuazlı Muffin": "adet",
+  "Limonlu Muffin": "adet",
+  "Peynirli Böreklitaş": "adet",
+  "Dereotlu Peynirli": "adet",
+  "Zeytinli": "adet",
+  "Patatesli": "adet",
+  "Kornet Dereotlu": "adet",
+  "Dereotlu Sufle": "adet",
+  "Sebzeli": "adet",
+  "Patlıcanlı": "adet",
+  "Mini Pizza": "adet",
+  "Minik Simit": "adet",
+  "Düz Örgü": "adet",
+  "Yuvarlak Örgü": "adet",
+  "Burgu Susamlı Haşhaşlı": "adet",
+  "Burgu Tahıllı": "adet",
+  "Ayçekirdekli Galeta": "adet",
+  "Parmesan Galeta": "adet",
+  "İtalyan Galeta": "adet",
+  "Biberiyeli Zeytinli Galeta": "adet",
+  "Çekirdekli Kokteyl": "adet",
+  "Üzümlü Kepekli": "adet",
+  "Üzümlü Cevizli Kepekli": "adet",
+  "Kuru Üzümlü Yassı Tahıllı": "adet",
+  "Granola Bar Tepsi": "adet",
+  "Tahinli Susamlı": "adet",
+  "Granola Dökme": "adet",
+  "Kalp Denge Tahıllı": "adet",
+  "Paskalya": "adet",
+  "Paskalya Çikolatalı": "adet",
+  "Tahinli Çörek": "adet",
+  "Beze Büyük": "adet",
+  "Beze Beyaz Minik": "adet",
+  "Beze Renkli Minik": "adet",
+  "Acıbadem": "adet",
+  "Acıbadem Minik": "adet",
+  "Ayçöreği": "adet",
+  "Batonsale Sade": "adet",
+  "Batonsale Çörekotlu": "adet",
+  "Batonsale Kaşarlı": "adet",
+  "Kırık Kırak Susamlı": "adet",
+  "Galet Kaşarlı": "adet",
+  "Galet Çörekotlu": "adet",
+  "Galet Susamlı": "adet",
+  "Baharatlı Kıtır": "adet",
+  "Kaşarlı Kıtır": "adet",
+  "Zencefilli Kıtır": "adet",
+  "Acılı Kıtır": "adet",
+  "Haşhaşlı Cips": "adet",
+  "İrmikli Cips": "adet",
+  "Parmesanlı Cips": "adet",
+  "Tam Buğday Cips": "adet",
+  "Tiramisu Dilim": "adet",
+  "Magnolia Çilek": "adet",
+  "Magnolia Muzlu": "adet",
+  "Magnolia Oreolu": "adet",
+  "Dubai Magnolia": "adet",
+  "Supangle": "adet",
+  "Profiterol Kase": "adet",
+  "Mozaik": "adet",
+  "Vişneli Tek": "adet",
+  "Hasbahçe Tek": "adet",
+  "Fıstıklı Çikolatalı Tek": "adet",
+  "Kestaneli Tek": "adet",
+  "Profiterol Tek": "adet",
+  "Ganaj Tek": "adet",
+  "Frambuaz Siyah Tek": "adet",
+  "Frambuaz Beyaz Tek": "adet",
+  "Latte (Porsiyon)": "adet",
+  "Çikolatalı Ekler (Porsiyon)": "adet",
+  "Limonlu Ekler (Porsiyon)": "adet",
+  "Beyaz Ekler": "adet",
+  "Petifür": "adet",
+  "Rulo Petifür Muzlu": "adet",
+  "Rulo Petifür Çilek": "adet",
+  "Çiko Limon Parfe": "adet",
+  "Çilekli Adet Rulo": "adet",
+  "Muzlu Adet Rulo": "adet",
+  "Krokanlı Şu Topu": "adet",
+  "Çilekli Şu Topu": "adet",
+  "Kazandibi": "adet",
+  "Sütlaç": "adet",
+  "Aşure": "adet",
+  "Trileçe Frambuaz": "adet",
+  "Trileçe Karamel": "adet",
+};
+
+// Rapordaki birim eki. Tabloda tanımlıysa o kullanılır (boşsa hiç yazılmaz),
+// tanımlı değilse kaydın kendi birimi yazılır.
+function birimEki(temel, kayitBirim) {
+  if (Object.prototype.hasOwnProperty.call(URUN_BIRIM, temel)) {
+    return URUN_BIRIM[temel] ? ` (${URUN_BIRIM[temel]})` : "";
+  }
+  return kayitBirim ? ` (${kayitBirim})` : "";
+}
+
+// Raporda yazılacak tam ad: görünen ad + varsa "(Boy X)" + birim eki.
+function raporAdi(etiket, kayitBirim) {
+  const m = String(etiket).match(/^(.*?)( \(Boy \d+\))?$/);
+  const temel = m[1], boyEk = m[2] || "";
+  return (URUN_GORUNEN[temel] || temel) + boyEk + birimEki(temel, kayitBirim);
+}
+
 // Bölüm içindeki alt gruplar (rapor-duzeni.xlsx'teki ALT GRUP sütunu).
 // Alt grup değiştiğinde araya ince bir boş satır konur.
 const URUN_ALT_GRUP = {
@@ -1115,7 +1364,7 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
 
       ws.getRow(r).height = UY;
       const ad = ws.getCell(r, 1);
-      ad.value = etiket + (birimler[etiket] ? ` (${birimler[etiket]})` : "");
+      ad.value = raporAdi(etiket, birimler[etiket]);
       hucreStilVer(ad, { boyut: UP, hizalama: { vertical: "middle" } });
       let toplam = 0;
       subeler.forEach(sube => {
@@ -1260,7 +1509,7 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
         urunSirala(new Set(kyt.map(k => k.urun))).forEach(urun => {
           ws.getRow(r).height = BY;
           const ad = ws.getCell(r, bas);
-          ad.value = urun + (brm[urun] ? ` (${brm[urun]})` : "");
+          ad.value = raporAdi(urun, brm[urun]);
           hucreStilVer(ad, { boyut: BP, hizalama: { vertical: "middle" } });
           boylar.forEach((boy, i) => {
             const c = ws.getCell(r, bas + 1 + i);
@@ -1274,7 +1523,7 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
         urunSirala(new Set(kyt.map(urunEtiketi))).forEach(etiket => {
           ws.getRow(r).height = BY;
           const ad = ws.getCell(r, bas);
-          ad.value = etiket + (birimler[etiket] ? ` (${birimler[etiket]})` : "");
+          ad.value = raporAdi(etiket, birimler[etiket]);
           hucreStilVer(ad, { boyut: BP, hizalama: { vertical: "middle" } });
           let t = 0;
           Object.keys(grid).forEach(key => { if (key.startsWith(etiket + "|")) t += grid[key]; });
@@ -1355,7 +1604,7 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     urunSirala(new Set(kyt.map(urunEtiketi))).forEach(etiket => {
       ws.getRow(r).height = UY;
       const ad = ws.getCell(r, 1);
-      ad.value = etiket + (birimler[etiket] ? ` (${birimler[etiket]})` : "");
+      ad.value = raporAdi(etiket, birimler[etiket]);
       hucreStilVer(ad, { boyut: UP, hizalama: { vertical: "middle" } });
       subeler.forEach((sube, i) => {
         const c = ws.getCell(r, 2 + i);
@@ -1450,7 +1699,7 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     urunSirala(new Set(kyt.map(k => k.urun))).forEach(urun => {
       ws.getRow(br).height = UY;
       const ad = ws.getCell(br, adSutun);
-      ad.value = urun + (brm[urun] ? ` (${brm[urun]})` : "");
+      ad.value = raporAdi(urun, brm[urun]);
       hucreStilVer(ad, { boyut: UP, hizalama: { vertical: "middle" } });
       blokSubeleri.forEach(sube => {
         subeBoylari[sube].forEach((boy, i) => {
@@ -1736,7 +1985,7 @@ function yazdirDuzUretim(sayfaAdi, kayitlar, tarihBaslik) {
       const urunBirimleri = {};
       kategoriKayitlari.forEach(k => { urunBirimleri[k.urun] = k.birim; });
       urunSirala(new Set(kategoriKayitlari.map(k => k.urun))).forEach(urun => {
-        html += `<tr><td class="urun">${htmlKac(urun)}${urunBirimleri[urun] ? " (" + htmlKac(urunBirimleri[urun]) + ")" : ""}</td>`;
+        html += `<tr><td class="urun">${htmlKac(raporAdi(urun, urunBirimleri[urun]))}</td>`;
         boylar.forEach(boy => {
           const v = boyGrid[urun + "|" + boy] || 0;
           html += `<td class="toplam-h">${v || ""}</td>`;
@@ -1748,7 +1997,7 @@ function yazdirDuzUretim(sayfaAdi, kayitlar, tarihBaslik) {
       urunSirala(new Set(kategoriKayitlari.map(urunEtiketi))).forEach(etiket => {
         let toplam = 0;
         Object.keys(grid).forEach(key => { if (key.startsWith(etiket + "|")) toplam += grid[key]; });
-        html += `<tr><td class="urun">${htmlKac(etiket)}${birimler[etiket] ? " (" + htmlKac(birimler[etiket]) + ")" : ""}</td>`;
+        html += `<tr><td class="urun">${htmlKac(raporAdi(etiket, birimler[etiket]))}</td>`;
         html += `<td class="toplam-h">${toplam}</td>`;
         for (let c = 3; c <= sutunSayisi; c++) html += "<td></td>";
         html += "</tr>";
@@ -1779,7 +2028,7 @@ function yazdirDuzDagitim(sayfaAdi, kayitlar, tarihBaslik) {
       const kategoriKayitlari = kayitlar.filter(k => urunBolumu(k) === kategori);
       html += `<tr class="kategori"><td colspan="${sutunSayisi}">${htmlKac(kategori)}</td></tr>`;
       urunSirala(new Set(kategoriKayitlari.map(urunEtiketi))).forEach(etiket => {
-        html += `<tr><td class="urun">${htmlKac(etiket)}${birimler[etiket] ? " (" + htmlKac(birimler[etiket]) + ")" : ""}</td>`;
+        html += `<tr><td class="urun">${htmlKac(raporAdi(etiket, birimler[etiket]))}</td>`;
         subeler.forEach(sube => {
           const m = grid[etiket + "|" + sube] || 0;
           html += `<td>${m || ""}</td>`;
@@ -1837,7 +2086,7 @@ function yazdirDuzDagitim(sayfaAdi, kayitlar, tarihBaslik) {
 
     html += `<tr class="kategori"><td colspan="${sutunSayisi}">${htmlKac(kategori)}</td></tr>`;
     etiketler.forEach(etiket => {
-      html += `<tr><td class="urun">${htmlKac(etiket)}${boyluBirimler[etiket] ? " (" + htmlKac(boyluBirimler[etiket]) + ")" : ""}</td>`;
+      html += `<tr><td class="urun">${htmlKac(raporAdi(etiket, boyluBirimler[etiket]))}</td>`;
       subeler.forEach(sube => {
         subeBoylari[sube].forEach(boy => {
           const v = boyluGrid[etiket + "|" + sube + "|" + boy] || 0;
@@ -1979,7 +2228,7 @@ function yazdirBirlesikSayfa(sayfaAdi, kayitlar, tarihBaslik) {
     const kategoriKayitlari = kayitlar.filter(k => urunBolumu(k) === kategori);
     html += `<tr class="kategori"><td colspan="${sutunSayisi}">${htmlKac(kategori)}</td></tr>`;
     urunSirala(new Set(kategoriKayitlari.map(urunEtiketi))).forEach(etiket => {
-      html += `<tr><td class="urun">${htmlKac(etiket)}${birimler[etiket] ? " (" + htmlKac(birimler[etiket]) + ")" : ""}</td>`;
+      html += `<tr><td class="urun">${htmlKac(raporAdi(etiket, birimler[etiket]))}</td>`;
       let satirToplam = 0;
       subeler.forEach(sube => {
         const m = grid[etiket + "|" + sube] || 0;
