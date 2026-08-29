@@ -913,7 +913,7 @@ const SAYFA_BICIMI = {
                                 yanBlok: ["Dilim Cheesecake", "Bütün Cheesecake"], yanUrunGen: 102.5 },
   "Pasta Fransız - Dağıtım":    { punto: 55, yukseklik: 95, yon: "portrait",  urunGen: 187.5, veriGen: 66,
                                 urunPunto: 90, urunYuk: 169.5,
-                                boyluBlok: "alt", genelToplam: false },
+                                boyluBlok: "alt", genelToplam: false, yanVeriGen: 31.7 },
   "Pasta Klasik - Üretim":      { punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 90,    veriGen: 26.5 },
   "Pasta Klasik - Dağıtım":     { punto: 42, yukseklik: 90, yon: "landscape", urunGen: 116.8, veriGen: 24, ayirac: 1.7 },
   "Tatlı Kurabiye":             { punto: 15, yukseklik: 35, yon: "portrait",  urunGen: 75.8,  veriGen: 22.5,
@@ -945,6 +945,31 @@ function sayfaBicimi(sayfaTamAdi) {
 // Tek sayfaya sığdır; yön sayfaya göre değişir.
 function sayfaYazdirmaAyarla(ws, yon) {
   ws.pageSetup = { orientation: yon || "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+}
+
+// Şube sayısı arttıkça tablo genişliyor; "1 sayfaya sığdır" bunu telafi etmek
+// için yazıyı küçültüyordu, yani punto güne göre değişiyordu. Bunun yerine sayfa
+// sabit bir ölçekle basılır: punto şube sayısından bağımsız olarak hep aynı
+// büyüklükte çıkar, tablo sığmazsa yana doğru ikinci sayfaya taşar.
+const REFERANS_SUBE_SAYISI = 4;
+// A4'te bir sayfaya sığan yaklaşık sütun genişliği toplamı (Excel birimi).
+const SAYFA_BIRIM = { portrait: 94, landscape: 135 };
+
+function yazdirmaOlcekAyarla(ws, subeSayisi) {
+  if (!subeSayisi) return;
+  let toplam = 0;
+  for (let c = 1; c <= ws.columnCount; c++) toplam += ws.getColumn(c).width || 0;
+  const urunGen = ws.getColumn(1).width || 0;
+  // Ölçek, referans şube sayısındaki genişliğe göre belirlenir; gerçek şube
+  // sayısı ne olursa olsun değişmez.
+  const subeBirim = (toplam - urunGen) / subeSayisi;
+  const referans = urunGen + REFERANS_SUBE_SAYISI * subeBirim;
+  const yon = (ws.pageSetup && ws.pageSetup.orientation) || "portrait";
+  const birim = SAYFA_BIRIM[yon] || SAYFA_BIRIM.portrait;
+  const olcek = Math.min(100, Math.max(10, Math.round((birim / referans) * 100)));
+  ws.pageSetup = Object.assign({}, ws.pageSetup, {
+    fitToPage: false, scale: olcek,
+  });
 }
 
 function hucreStilVer(cell, { fill, bold, renk, boyut, hizalama, kenarlik = true } = {}) {
@@ -1139,6 +1164,7 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     for (let i = bas + 1; i < bas + SS; i++) ws.getColumn(i).width = BC.veriGen2;
   });
   ws.getColumn(toplamCol).width = BC.veriGen;
+  yazdirmaOlcekAyarla(ws, subeler.length);
   ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
 
@@ -1448,6 +1474,7 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     }
   });
 
+  yazdirmaOlcekAyarla(ws, subeler.length);
   ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
 
@@ -1637,6 +1664,7 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
       hucreStilVer(ws.getCell(sr, i), { fill: RENK_TOPLAM_SATIR, kenarlik: false });
     }
   });
+  yazdirmaOlcekAyarla(ws, subeler.length);
   ws.views = [{ state: "frozen", xSplit: 1, ySplit: r2 }];
 }
 
