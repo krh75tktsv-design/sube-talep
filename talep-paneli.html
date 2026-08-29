@@ -889,7 +889,9 @@ const RENK_SUBE_BASLIK = "FF7F1D1D";
 const RENK_KATEGORI = "FFFEF3C7";
 const RENK_TOPLAM_SATIR = "FF1F2937";
 const RENK_TOPLAM_SUTUN = "FFFEF9C3";
-const INCE_CIZGI = { style: "thin", color: { argb: "FFE5E7EB" } };
+// Kenarlık rengi siyah: açık gri çizgiler sayfaya sığdırılıp basılırken
+// görünmez oluyordu.
+const INCE_CIZGI = { style: "thin", color: { argb: "FF000000" } };
 
 // Ustaya (üretim toplamı) ve dağıtım yapan çalışana (şube kırılımı) ayrı
 // sayfa/çıktı gereken kategoriler. Bu 3 kategori için sayfa "- Üretim" ve
