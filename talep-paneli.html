@@ -915,9 +915,9 @@ const SAYFA_BICIMI = {
   "Pasta Klasik - Üretim":      { punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 90,    veriGen: 26.5 },
   "Pasta Klasik - Dağıtım":     { punto: 42, yukseklik: 90, yon: "landscape", urunGen: 116.8, veriGen: 24, ayirac: 1.7 },
   "Tatlı Kurabiye":             { punto: 15, yukseklik: 35, yon: "portrait",  urunGen: 75.8,  veriGen: 22.5,
-                                urunPunto: 30, urunYuk: 55, subeSutun: 2 },
+                                urunPunto: 30, urunYuk: 55, subeSutun: 2, veriGen2: 18 },
   "Tuzlu Kurabiye":             { punto: 18, yukseklik: 35, yon: "landscape", urunGen: 68.5,  veriGen: 19.5,
-                                urunPunto: 30, urunYuk: 48, subeSutun: 2 },
+                                urunPunto: 30, urunYuk: 48, subeSutun: 2, veriGen2: 18 },
   "Porsiyon Tatlılar - Üretim": { punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 122,   veriGen: 32 },
   "Porsiyon Tatlılar - Dağıtım":{ punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 122,   veriGen: 42.5 },
 };
@@ -932,6 +932,8 @@ function sayfaBicimi(sayfaTamAdi) {
   if (b.urunYuk === undefined) b.urunYuk = b.yukseklik;
   // Her şubenin kaç sütun kapladığı (2 ise başlık birleştirilir, değer ilk sütuna yazılır)
   if (b.subeSutun === undefined) b.subeSutun = 1;
+  // Şube 2 sütun kaplıyorsa ikinci (boş) sütunun genişliği
+  if (b.veriGen2 === undefined) b.veriGen2 = b.veriGen;
   // Boylu bölüm bloğunun yeri: "yan" (sağa) veya "alt" (aşağıya)
   if (b.boyluBlok === undefined) b.boyluBlok = "yan";
   if (b.genelToplam === undefined) b.genelToplam = true;
@@ -1129,7 +1131,11 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   }
 
   ws.getColumn(1).width = BC.urunGen;
-  subeler.forEach(s => { ws.getColumn(subeBas(s)).width = BC.veriGen; });
+  subeler.forEach(s => {
+    const bas = subeBas(s);
+    ws.getColumn(bas).width = BC.veriGen;
+    for (let i = bas + 1; i < bas + SS; i++) ws.getColumn(i).width = BC.veriGen2;
+  });
   ws.getColumn(toplamCol).width = BC.veriGen;
   ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
