@@ -9,7 +9,6 @@ const ICONS = {
   gelir: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 19V5M6 11l6-6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   gider: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M6 13l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   banka: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10l9-6 9 6M4 10v9M20 10v9M9 10v9M15 10v9M2 21h20" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  takip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   sube: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V9l8-5 8 5v12M9 21v-6h6v6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   ayar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.6V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.6-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.6V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.6 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
@@ -19,7 +18,6 @@ const MENU = [
   { id: "gelir",  ad: "Gelirler",           icon: ICONS.gelir, mobil: true },
   { id: "gider",  ad: "Giderler",           icon: ICONS.gider, mobil: true },
   { id: "banka",  ad: "Banka Hesapları",    icon: ICONS.banka, mobil: true },
-  { id: "takip",  ad: "Ödeme & Tahsilat",   icon: ICONS.takip, mobil: true },
   { id: "sube",   ad: "Şube Karşılaştırma", icon: ICONS.sube,  mobil: false },
   { id: "ayar",   ad: "Ayarlar",            icon: ICONS.ayar,  mobil: false },
 ];
@@ -30,6 +28,76 @@ const fmtTarih = (t) => t ? new Date(t+"T00:00:00").toLocaleDateString("tr-TR",{
 const uid = () => Date.now() + Math.floor(Math.random()*1000);
 const todayStr = () => new Date().toISOString().slice(0,10);
 const gunFarki = (t) => Math.ceil((new Date(t+"T00:00:00") - new Date(new Date().toDateString())) / 86400000);
+
+/* Bir tarihin ödeneceği cumayı bulur (o tarih zaten cumaysa kendisi). */
+function odemeCumasi(tarih){
+  const [y,m,d] = tarih.split("-").map(Number);
+  const dt = new Date(y, m-1, d);
+  const fark = (5 - dt.getDay() + 7) % 7;
+  dt.setDate(dt.getDate() + fark);
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+
+/* Verilen tarihten tam N ay sonrasını döner (ayın son gününü aşan durumlarda
+   o ayın son gününe sabitler, örn. 31 Ocak + 1 ay -> 28/29 Şubat). */
+function ayEkle(tarih, n){
+  const [y, m, d] = tarih.split("-").map(Number);
+  const hedefAyToplam = (m - 1) + n;
+  const hedefYil = y + Math.floor(hedefAyToplam / 12);
+  const hedefAy0 = ((hedefAyToplam % 12) + 12) % 12;
+  const sonGun = new Date(hedefYil, hedefAy0 + 1, 0).getDate();
+  const yeniGun = Math.min(d, sonGun);
+  return `${hedefYil}-${String(hedefAy0 + 1).padStart(2, "0")}-${String(yeniGun).padStart(2, "0")}`;
+}
+
+/* tip'e göre (gelir/gider) verilen ay/gün aralığının toplamını hesaplar.
+   Gider tarafında sadece "Ödendi" kayıtlar sayılır, şube filtresi (f()) uygulanır. */
+function ayToplami(tip, yil, ay0, gunSayisi){
+  const sonGun = new Date(yil, ay0+1, 0).getDate();
+  const bitGun = Math.min(Math.max(gunSayisi,1), sonGun);
+  const bas = `${yil}-${String(ay0+1).padStart(2,'0')}-01`;
+  const bit = `${yil}-${String(ay0+1).padStart(2,'0')}-${String(bitGun).padStart(2,'0')}`;
+  const liste = tip==='gelir' ? DATA.gelirler : DATA.giderler;
+  return f(liste)
+    .filter(x=>tarihAralikta(x.tarih,bas,bit) && (tip!=='gider' || x.durum!=='Bekliyor'))
+    .reduce((a,b)=>a+b.tutar,0);
+}
+
+function giderKategoriTahmin(aciklama){
+  const a = (aciklama||"").toLocaleUpperCase("tr");
+  const eslesme = [
+    ["FAİZ", "FAİZ VE BANKA ÖDEMESİ"], ["KREDİ KART", "KREDİ KARTI ÖDEMESİ"],
+    ["ARAÇ KREDİ", "ARAÇ KREDİ TAKSİT"], ["PERSONEL", "PERSONEL"], ["FATURA", "FATURA ÖDEMESİ"],
+    ["KİRA", "KİRA ÖDEMESİ"], ["POS", "POS CİHAZ KOMİSYON"], ["DEMİRBAŞ", "DEMİRBAŞ"],
+    ["TEDARİKÇİ", "TEDARİKÇİ ÖDEME"], ["TAMİR", "TAMİR BAKIM"], ["BAKIM", "TAMİR BAKIM"],
+    ["AİDAT", "AİDAT ÖDEMESİ"], ["AMBALAJ", "AMBALAJ"], ["VERGİ", "VERGİ ÖDEMELERİ"],
+    ["HUZUR", "HUZUR HAKKI"], ["KASA", "KASA ÖDEMESİ"],
+  ];
+  for(const [kw, kat] of eslesme){ if(a.includes(kw)) return kat; }
+  return "GENEL ÖDEMELER";
+}
+
+/* Eski "Ödeme & Tahsilat" modülündeki bekleyen ödeme kayıtlarını Giderler'e
+   taşır (bir kereye mahsus) ve eksik "durum" alanlarını tamamlar. */
+function normalizeVeMigrateEt(){
+  let degisti = false;
+  (DATA.giderler||[]).forEach(g=>{
+    if(!g.durum){ g.durum = "Ödendi"; degisti = true; }
+  });
+  if(!DATA._odemeMigrated){
+    const bekleyenOdemeler = (DATA.planli||[]).filter(p=>p.tip==='Ödeme' && p.durum==='Bekliyor');
+    bekleyenOdemeler.forEach((p,i)=>{
+      DATA.giderler.push({
+        id: Date.now()+i, tarih: p.vade, kategori: giderKategoriTahmin(p.aciklama),
+        cari: p.cari||"", aciklama: p.aciklama||"", sube: p.sube, tutar: p.tutar, durum: "Bekliyor",
+      });
+    });
+    DATA.planli = (DATA.planli||[]).filter(p=>!(p.tip==='Ödeme' && p.durum==='Bekliyor'));
+    DATA._odemeMigrated = true;
+    degisti = true;
+  }
+  return degisti;
+}
 
 /* ---------------- State ---------------- */
 let DATA = null;
@@ -64,12 +132,14 @@ async function loadData(){
     if(res && res.value){
       DATA = JSON.parse(res.value);
       if(!DATA.cariler) DATA.cariler = [];
+      if(normalizeVeMigrateEt()) await saveData();
       return;
     }
   }catch(e){ /* yok, seed'e düş */ }
   const seedEl = document.getElementById("seed-data");
   DATA = JSON.parse(seedEl.textContent);
   if(!DATA.cariler) DATA.cariler = [];
+  normalizeVeMigrateEt();
   await saveData();
 }
 async function saveData(){
@@ -114,9 +184,8 @@ const _buAy = buAyAraligi();
 const FILTERS = {
   ozet:  { bas:_buAy.bas, bit:_buAy.bit },
   gelir: { kategori:"tumu", arama:"", bas:_buAy.bas, bit:_buAy.bit },
-  gider: { kategori:"tumu", arama:"", bas:_buAy.bas, bit:_buAy.bit },
+  gider: { kategori:"tumu", durum:"tumu", banka:"tumu", arama:"", bas:_buAy.bas, bit:_buAy.bit },
   banka: { arama:"" },
-  takip: { tip:"tumu", durum:"tumu", arama:"", bas:"", bit:"" },
   sube:  { bas:_buAy.bas, bit:_buAy.bit },
 };
 function tarihAralikta(tarih, bas, bit){
@@ -135,17 +204,156 @@ function filtreTemizleMi(fs){
 }
 /* ---------------- Dışa Aktarma (CSV / Yazdır) ---------------- */
 function csvIndir(dosyaAdi, basliklar, satirlar){
-  const esc = (v) => {
-    const s = String(v ?? "");
+  /* Sayısal değerleri Türkçe biçimde (binlik nokta, ondalık virgül) yazıyoruz —
+     aksi halde JS'in varsayılan nokta-ondalık gösterimi (örn. 104926.85),
+     Türkçe Excel tarafından sayı değil metin olarak algılanıyor. */
+  const sayiStr = (v) => typeof v === "number"
+    ? v.toLocaleString("tr-TR", {minimumFractionDigits:2, maximumFractionDigits:2})
+    : String(v ?? "");
+  const escNoktali = (v) => {
+    const s = sayiStr(v);
     return /[",;\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
   };
-  const satirlarStr = [basliklar, ...satirlar].map(r => r.map(esc).join(";")).join("\r\n");
+  const satirlarStr = [basliklar, ...satirlar].map(r => r.map(escNoktali).join(";")).join("\r\n");
   const csv = "\uFEFF" + satirlarStr; // BOM: Excel'de Türkçe karakterler doğru görünsün
-  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = dosyaAdi; a.click();
-  URL.revokeObjectURL(url);
+  const escTab = (v) => sayiStr(v).replace(/\t/g, " ").replace(/\r?\n/g, " ");
+  const tsv = [basliklar, ...satirlar].map(r => r.map(escTab).join("\t")).join("\r\n");
+
+  const mesaj = "Aşağıdaki <strong>Panoya Kopyala</strong> butonuna basıp doğrudan Excel'e yapıştırabilirsiniz — veriler otomatik olarak ayrı sütunlara bölünür.";
+  dosyaIndir(dosyaAdi, csv, mesaj, tsv);
+}
+
+function dosyaIndir(dosyaAdi, icerik, yedekMesaji, yedekIcerik){
+  const kopyalanacak = yedekIcerik !== undefined ? yedekIcerik : icerik;
+  /* file:// üzerinden açılan sayfalarda Safari, blob indirmesini bir sayfa
+     gezintisi gibi ele alıp "Safari Sayfayı Açamıyor" hatası veriyor — bu
+     yüzden file:// durumunda indirmeyi hiç denemeden direkt güvenli
+     kopyala-yapıştır penceresini gösteriyoruz. */
+  if(location.protocol === 'file:'){
+    dosyaYedekGoster(dosyaAdi, kopyalanacak, yedekMesaji);
+    return;
+  }
+
+  let hataOldu = false;
+  try{
+    const blob = new Blob([icerik], {type:"text/plain;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = dosyaAdi;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  }catch(e){ hataOldu = true; }
+
+  if(hataOldu){
+    dosyaYedekGoster(dosyaAdi, kopyalanacak, yedekMesaji);
+  }
+}
+
+function dosyaYedekGoster(dosyaAdi, icerik, mesaj){
+  const eski = document.getElementById("csv-yedek-overlay");
+  if(eski) eski.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "csv-yedek-overlay";
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-kutu">
+      <div class="modal-baslik">
+        <strong>${dosyaAdi}</strong>
+        <button id="csv-yedek-kapat" class="btn btn-ghost btn-sm">Kapat ✕</button>
+      </div>
+      <p class="row-sub" style="font-size:13px;line-height:1.6;">Tarayıcınız dosyayı doğrudan indirmeyi engelledi.
+      ${mesaj}</p>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+        <button id="csv-yedek-kopyala" class="btn btn-sm">Panoya Kopyala</button>
+        <span id="csv-yedek-ok" style="display:none;color:var(--income);font-weight:600;font-size:13px;">Kopyalandı ✓</span>
+      </div>
+      <textarea id="csv-yedek-alan" readonly></textarea>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const alan = overlay.querySelector("#csv-yedek-alan");
+  alan.value = icerik;
+  alan.focus();
+  alan.select();
+
+  overlay.querySelector("#csv-yedek-kapat").addEventListener("click", ()=> overlay.remove());
+  overlay.addEventListener("click", (ev)=>{ if(ev.target===overlay) overlay.remove(); });
+  overlay.querySelector("#csv-yedek-kopyala").addEventListener("click", async ()=>{
+    alan.select();
+    try{ await navigator.clipboard.writeText(alan.value); }
+    catch(e){ document.execCommand("copy"); }
+    const ok = overlay.querySelector("#csv-yedek-ok");
+    ok.style.display = "inline";
+    setTimeout(()=> ok.style.display="none", 2000);
+  });
+}
+
+/* Bir gider/gelir kaydını temel alıp, kaç ay tekrarlanacağını sorup
+   her ay aynı gün için "Bekliyor" durumunda yeni kayıtlar oluşturur. */
+function tekrarModaliAc(kayit, tip){
+  const eski = document.getElementById("tekrar-overlay");
+  if(eski) eski.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "tekrar-overlay";
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-kutu modal-kucuk">
+      <div class="modal-baslik">
+        <strong>Tekrarla</strong>
+        <button id="tekrar-kapat" class="btn btn-ghost btn-sm">Kapat ✕</button>
+      </div>
+      <p class="row-sub" style="font-size:13px;line-height:1.6;">
+        <strong>${(kayit.cari || kayit.aciklama || kayit.kategori || "-").toString().replace(/</g,"&lt;")}</strong>
+        · ${fmt(kayit.tutar)} tutarındaki bu kayıt, ${fmtTarih(kayit.tarih)} tarihinden başlayarak her ay aynı gün
+        tekrarlanacak şekilde <strong>Bekliyor</strong> durumunda yeni kayıtlar olarak eklenecek.
+      </p>
+      <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:14px;">Kaç ay tekrarlansın?
+        <input type="number" id="tekrar-sayisi" min="1" max="36" value="3" style="margin-top:4px;">
+      </label>
+      <div style="display:flex;gap:8px;">
+        <button id="tekrar-onayla" class="btn">Oluştur</button>
+        <button id="tekrar-iptal" class="btn btn-ghost">İptal</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const kapat = ()=> overlay.remove();
+  overlay.querySelector("#tekrar-kapat").addEventListener("click", kapat);
+  overlay.querySelector("#tekrar-iptal").addEventListener("click", kapat);
+  overlay.addEventListener("click", (ev)=>{ if(ev.target===overlay) kapat(); });
+
+  const sayiAlani = overlay.querySelector("#tekrar-sayisi");
+  sayiAlani.focus();
+  sayiAlani.select();
+
+  overlay.querySelector("#tekrar-onayla").addEventListener("click", async ()=>{
+    const n = Math.max(1, Math.min(36, parseInt(sayiAlani.value, 10) || 0));
+    if(!n) return;
+    const liste = tip==='gelir' ? DATA.gelirler : DATA.giderler;
+    const base = Date.now();
+    for(let i=1;i<=n;i++){
+      liste.push({
+        id: base + i,
+        tarih: ayEkle(kayit.tarih, i),
+        kategori: kayit.kategori,
+        cari: kayit.cari,
+        aciklama: kayit.aciklama,
+        sube: kayit.sube,
+        tutar: kayit.tutar,
+        banka: kayit.banka,
+        durum: "Bekliyor",
+      });
+    }
+    await saveData();
+    kapat();
+    renderIslemIcerik(tip);
+  });
 }
 function disaAktarToolbarHTML(tabKey){
   return `<div class="export-toolbar">
@@ -172,7 +380,7 @@ function filtreBarWire(tabKey, onChange){
   });
   const clr = document.getElementById(`filtre-temizle-${tabKey}`);
   if(clr) clr.addEventListener("click", ()=>{
-    Object.keys(FILTERS[tabKey]).forEach(k=> FILTERS[tabKey][k] = (k==='kategori'||k==='tip'||k==='durum') ? 'tumu' : '');
+    Object.keys(FILTERS[tabKey]).forEach(k=> FILTERS[tabKey][k] = (k==='kategori'||k==='tip'||k==='durum'||k==='banka') ? 'tumu' : '');
     renderAll();
   });
 }
@@ -218,7 +426,7 @@ function renderAll(){
   Object.values(charts).forEach(ch=>ch && ch.destroy && ch.destroy());
   charts = {};
   const renderers = { ozet: renderOzet, gelir: ()=>renderIslemSayfa("gelir"), gider: ()=>renderIslemSayfa("gider"),
-    banka: renderBanka, takip: renderTakip, sube: renderSubeKarsilastirma, ayar: renderAyarlar };
+    banka: renderBanka, sube: renderSubeKarsilastirma, ayar: renderAyarlar };
   c.innerHTML = "";
   renderers[activeTab]();
   window.scrollTo(0,0);
@@ -227,13 +435,13 @@ function renderAll(){
 /* ---------------- Hesaplamalar ---------------- */
 function hesapla(bas, bit){
   const gelirler = f(DATA.gelirler).filter(x=>tarihAralikta(x.tarih,bas,bit));
-  const giderler = f(DATA.giderler).filter(x=>tarihAralikta(x.tarih,bas,bit));
+  const giderler = f(DATA.giderler).filter(x=>tarihAralikta(x.tarih,bas,bit) && x.durum!=='Bekliyor');
   const planli = f(DATA.planli);
   const gelir = gelirler.reduce((a,b)=>a+b.tutar,0);
   const gider = giderler.reduce((a,b)=>a+b.tutar,0);
   const kasa = activeSube==='tumu' ? DATA.hesaplar.reduce((a,b)=>a+b.bakiye,0) : null; // banka hesapları şubesiz
   const bekleyenTahsilat = planli.filter(p=>p.tip==='Tahsilat' && p.durum==='Bekliyor').reduce((a,b)=>a+b.tutar,0);
-  const bekleyenOdeme = planli.filter(p=>p.tip==='Ödeme' && p.durum==='Bekliyor').reduce((a,b)=>a+b.tutar,0);
+  const bekleyenOdeme = f(DATA.giderler).filter(g=>g.durum==='Bekliyor').reduce((a,b)=>a+b.tutar,0);
   const net = gelir - gider;
   const aySonuNet = net + bekleyenTahsilat - bekleyenOdeme;
   return {gelir, gider, kasa, bekleyenTahsilat, bekleyenOdeme, net, aySonuNet};
@@ -245,7 +453,7 @@ function son14GunAkis(){
     const d = new Date(); d.setDate(d.getDate()-i);
     const key = d.toISOString().slice(0,10);
     const g = f(DATA.gelirler).filter(x=>x.tarih===key).reduce((a,b)=>a+b.tutar,0);
-    const gi = f(DATA.giderler).filter(x=>x.tarih===key).reduce((a,b)=>a+b.tutar,0);
+    const gi = f(DATA.giderler).filter(x=>x.tarih===key && x.durum!=='Bekliyor').reduce((a,b)=>a+b.tutar,0);
     gunler.push({key, net: g-gi});
   }
   return gunler;
@@ -287,10 +495,9 @@ function renderOzet(){
   const last = pts[pts.length-1];
 
   const giderDagilim = {};
-  f(DATA.giderler).filter(x=>tarihAralikta(x.tarih,fs.bas,fs.bit)).forEach(i=>{ giderDagilim[i.kategori] = (giderDagilim[i.kategori]||0) + i.tutar; });
+  f(DATA.giderler).filter(x=>tarihAralikta(x.tarih,fs.bas,fs.bit) && x.durum!=='Bekliyor').forEach(i=>{ giderDagilim[i.kategori] = (giderDagilim[i.kategori]||0) + i.tutar; });
   const dagilimSirali = Object.entries(giderDagilim).sort((a,b)=>b[1]-a[1]);
 
-  const bekleyenler = f(DATA.planli).filter(p=>p.durum==='Bekliyor').sort((a,b)=>new Date(a.vade)-new Date(b.vade));
   const bg = beklenenGelirHesapla();
   const aySonuNetGuncel = v.aySonuNet + bg.beklenenGelir;
 
@@ -378,28 +585,6 @@ function renderOzet(){
         </table>
       </div>
     </div>` : `<div class="card"><div class="card-body"><div class="empty">Bu filtreyle gider kaydı yok.</div></div></div>`}
-
-    <div class="section-title">Yaklaşan Hareketler</div>
-    <div class="card"><div class="card-body">
-      <div class="row-list">
-      ${bekleyenler.slice(0,8).map(p=>{
-        const gun = gunFarki(p.vade);
-        const renk = p.tip==='Tahsilat' ? 'var(--income)' : 'var(--expense)';
-        const urg = gun<=3 ? 'urgent' : (gun<=7 ? 'soon':'');
-        return `<div class="row-item">
-          <span class="row-dot" style="background:${renk}"></span>
-          <div class="row-main">
-            <div class="row-title">${p.aciklama||p.cari||'-'}</div>
-            <div class="row-sub">${p.cari?p.cari+' · ':''}${fmtTarih(p.vade)} ${subeRozet(p.sube)}</div>
-          </div>
-          <div style="text-align:right;">
-            <div class="row-amount" style="color:${renk}">${p.tip==='Tahsilat'?'+':'−'}${fmt(p.tutar)}</div>
-            <div class="row-sub ${urg}">${gun<=0?'Bugün':gun+' gün'}</div>
-          </div>
-        </div>`;
-      }).join("") || '<div class="empty">Bekleyen hareket yok.</div>'}
-      </div>
-    </div></div>
   `;
 
   filtreBarWire("ozet", renderOzet);
@@ -429,16 +614,22 @@ function renderOzet(){
 }
 
 /* ---------------- Gelirler / Giderler ---------------- */
-let EDITING = { gelir: null, gider: null, takip: null };
+let EDITING = { gelir: null, gider: null };
+let SECILI_GIDER = new Set();
 
 function islemFiltreli(tip){
   const liste = tip==='gelir' ? DATA.gelirler : DATA.giderler;
   const fs = FILTERS[tip];
+  const giderBekliyorFiltresi = tip==='gider' && fs.durum==='Bekliyor';
   return f(liste)
     .filter(i => fs.kategori==='tumu' || i.kategori===fs.kategori)
+    .filter(i => tip!=='gider' || fs.durum==='tumu' || (i.durum||'Ödendi')===fs.durum)
+    .filter(i => tip!=='gider' || fs.banka==='tumu' || (i.banka||'')===fs.banka)
     .filter(i => tarihAralikta(i.tarih, fs.bas, fs.bit))
     .filter(i => metinEslesir([i.aciklama, i.kategori, i.cari], fs.arama))
-    .slice().sort((a,b)=> new Date(b.tarih) - new Date(a.tarih) || b.id-a.id);
+    .slice().sort((a,b)=> giderBekliyorFiltresi
+      ? (new Date(a.tarih) - new Date(b.tarih) || a.id-b.id)
+      : (new Date(b.tarih) - new Date(a.tarih) || b.id-a.id));
 }
 
 function renderIslemIcerik(tip){
@@ -448,20 +639,103 @@ function renderIslemIcerik(tip){
   const filtreli = islemFiltreli(tip);
   const toplam = filtreli.reduce((a,b)=>a+b.tutar,0);
   const editId = EDITING[tip];
+  const isGider = tip==='gider';
+
+  const bekleyenGider = isGider ? f(DATA.giderler).filter(g=>g.durum==='Bekliyor') : [];
+  const bekleyenToplam = bekleyenGider.reduce((a,b)=>a+b.tutar,0);
+  const bugun = todayStr();
+  const bugununOdemesi = bekleyenGider.filter(g=>g.tarih===bugun).reduce((a,b)=>a+b.tutar,0);
+  const bugununSayisi = bekleyenGider.filter(g=>g.tarih===bugun).length;
+
+  const su = new Date();
+  const buYil = su.getFullYear(), buAy0 = su.getMonth(), buGun = su.getDate();
+  const oncekiAyRef = new Date(buYil, buAy0-1, 1);
+  const oncekiYil = oncekiAyRef.getFullYear(), oncekiAy0 = oncekiAyRef.getMonth();
+  const buAyToplam = ayToplami(tip, buYil, buAy0, buGun);
+  const buAyKayitSayisi = f(liste).filter(x=>tarihAralikta(x.tarih, `${buYil}-${String(buAy0+1).padStart(2,'0')}-01`, todayStr()) && (!isGider || x.durum!=='Bekliyor')).length;
+  const gecenAyToplam = ayToplami(tip, oncekiYil, oncekiAy0, buGun);
+  const fark = buAyToplam - gecenAyToplam;
+  const farkYuzde = gecenAyToplam !== 0 ? (fark/gecenAyToplam*100) : (buAyToplam>0 ? 100 : 0);
+  const artisIyiMi = tip==='gelir' ? fark>=0 : fark<=0;
+  const farkRenk = fark===0 ? 'var(--text-3)' : (artisIyiMi ? 'var(--income)' : 'var(--expense)');
+  const farkOk = fark>0 ? '▲' : fark<0 ? '▼' : '—';
+
+  const seciliKayitlar = isGider ? f(DATA.giderler).filter(g=>SECILI_GIDER.has(g.id)) : [];
+  const seciliToplam = seciliKayitlar.reduce((a,b)=>a+b.tutar,0);
 
   document.getElementById(`kpi-${tip}`).innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">Toplam ${tip==='gelir'?'Gelir':'Gider'}</div><div class="kpi-value tabular" style="color:${renk}">${fmt(toplam)}</div><div class="kpi-sub">${filtreli.length} kayıt${filtreTemizleMi(FILTERS[tip])?' · filtre uygulanıyor':''}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Bu Ay Toplam ${tip==='gelir'?'Gelir':'Gider'}</div><div class="kpi-value tabular" style="color:${renk}">${fmt(buAyToplam)}</div><div class="kpi-sub">${buAyKayitSayisi} kayıt · ${fmtTarih(`${buYil}-${String(buAy0+1).padStart(2,'0')}-01`)} – bugün</div></div>
+    <div class="kpi-card"><div class="kpi-label">Geçen Aya Göre (İlk ${buGun} gün)</div><div class="kpi-value tabular" style="color:${farkRenk}">${farkOk} %${Math.abs(farkYuzde).toFixed(1)}</div><div class="kpi-sub">${fmt(gecenAyToplam)} → ${fmt(buAyToplam)}</div></div>
+    ${isGider ? `
+    <div class="kpi-card"><div class="kpi-label">Seçili Toplam</div><div class="kpi-value tabular" style="color:${renk}">${fmt(seciliToplam)}</div><div class="kpi-sub">${seciliKayitlar.length} kayıt seçili${seciliKayitlar.length ? ' · <a href="#" id="btn-secim-temizle-gider" style="color:var(--text-3);text-decoration:underline;">temizle</a>' : ''}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Bekleyen Ödeme</div><div class="kpi-value tabular neg">${fmt(bekleyenToplam)}</div><div class="kpi-sub">${bekleyenGider.length} kayıt</div></div>
+    <div class="kpi-card"><div class="kpi-label">Bugünün Ödemesi</div><div class="kpi-value tabular neg">${fmt(bugununOdemesi)}</div><div class="kpi-sub">${bugununSayisi} kayıt · vadesi bugün</div></div>
+    ` : ''}
   `;
+
+  if(isGider){
+    document.getElementById("btn-secim-temizle-gider")?.addEventListener("click", (ev)=>{
+      ev.preventDefault();
+      SECILI_GIDER.clear();
+      renderIslemIcerik(tip);
+    });
+  }
+
+  if(isGider){
+    const haftaGruplari = {};
+    bekleyenGider.forEach(g=>{
+      const cuma = odemeCumasi(g.tarih);
+      if(!haftaGruplari[cuma]) haftaGruplari[cuma] = { toplam: 0, sayi: 0 };
+      haftaGruplari[cuma].toplam += g.tutar;
+      haftaGruplari[cuma].sayi++;
+    });
+    const haftaSirali = Object.entries(haftaGruplari).sort((a,b)=> new Date(a[0]) - new Date(b[0]));
+    const haftalikEl = document.getElementById(`haftalik-${tip}`);
+    if(haftalikEl){
+      haftalikEl.innerHTML = haftaSirali.length ? `
+        <div class="card">
+          <div class="card-head">Haftalık Ödeme Planı <span style="font-weight:400;color:var(--text-3);font-size:12px;">· bekleyen ödemeler, vadesine göre en yakın cuma gününe göre gruplanır</span></div>
+          <div class="card-body" style="padding:0;">
+            <div class="row-list" style="padding:6px 16px;">
+              ${haftaSirali.map(([cuma, v])=>{
+                const gun = gunFarki(cuma);
+                const urg = gun<=3 ? 'urgent' : (gun<=7 ? 'soon' : '');
+                const gunMetni = gun<0 ? Math.abs(gun)+' gün gecikti' : gun===0 ? 'Bugün' : gun+' gün kaldı';
+                return `<div class="row-item">
+                  <div class="row-main">
+                    <div class="row-title">${fmtTarih(cuma)} · Cuma</div>
+                    <div class="row-sub ${urg}">${v.sayi} ödeme · ${gunMetni}</div>
+                  </div>
+                  <div class="row-amount neg">${fmt(v.toplam)}</div>
+                </div>`;
+              }).join("")}
+            </div>
+          </div>
+        </div>` : '';
+    }
+  }
+
+  const durumHucre = (i) => {
+    if(i.durum!=='Bekliyor') return `<span class="badge-durum" style="background:var(--income-soft);color:var(--income);">Ödendi</span>`;
+    const gun = gunFarki(i.tarih);
+    const urg = gun<=3 ? 'urgent' : (gun<=7 ? 'soon' : '');
+    const gunMetni = gun<0 ? Math.abs(gun)+' gün gecikti' : gun===0 ? 'Bugün' : gun+' gün kaldı';
+    return `<span class="badge-durum" style="background:var(--expense-soft);color:var(--expense);">Bekliyor</span><div class="row-sub ${urg}" style="margin-top:2px;">${gunMetni}</div>`;
+  };
+
+  const bankaSecenekleri = (secili) => `<option value="" ${!secili?'selected':''}>Banka (belirtilmedi)</option>${DATA.hesaplar.map(h=>`<option ${h.banka===secili?'selected':''}>${h.banka}</option>`).join("")}`;
 
   const editRowDesktop = (i) => `
     <tr style="background:var(--brass-soft);">
-      <td colspan="7" style="padding:10px;">
-        <div class="form-grid" style="grid-template-columns:repeat(6,1fr);">
+      <td colspan="${isGider?10:7}" style="padding:10px;">
+        <div class="form-grid" style="grid-template-columns:repeat(${isGider?8:6},1fr);">
           <input type="date" class="e-tarih" value="${i.tarih}">
           <select class="e-kategori">${kategoriler.map(k=>`<option ${k===i.kategori?'selected':''}>${k}</option>`).join("")}</select>
           <input type="text" class="e-cari" list="cari-list" placeholder="Cari" value="${(i.cari||'').replace(/"/g,'&quot;')}">
           <input type="text" class="e-aciklama" placeholder="Açıklama (opsiyonel)" value="${(i.aciklama||'').replace(/"/g,'&quot;')}">
           <select class="e-sube">${DATA.subeler.map(s=>`<option ${s===i.sube?'selected':''}>${s}</option>`).join("")}</select>
+          ${isGider ? `<select class="e-banka">${bankaSecenekleri(i.banka)}</select>` : ''}
+          ${isGider ? `<select class="e-durum"><option ${i.durum!=='Bekliyor'?'selected':''}>Ödendi</option><option ${i.durum==='Bekliyor'?'selected':''}>Bekliyor</option></select>` : ''}
           <input type="number" class="e-tutar" value="${i.tutar}">
         </div>
         <div style="display:flex;gap:6px;margin-top:8px;">
@@ -481,6 +755,8 @@ function renderIslemIcerik(tip){
         <input type="text" class="e-cari" list="cari-list" placeholder="Cari" value="${(i.cari||'').replace(/"/g,'&quot;')}" style="grid-column:1/-1;">
         <input type="text" class="e-aciklama" placeholder="Açıklama (opsiyonel)" value="${(i.aciklama||'').replace(/"/g,'&quot;')}" style="grid-column:1/-1;">
         <select class="e-sube">${DATA.subeler.map(s=>`<option ${s===i.sube?'selected':''}>${s}</option>`).join("")}</select>
+        ${isGider ? `<select class="e-banka">${bankaSecenekleri(i.banka)}</select>` : ''}
+        ${isGider ? `<select class="e-durum"><option ${i.durum!=='Bekliyor'?'selected':''}>Ödendi</option><option ${i.durum==='Bekliyor'?'selected':''}>Bekliyor</option></select>` : ''}
         <input type="number" class="e-tutar" value="${i.tutar}">
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -494,17 +770,19 @@ function renderIslemIcerik(tip){
   document.getElementById(`liste-${tip}`).innerHTML = `
     <div class="desktop-table" style="overflow-x:auto;">
       <table>
-        <thead><tr><th>Tarih</th><th>Kategori</th><th>Cari</th><th>Açıklama</th><th>Şube</th><th class="right">Tutar</th><th></th></tr></thead>
+        <thead><tr>${isGider?'<th></th>':''}<th>Tarih</th><th>Kategori</th><th>Cari</th><th>Açıklama</th><th>Şube</th>${isGider?'<th>Banka</th><th>Durum</th>':''}<th class="right">Tutar</th><th></th></tr></thead>
         <tbody>
           ${filtreli.map(i => i.id===editId ? editRowDesktop(i) : `<tr class="tikla-duzenle" data-row="${i.id}">
-            <td>${fmtTarih(i.tarih)}</td><td>${i.kategori||'-'}</td><td style="color:${subeRenk(i.sube)};font-weight:600;">${i.cari||'-'}</td><td>${i.aciklama||'-'}</td>
+            ${isGider ? `<td><input type="checkbox" class="row-checkbox" data-sec="${i.id}" ${SECILI_GIDER.has(i.id)?'checked':''}></td>` : ''}
+            <td>${fmtTarih(i.tarih)}</td><td>${i.kategori||'-'}</td><td style="color:${subeRenk(i.sube)};font-weight:600;">${i.cari||'-'}</td><td style="${isGider?'font-size:12px;color:var(--text-3);':''}">${i.aciklama||'-'}</td>
             <td>${subeRozet(i.sube)}</td>
+            ${isGider ? `<td style="font-size:12px;color:var(--text-3);">${i.banka||'-'}</td><td>${durumHucre(i)}</td>` : ''}
             <td class="right tabular" style="color:${renk};font-weight:700;">${fmt(i.tutar)}</td>
-            <td><button class="btn btn-ghost btn-sm" data-del="${i.id}">Sil</button></td>
-          </tr>`).join("") || `<tr><td colspan="7"><div class="empty">Filtreye uyan kayıt yok.</div></td></tr>`}
+            <td style="white-space:nowrap;">${isGider && i.durum==='Bekliyor' ? `<button class="btn btn-ghost btn-sm" data-odendi="${i.id}">Ödendi</button>` : ''}${isGider ? `<button class="btn btn-ghost btn-sm" data-tekrarla="${i.id}">Tekrarla</button>` : ''}<button class="btn btn-ghost btn-sm" data-del="${i.id}">Sil</button></td>
+          </tr>`).join("") || `<tr><td colspan="${isGider?10:7}"><div class="empty">Filtreye uyan kayıt yok.</div></td></tr>`}
         </tbody>
         ${filtreli.length ? `<tfoot><tr style="background:var(--paper);font-weight:700;">
-          <td colspan="5">Toplam (${filtreli.length} kayıt)</td>
+          <td colspan="${isGider?8:5}">Toplam (${filtreli.length} kayıt)</td>
           <td class="right tabular" style="color:${renk};">${fmt(toplam)}</td>
           <td></td>
         </tr></tfoot>` : ''}
@@ -512,14 +790,20 @@ function renderIslemIcerik(tip){
     </div>
     <div class="mobile-cards row-list" style="padding:6px 16px;">
       ${filtreli.map(i => i.id===editId ? editRowMobile(i) : `<div class="row-item tikla-duzenle" data-row="${i.id}">
+        ${isGider ? `<input type="checkbox" class="row-checkbox" data-sec="${i.id}" ${SECILI_GIDER.has(i.id)?'checked':''}>` : ''}
         <span class="row-dot" style="background:${renk}"></span>
         <div class="row-main">
           <div class="row-title" style="color:${subeRenk(i.sube)}">${i.cari||i.aciklama||i.kategori||'-'}</div>
-          <div class="row-sub">${i.kategori||''}${i.aciklama?' · '+i.aciklama:''} · ${fmtTarih(i.tarih)} ${subeRozet(i.sube)}</div>
+          <div class="row-sub">${i.kategori||''}${i.aciklama?' · '+i.aciklama:''} · ${fmtTarih(i.tarih)} ${subeRozet(i.sube)}${isGider && i.banka?' · '+i.banka:''}</div>
+          ${isGider ? `<div style="margin-top:4px;">${durumHucre(i)}</div>` : ''}
         </div>
         <div style="text-align:right;">
           <div class="row-amount" style="color:${renk}">${fmt(i.tutar)}</div>
-          <button class="btn btn-ghost btn-sm" data-del="${i.id}" style="margin-top:4px;">Sil</button>
+          <div style="display:flex;gap:5px;margin-top:4px;justify-content:flex-end;">
+            ${isGider && i.durum==='Bekliyor' ? `<button class="btn btn-ghost btn-sm" data-odendi="${i.id}">Ödendi</button>` : ''}
+            ${isGider ? `<button class="btn btn-ghost btn-sm" data-tekrarla="${i.id}">Tekrarla</button>` : ''}
+            <button class="btn btn-ghost btn-sm" data-del="${i.id}">Sil</button>
+          </div>
         </div>
       </div>`).join("") || '<div class="empty">Filtreye uyan kayıt yok.</div>'}
       ${filtreli.length ? `<div class="row-item" style="border-top:2px solid var(--line);font-weight:700;">
@@ -534,8 +818,16 @@ function renderIslemIcerik(tip){
   container.querySelectorAll(".tikla-duzenle").forEach(el=>{
     el.style.cursor = "pointer";
     el.addEventListener("click", (ev)=>{
-      if(ev.target.closest("[data-del]")) return;
+      if(ev.target.closest("[data-del], [data-odendi], [data-tekrarla], .row-checkbox")) return;
       EDITING[tip] = Number(el.dataset.row);
+      renderIslemIcerik(tip);
+    });
+  });
+  container.querySelectorAll(".row-checkbox").forEach(cb=>{
+    cb.addEventListener("click", (ev)=> ev.stopPropagation());
+    cb.addEventListener("change", ()=>{
+      const id = Number(cb.dataset.sec);
+      if(cb.checked) SECILI_GIDER.add(id); else SECILI_GIDER.delete(id);
       renderIslemIcerik(tip);
     });
   });
@@ -557,7 +849,23 @@ function renderIslemIcerik(tip){
       ev.stopPropagation();
       const id = Number(btn.dataset.del);
       const idx = liste.findIndex(x=>x.id===id);
-      if(idx>-1){ liste.splice(idx,1); await saveData(); renderIslemIcerik(tip); }
+      if(idx>-1){ liste.splice(idx,1); SECILI_GIDER.delete(id); await saveData(); renderIslemIcerik(tip); }
+    });
+  });
+  container.querySelectorAll("[data-odendi]").forEach(btn=>{
+    btn.addEventListener("click", async (ev)=>{
+      ev.stopPropagation();
+      const id = Number(btn.dataset.odendi);
+      const kayit = liste.find(x=>x.id===id);
+      if(kayit){ kayit.durum = "Ödendi"; await saveData(); renderIslemIcerik(tip); }
+    });
+  });
+  container.querySelectorAll("[data-tekrarla]").forEach(btn=>{
+    btn.addEventListener("click", (ev)=>{
+      ev.stopPropagation();
+      const id = Number(btn.dataset.tekrarla);
+      const kayit = liste.find(x=>x.id===id);
+      if(kayit) tekrarModaliAc(kayit, tip);
     });
   });
   container.querySelectorAll("[data-kaydet]").forEach(btn=>{
@@ -574,6 +882,10 @@ function renderIslemIcerik(tip){
       const tutar = parseFloat(wrap.querySelector(".e-tutar").value);
       if(!tarih || !tutar || tutar<=0) return;
       Object.assign(kayit, { tarih, kategori, cari, aciklama, sube, tutar });
+      if(isGider){
+        kayit.durum = wrap.querySelector(".e-durum").value;
+        kayit.banka = wrap.querySelector(".e-banka").value;
+      }
       cariKaydet(cari);
       await saveData();
       EDITING[tip] = null;
@@ -592,9 +904,12 @@ function renderIslemIcerik(tip){
 function renderIslemSayfa(tip){
   const kategoriler = tip==='gelir' ? DATA.gelirKategoriler : DATA.giderKategoriler;
   const fs = FILTERS[tip];
+  const isGider = tip==='gider';
+  SECILI_GIDER.clear();
 
   document.getElementById("content").innerHTML = `
     <div class="kpi-grid" style="margin-bottom:14px;" id="kpi-${tip}"></div>
+    ${isGider ? `<div id="haftalik-${tip}" style="margin-bottom:14px;"></div>` : ''}
     ${disaAktarToolbarHTML(tip)}
 
     <div class="card" id="filtre-${tip}">
@@ -602,11 +917,14 @@ function renderIslemSayfa(tip){
       <div class="card-body">
         <div class="form-grid">
           <select data-fkey="kategori"><option value="tumu">Tüm Kategoriler</option>${kategoriler.map(k=>`<option value="${k}" ${fs.kategori===k?'selected':''}>${k}</option>`).join("")}</select>
+          ${isGider ? `<select data-fkey="durum"><option value="tumu" ${fs.durum==='tumu'?'selected':''}>Tüm Durumlar</option><option value="Ödendi" ${fs.durum==='Ödendi'?'selected':''}>Ödendi</option><option value="Bekliyor" ${fs.durum==='Bekliyor'?'selected':''}>Bekliyor</option></select>` : ''}
+          ${isGider ? `<select data-fkey="banka"><option value="tumu" ${fs.banka==='tumu'?'selected':''}>Tüm Bankalar</option>${DATA.hesaplar.map(h=>`<option value="${h.banka}" ${fs.banka===h.banka?'selected':''}>${h.banka}</option>`).join("")}</select>` : ''}
           <input type="date" data-fkey="bas" value="${fs.bas}">
           <input type="date" data-fkey="bit" value="${fs.bit}">
           <input type="text" data-fkey="arama" placeholder="Cari / açıklamada ara…" value="${fs.arama}">
           <button class="btn btn-ghost btn-sm" id="filtre-temizle-${tip}">Temizle</button>
         </div>
+        ${isGider ? `<div class="row-sub" style="margin-top:4px;">'Bekliyor' filtresini seçtiğinizde kayıtlar en yakın vadeden başlayarak sıralanır.</div>` : ''}
       </div>
     </div>
 
@@ -619,6 +937,8 @@ function renderIslemSayfa(tip){
           <input type="text" id="f-cari" list="cari-list" placeholder="Cari">
           <input type="text" id="f-aciklama" placeholder="Açıklama (opsiyonel)">
           <select id="f-sube">${DATA.subeler.map(s=>`<option>${s}</option>`).join("")}</select>
+          ${isGider ? `<select id="f-banka"><option value="">Banka (belirtilmedi)</option>${DATA.hesaplar.map(h=>`<option>${h.banka}</option>`).join("")}</select>` : ''}
+          ${isGider ? `<select id="f-durum"><option>Ödendi</option><option>Bekliyor</option></select>` : ''}
           <input type="number" id="f-tutar" placeholder="Tutar (₺)" min="0">
         </div>
         <button class="btn" id="btn-ekle">Kaydet</button>
@@ -634,11 +954,13 @@ function renderIslemSayfa(tip){
   filtreBarWire(tip, ()=>renderIslemIcerik(tip));
   disaAktarWire(tip,
     ()=> `${tip==='gelir'?'gelirler':'giderler'}-${todayStr()}.csv`,
-    ()=> ["Tarih","Kategori","Cari","Açıklama","Şube","Tutar"],
-    ()=> islemFiltreli(tip).map(i=>[fmtTarih(i.tarih), i.kategori||"", i.cari||"", i.aciklama||"", i.sube||"", i.tutar])
+    ()=> isGider ? ["Tarih","Kategori","Cari","Açıklama","Şube","Banka","Durum","Tutar"] : ["Tarih","Kategori","Cari","Açıklama","Şube","Tutar"],
+    ()=> islemFiltreli(tip).map(i=> isGider
+      ? [fmtTarih(i.tarih), i.kategori||"", i.cari||"", i.aciklama||"", i.sube||"", i.banka||"", i.durum||"Ödendi", i.tutar]
+      : [fmtTarih(i.tarih), i.kategori||"", i.cari||"", i.aciklama||"", i.sube||"", i.tutar])
   );
   document.getElementById(`filtre-temizle-${tip}`).addEventListener("click", ()=>{
-    FILTERS[tip] = { kategori:"tumu", arama:"", bas:"", bit:"" };
+    FILTERS[tip] = isGider ? { kategori:"tumu", durum:"tumu", banka:"tumu", arama:"", bas:"", bit:"" } : { kategori:"tumu", arama:"", bas:"", bit:"" };
     renderIslemSayfa(tip);
   });
   renderIslemIcerik(tip);
@@ -652,7 +974,12 @@ function renderIslemSayfa(tip){
     const sube = document.getElementById("f-sube").value;
     const tutar = parseFloat(document.getElementById("f-tutar").value);
     if(!tarih || !tutar || tutar<=0) return;
-    liste.push({ id: uid(), tarih, kategori, cari, aciklama, sube, tutar });
+    const kayit = { id: uid(), tarih, kategori, cari, aciklama, sube, tutar };
+    if(isGider){
+      kayit.banka = document.getElementById("f-banka").value;
+      kayit.durum = document.getElementById("f-durum").value;
+    }
+    liste.push(kayit);
     cariKaydet(cari);
     await saveData();
     renderIslemIcerik(tip);
@@ -756,216 +1083,14 @@ function renderBanka(){
   });
 }
 
-/* ---------------- Ödeme & Tahsilat ---------------- */
-function takipFiltreli(){
-  const fs = FILTERS.takip;
-  return f(DATA.planli)
-    .filter(p => fs.tip==='tumu' || p.tip===fs.tip)
-    .filter(p => fs.durum==='tumu' || p.durum===fs.durum)
-    .filter(p => tarihAralikta(p.vade, fs.bas, fs.bit))
-    .filter(p => metinEslesir([p.aciklama, p.cari], fs.arama))
-    .slice().sort((a,b)=>new Date(a.vade)-new Date(b.vade));
-}
-
-function renderTakipIcerik(){
-  const v = hesapla();
-  const planli = takipFiltreli();
-  const toplamTahsilat = planli.filter(p=>p.tip==='Tahsilat').reduce((a,b)=>a+b.tutar,0);
-  const toplamOdeme = planli.filter(p=>p.tip==='Ödeme').reduce((a,b)=>a+b.tutar,0);
-  const editId = EDITING.takip;
-
-  const bugun = todayStr();
-  const bugununOdemesi = f(DATA.planli).filter(p=>p.tip==='Ödeme' && p.vade===bugun && p.durum==='Bekliyor').reduce((a,b)=>a+b.tutar,0);
-  const bugununOdemeSayisi = f(DATA.planli).filter(p=>p.tip==='Ödeme' && p.vade===bugun && p.durum==='Bekliyor').length;
-
-  document.getElementById("kpi-takip").innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">Bekleyen Tahsilat</div><div class="kpi-value tabular pos">${fmt(v.bekleyenTahsilat)}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Bekleyen Ödeme</div><div class="kpi-value tabular neg">${fmt(v.bekleyenOdeme)}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Bugünün Toplam Ödemesi</div><div class="kpi-value tabular neg">${fmt(bugununOdemesi)}</div><div class="kpi-sub">${bugununOdemeSayisi} kayıt · vadesi bugün</div></div>
-    <div class="kpi-card"><div class="kpi-label">Filtredeki Kayıt</div><div class="kpi-value tabular">${planli.length}</div><div class="kpi-sub">${planli.filter(p=>p.durum==='Bekliyor' && gunFarki(p.vade)<=7).length} tanesi 7 gün içinde</div></div>
-  `;
-
-  const editRow = (p) => `
-    <div class="row-item" style="background:var(--brass-soft); flex-direction:column; align-items:stretch; gap:8px;">
-      <div class="form-grid" style="grid-template-columns:1fr 1fr;">
-        <input type="date" class="e-vade" value="${p.vade}">
-        <select class="e-tip"><option ${p.tip==='Ödeme'?'selected':''}>Ödeme</option><option ${p.tip==='Tahsilat'?'selected':''}>Tahsilat</option></select>
-        <input type="text" class="e-aciklama" value="${(p.aciklama||'').replace(/"/g,'&quot;')}" style="grid-column:1/-1;" placeholder="Açıklama">
-        <input type="text" class="e-cari" list="cari-list" value="${(p.cari||'').replace(/"/g,'&quot;')}" placeholder="Cari / Kişi">
-        <select class="e-sube">${DATA.subeler.map(s=>`<option ${s===p.sube?'selected':''}>${s}</option>`).join("")}</select>
-        <input type="number" class="e-tutar" value="${p.tutar}">
-        <select class="e-durum"><option ${p.durum==='Bekliyor'?'selected':''}>Bekliyor</option><option ${p.durum==='Tamamlandı'?'selected':''}>Tamamlandı</option></select>
-      </div>
-      <div style="display:flex;gap:6px;">
-        <button class="btn btn-sm" data-kaydet-plan="${p.id}" style="flex:1;">Kaydet</button>
-        <button class="btn btn-ghost btn-sm" data-iptal-plan="${p.id}" style="flex:1;">İptal</button>
-      </div>
-    </div>`;
-
-  document.getElementById("liste-takip").innerHTML = `
-    <div class="row-list" style="padding:6px 16px;">
-    ${planli.map(p => {
-      if(p.id===editId) return editRow(p);
-      const gun = gunFarki(p.vade);
-      const tamam = p.durum==='Tamamlandı';
-      const renk = p.tip==='Tahsilat' ? 'var(--income)' : 'var(--expense)';
-      return `<div class="row-item tikla-duzenle ${tamam?'row-tamamlandi':''}" data-row="${p.id}">
-        <span class="row-dot" style="background:${renk}"></span>
-        <div class="row-main">
-          <div class="row-title" style="color:${subeRenk(p.sube)}">${p.aciklama||'-'}</div>
-          <div class="row-sub" style="color:${subeRenk(p.sube)}">${p.cari?p.cari+' · ':''}${fmtTarih(p.vade)} ${subeRozet(p.sube)} ${!tamam && gun<=3 ? '<span class="urgent">ACİL</span>':''}</div>
-        </div>
-        <div style="text-align:right;">
-          <div class="row-amount" style="color:${renk}">${fmt(p.tutar)}</div>
-          <div style="display:flex;gap:5px;margin-top:3px;justify-content:flex-end;">
-            ${tamam ? '<span class="row-sub">✓ Tamamlandı</span>' :
-              `<button class="btn btn-ghost btn-sm" data-tamamla="${p.id}">${p.tip==='Tahsilat'?'Tahsil Edildi':'Ödendi'}</button>`}
-            <button class="btn btn-ghost btn-sm" data-del-plan="${p.id}">Sil</button>
-          </div>
-        </div>
-      </div>`;
-    }).join("") || '<div class="empty">Filtreye uyan kayıt yok.</div>'}
-    ${planli.length ? `<div class="row-item" style="border-top:2px solid var(--line);">
-      <div class="row-main" style="font-weight:700;">Toplam (${planli.length} kayıt)</div>
-      <div style="text-align:right;">
-        <div class="tabular pos" style="font-weight:700;">Tahsilat: ${fmt(toplamTahsilat)}</div>
-        <div class="tabular neg" style="font-weight:700;margin-top:2px;">Ödeme: ${fmt(toplamOdeme)}</div>
-      </div>
-    </div>` : ''}
-    </div>
-  `;
-
-  const container = document.getElementById("liste-takip");
-
-  container.querySelectorAll(".tikla-duzenle").forEach(el=>{
-    el.style.cursor = "pointer";
-    el.addEventListener("click", (ev)=>{
-      if(ev.target.closest("[data-tamamla], [data-del-plan]")) return;
-      EDITING.takip = Number(el.dataset.row);
-      renderTakipIcerik();
-    });
-  });
-  container.querySelectorAll("[data-tamamla]").forEach(btn=>{
-    btn.addEventListener("click", async (ev)=>{
-      ev.stopPropagation();
-      const id = Number(btn.dataset.tamamla);
-      const p = DATA.planli.find(x=>x.id===id);
-      if(p){ p.durum = "Tamamlandı"; await saveData(); renderTakipIcerik(); }
-    });
-  });
-  container.querySelectorAll("[data-del-plan]").forEach(btn=>{
-    btn.addEventListener("click", async (ev)=>{
-      ev.stopPropagation();
-      const id = Number(btn.dataset.delPlan);
-      DATA.planli = DATA.planli.filter(x=>x.id!==id);
-      await saveData(); renderTakipIcerik();
-    });
-  });
-  container.querySelectorAll("[data-kaydet-plan]").forEach(btn=>{
-    btn.addEventListener("click", async (ev)=>{
-      ev.stopPropagation();
-      const id = Number(btn.dataset.kaydetPlan);
-      const kayit = DATA.planli.find(x=>x.id===id);
-      const wrap = btn.closest(".row-item");
-      const vade = wrap.querySelector(".e-vade").value;
-      const tip = wrap.querySelector(".e-tip").value;
-      const aciklama = wrap.querySelector(".e-aciklama").value.trim();
-      const cari = wrap.querySelector(".e-cari").value.trim();
-      const sube = wrap.querySelector(".e-sube").value;
-      const tutar = parseFloat(wrap.querySelector(".e-tutar").value);
-      const durum = wrap.querySelector(".e-durum").value;
-      if(!vade || !tutar || tutar<=0) return;
-      Object.assign(kayit, { vade, tip, aciklama, cari, sube, tutar, durum });
-      cariKaydet(cari);
-      await saveData();
-      EDITING.takip = null;
-      renderTakipIcerik();
-    });
-  });
-  container.querySelectorAll("[data-iptal-plan]").forEach(btn=>{
-    btn.addEventListener("click", (ev)=>{
-      ev.stopPropagation();
-      EDITING.takip = null;
-      renderTakipIcerik();
-    });
-  });
-}
-
-function renderTakip(){
-  const fs = FILTERS.takip;
-  document.getElementById("content").innerHTML = `
-    <div class="kpi-grid" style="margin-bottom:14px;" id="kpi-takip"></div>
-    ${disaAktarToolbarHTML("takip")}
-
-    <div class="card" id="filtre-takip">
-      <div class="card-head">Filtrele</div>
-      <div class="card-body">
-        <div class="form-grid">
-          <select data-fkey="tip"><option value="tumu" ${fs.tip==='tumu'?'selected':''}>Tüm Hareketler</option><option value="Ödeme" ${fs.tip==='Ödeme'?'selected':''}>Ödeme</option><option value="Tahsilat" ${fs.tip==='Tahsilat'?'selected':''}>Tahsilat</option></select>
-          <select data-fkey="durum"><option value="tumu" ${fs.durum==='tumu'?'selected':''}>Tüm Durumlar</option><option value="Bekliyor" ${fs.durum==='Bekliyor'?'selected':''}>Bekliyor</option><option value="Tamamlandı" ${fs.durum==='Tamamlandı'?'selected':''}>Tamamlandı</option></select>
-          <input type="date" data-fkey="bas" value="${fs.bas}">
-          <input type="date" data-fkey="bit" value="${fs.bit}">
-          <input type="text" data-fkey="arama" placeholder="Açıklama / cari ara…" value="${fs.arama}">
-          <button class="btn btn-ghost btn-sm" id="filtre-temizle-takip">Temizle</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head">Yeni Planlı Hareket</div>
-      <div class="card-body">
-        <div class="form-grid">
-          <input type="date" id="f-vade" value="${todayStr()}">
-          <select id="f-tip"><option>Ödeme</option><option>Tahsilat</option></select>
-          <input type="text" id="f-aciklama2" placeholder="Açıklama">
-          <input type="text" id="f-cari" list="cari-list" placeholder="Cari / Kişi">
-          <select id="f-sube2">${DATA.subeler.map(s=>`<option>${s}</option>`).join("")}</select>
-          <input type="number" id="f-tutar2" placeholder="Tutar (₺)">
-        </div>
-        <button class="btn" id="btn-ekle-plan">Kaydet</button>
-      </div>
-    </div>
-    <div class="section-title">Kayıtlar <span style="text-transform:none;font-weight:400;color:var(--text-3);letter-spacing:0;">· satıra dokunarak düzenleyebilirsiniz</span></div>
-    <div class="card"><div class="card-body" style="padding:0;" id="liste-takip"></div></div>
-  `;
-
-  filtreBarWire("takip", renderTakipIcerik);
-  disaAktarWire("takip",
-    ()=> `odeme-tahsilat-${todayStr()}.csv`,
-    ()=> ["Vade","Tip","Açıklama","Cari","Şube","Tutar","Durum"],
-    ()=> takipFiltreli().map(p=>[fmtTarih(p.vade), p.tip, p.aciklama||"", p.cari||"", p.sube||"", p.tutar, p.durum])
-  );
-  document.getElementById("filtre-temizle-takip").addEventListener("click", ()=>{
-    FILTERS.takip = { tip:"tumu", durum:"tumu", arama:"", bas:"", bit:"" };
-    renderTakip();
-  });
-  renderTakipIcerik();
-
-  document.getElementById("btn-ekle-plan").addEventListener("click", async ()=>{
-    const vade = document.getElementById("f-vade").value;
-    const tip = document.getElementById("f-tip").value;
-    const aciklama = document.getElementById("f-aciklama2").value.trim();
-    const cari = document.getElementById("f-cari").value.trim();
-    const sube = document.getElementById("f-sube2").value;
-    const tutar = parseFloat(document.getElementById("f-tutar2").value);
-    if(!vade || !tutar || tutar<=0) return;
-    DATA.planli.push({ id: uid(), vade, tip, aciklama, cari, sube, tutar, durum:"Bekliyor" });
-    cariKaydet(cari);
-    await saveData(); renderTakipIcerik();
-    document.getElementById("f-aciklama2").value = "";
-    document.getElementById("f-cari").value = "";
-    document.getElementById("f-tutar2").value = "";
-  });
-}
-
 /* ---------------- Şube Karşılaştırma ---------------- */
 function renderSubeKarsilastirma(){
   const fs = FILTERS.sube;
   const rows = DATA.subeler.map(s=>{
     const gelir = DATA.gelirler.filter(x=>x.sube===s && tarihAralikta(x.tarih,fs.bas,fs.bit)).reduce((a,b)=>a+b.tutar,0);
-    const gider = DATA.giderler.filter(x=>x.sube===s && tarihAralikta(x.tarih,fs.bas,fs.bit)).reduce((a,b)=>a+b.tutar,0);
+    const gider = DATA.giderler.filter(x=>x.sube===s && tarihAralikta(x.tarih,fs.bas,fs.bit) && x.durum!=='Bekliyor').reduce((a,b)=>a+b.tutar,0);
     const tahsilat = DATA.planli.filter(p=>p.sube===s && p.tip==='Tahsilat' && p.durum==='Bekliyor').reduce((a,b)=>a+b.tutar,0);
-    const odeme = DATA.planli.filter(p=>p.sube===s && p.tip==='Ödeme' && p.durum==='Bekliyor').reduce((a,b)=>a+b.tutar,0);
+    const odeme = DATA.giderler.filter(g=>g.sube===s && g.durum==='Bekliyor').reduce((a,b)=>a+b.tutar,0);
     const net = gelir-gider;
     const aySonuNet = net + tahsilat - odeme;
     return { s, gelir, gider, net, tahsilat, odeme, aySonuNet };
@@ -1149,11 +1274,8 @@ function renderAyarlar(){
     if(v && !DATA.gelirKategoriler.includes(v)){ DATA.gelirKategoriler.push(v); await saveData(); renderAll(); }
   });
   document.getElementById("btn-export").addEventListener("click", ()=>{
-    const blob = new Blob([JSON.stringify(DATA, null, 2)], {type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "kasa-plus-yedek.json"; a.click();
-    URL.revokeObjectURL(url);
+    const mesaj = "Aşağıdaki <strong>Panoya Kopyala</strong> butonuna basıp bir metin dosyasına yapıştırın ve uzantısını <strong>.json</strong> olarak kaydedin — bu dosyayı saklayarak verilerinizi yedekleyebilir ya da başka bir cihaza taşıyabilirsiniz.";
+    dosyaIndir(`kasa-plus-yedek-${todayStr()}.json`, JSON.stringify(DATA, null, 2), mesaj);
   });
 }
 

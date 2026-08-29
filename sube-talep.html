@@ -98,6 +98,37 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3QXlRK-kL8Qbo
 
 const SUBELER = ["Nişantaşı", "Fulya", "Maslak", "Kireçburnu", "Beykent", "Z.burnu", "S.beyli"];
 
+const URUN_GORUNEN = {
+  "Limonlu Yaz Pastası": "Limonlu Fit Pasta",
+  "*Fıstık Çikolata Dekora": "*Fıstık Çikolata",
+  "Ganaj (Klasik)": "Ganaj",
+  "*Frambuaz Siyah Çikolata": "*Frambuaz Siyah",
+  "*Frambuaz Beyaz Çikolata": "*Frambuaz Beyaz",
+  "Muzlu Beyaz Çikolatalı": "Muzlu Beyaz",
+  "Muzlu Siyah Çikolatalı": "Muzlu Siyah",
+  "Profiterol Siyah Çikolatalı": "Profiterol Siyah",
+  "Çilekli Siyah Çikolatalı": "Çilekli Siyah",
+  "Çilekli Beyaz Çikolatalı": "Çilekli Beyaz",
+  "*Vişne Siyah Çikolatalı": "*Vişne Siyah",
+  "San Sebastian (Klasik) — Ekstra Sos": "Ekstra Sos",
+  "Bademli Portakallı Bütün Kek": "Bademli Portakallı Bütün",
+  "Havuçlu Bütün Kek": "Havuçlu Bütün",
+  "Vişneli Bütün Kek": "Vişneli Bütün",
+  "Fransız Çikolatalı Bütün Kek": "Fransız Çikolatalı Bütün",
+  "Latte (Porsiyon)": "Latte",
+  "Çikolatalı Ekler (Porsiyon)": "Çikolatalı Ekler (kg)",
+  "Limonlu Ekler (Porsiyon)": "Limonlu Ekler (kg)",
+  "Beyaz Ekler": "Beyaz Ekler (kg)",
+  "Petifür": "Petifür (kg)",
+  "Rulo Petifür Muzlu": "Rulo Petifür Muzlu (kg)",
+  "Rulo Petifür Çilek": "Rulo Petifür Çilek (kg)",
+  "Çiko Limon Parfe": "Çiko Limon Parfe (kg)",
+  "Trileçe Frambuaz": "Frambuaz Triliçe",
+  "Trileçe Karamel": "Karamel Triliçe"
+};
+// Formda gosterilen ad; sisteme gonderilen anahtar her zaman urun.ad kalir.
+function gorunenAd(urun) { return URUN_GORUNEN[urun.ad] || urun.ad; }
+
 const KATALOG = [
   {
     "kategori": "Tek Pastalar (Fransız)",
@@ -105,99 +136,99 @@ const KATALOG = [
     "urunler": [
       {
         "ad": "Tiramisu",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Karpatka",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Ballı Rus Pastası",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Fraisier (Çilekli Beyaz)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Fraisier (Siyah)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Hasbahçe (Fransız)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Vişneli",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Profiterol Pasta",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Ganaj (Fransız)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Frambuaz Siyah",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Frambuaz Beyaz",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Karamel Banana",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Kestaneli Pasta",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Fıstıklı Pasta",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Portakal Küp",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Snickers",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Limonlu Yaz Pastası",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Mangolu Pasta",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Glutensiz Çikolatalı Pasta",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Panna Cotta Mango",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Panna Cotta Frambuaz",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Portakallı Fit Kek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Yaban Mersinli Pasta",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Çilekli Tart",
-        "birim": "adet"
+        "birim": ""
       }
     ]
   },
@@ -207,35 +238,35 @@ const KATALOG = [
     "urunler": [
       {
         "ad": "Çikolatalı Ekler",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Tiramisulu Ekler",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Frambuazlı Ekler",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Fıstıklı Ekler",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Karamel Ekler",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Lavanta Ekler",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Limonlu Ekler",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Çilekli Milföy",
-        "birim": "adet"
+        "birim": ""
       }
     ]
   },
@@ -245,31 +276,31 @@ const KATALOG = [
     "urunler": [
       {
         "ad": "Frambuazlı (Dilim)",
-        "birim": "dilim"
+        "birim": ""
       },
       {
         "ad": "Limonlu (Dilim)",
-        "birim": "dilim"
+        "birim": ""
       },
       {
         "ad": "Çikolatalı (Dilim)",
-        "birim": "dilim"
+        "birim": ""
       },
       {
         "ad": "Çilekli (Dilim)",
-        "birim": "dilim"
+        "birim": ""
       },
       {
         "ad": "Yaban Mersinli (Dilim)",
-        "birim": "dilim"
+        "birim": ""
       },
       {
         "ad": "Mangolu (Dilim)",
-        "birim": "dilim"
+        "birim": ""
       },
       {
         "ad": "Lotuslu (Dilim)",
-        "birim": "dilim"
+        "birim": ""
       }
     ]
   },
@@ -280,31 +311,31 @@ const KATALOG = [
     "urunler": [
       {
         "ad": "Frambuazlı (Bütün)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Limonlu (Bütün)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Yaban Mersinli (Bütün)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Çikolatalı (Bütün)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Çilekli (Bütün)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Lotuslu (Bütün)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Mangolu (Bütün)",
-        "birim": "adet"
+        "birim": ""
       }
     ]
   },
@@ -315,99 +346,99 @@ const KATALOG = [
     "urunler": [
       {
         "ad": "*Fıstık Çikolata Dekora",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "*Krokanlı Çikolata",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Ganaj (Klasik)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "*Frambuaz Siyah Çikolata",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "*Frambuaz Beyaz Çikolata",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Pasta Latte",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "*Kırmızı Meyvalı Naked",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Hasbahçe (Klasik)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "*Kestaneli Fıstık",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Muzlu Beyaz Çikolatalı",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Muzlu Siyah Çikolatalı",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Profiterol Siyah Çikolatalı",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Muz Krokan",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Çilekli Siyah Çikolatalı",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Çilekli Beyaz Çikolatalı",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "*Vişne Siyah Çikolatalı",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "*Frambuaz Muz Naked",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Frambuaz Çilek Beyaz",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Muz Çilek Naked",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Mois Pasta",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Hasbahçe Siyah",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "*Vişne Beyaz",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Badem Krokan",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "San Sebastian (Klasik)",
-        "birim": "adet",
+        "birim": "",
         "boysuz": true,
         "ekstraSos": true
       }
@@ -419,215 +450,215 @@ const KATALOG = [
     "urunler": [
       {
         "ad": "İncirli Coco",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Kayısılı Coco",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Coco Hindistan Cevizli",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Sufle Sade",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Sufle Vişneli",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Vişneli Mekik Büyük",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Mini Mekik",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Mini Bademli Mekik",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Mantar",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Tarçınlı Portakal",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Kestaneli Maringedeze",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Sable Bademli (Sade)",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Sable Bademli (Kakaolu)",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Kavala Kurabiyesi",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Kukunari Siyah",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Kukinari Beyaz",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Hindistan Cevizli Top",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Fıstıklı Top",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Pirinç Fındıklı Top",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Bireçel Beyaz",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Bireçel Siyah",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Fındıklı Biscotti",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Kahveli Bar",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Limonlu Bar",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Vişneli Bar",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Kakaolu Browni",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Frambuazlı Browni",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Karamelli Yıldız Kurabiye",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Şekilli Kurabiye",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Elmalı Kurabiye",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Vişneli Kurabiye",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Bademli Un Kurabiyesi",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Damalı",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Marmelatlı Kalp",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Dökme Çikolatalı Kalp",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Fındıklı Dökme Çiko Kalp",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Layd Hand Siyah",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Layd Hand Beyaz",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Selanik Gevreği",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Damla Sakızlı Kurabiye",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Portakallı Un Kurabiyesi",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Kayısılı İncirli Biscotti",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Unsuz Dereotlu Mekik",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Unsuz Keçiboynuzu Mekik",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Unsuz Kakao Chia",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Unsuz Limonlu Chia",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Unsuz Yaban Mersinli",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Hurmalı Browni",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Hurmalı Dilim",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Havuçlu Browni",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Portakallı Çikolata",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Çikolata Cips (Tatlı)",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Japon Cipsi",
-        "birim": "kg"
+        "birim": ""
       }
     ]
   },
@@ -637,67 +668,67 @@ const KATALOG = [
     "urunler": [
       {
         "ad": "Havuçlu Mable",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Üzümlü Mable",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Limonlu Mable",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Portakallı Mable",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Zebra Mable",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Çikolata Mable",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Şekersiz Mable",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Kırmızı Meyvalı Mable",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Bademli Portakallı Bütün Kek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Havuçlu Bütün Kek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Vişneli Bütün Kek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Fransız Çikolatalı Bütün Kek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Çikolatalı Muffin",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Havuçlu Muffin",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Frambuazlı Muffin",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Limonlu Muffin",
-        "birim": "adet"
+        "birim": ""
       }
     ]
   },
@@ -723,11 +754,11 @@ const KATALOG = [
       },
       {
         "ad": "Kornet Dereotlu",
-        "birim": "kg"
+        "birim": "tp"
       },
       {
         "ad": "Dereotlu Sufle",
-        "birim": "kg"
+        "birim": "tp"
       },
       {
         "ad": "Sebzeli",
@@ -755,27 +786,27 @@ const KATALOG = [
       },
       {
         "ad": "Burgu Susamlı Haşhaşlı",
-        "birim": "kg"
+        "birim": "tp"
       },
       {
         "ad": "Burgu Tahıllı",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Ayçekirdekli Galeta",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Parmesan Galeta",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "İtalyan Galeta",
-        "birim": "tp"
+        "birim": ""
       },
       {
         "ad": "Biberiyeli Zeytinli Galeta",
-        "birim": "tp"
+        "birim": ""
       },
       {
         "ad": "Çekirdekli Kokteyl",
@@ -791,35 +822,35 @@ const KATALOG = [
       },
       {
         "ad": "Kuru Üzümlü Yassı Tahıllı",
-        "birim": "tp"
+        "birim": ""
       },
       {
         "ad": "Granola Bar Tepsi",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Tahinli Susamlı",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Granola Dökme",
-        "birim": "kg"
+        "birim": ""
       },
       {
         "ad": "Kalp Denge Tahıllı",
-        "birim": "tp"
+        "birim": ""
       },
       {
         "ad": "Paskalya",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Paskalya Çikolatalı",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Tahinli Çörek",
-        "birim": "adet"
+        "birim": ""
       }
     ]
   },
@@ -829,27 +860,27 @@ const KATALOG = [
     "urunler": [
       {
         "ad": "Beze Büyük",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Beze Beyaz Minik",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Beze Renkli Minik",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Acıbadem",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Acıbadem Minik",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Ayçöreği",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Batonsale Sade",
@@ -919,135 +950,135 @@ const KATALOG = [
     "urunler": [
       {
         "ad": "Tiramisu Dilim",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Magnolia Çilek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Magnolia Muzlu",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Magnolia Oreolu",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Dubai Magnolia",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Supangle",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Profiterol Kase",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Mozaik",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Vişneli Tek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Hasbahçe Tek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Fıstıklı Çikolatalı Tek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Kestaneli Tek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Profiterol Tek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Ganaj Tek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Frambuaz Siyah Tek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Frambuaz Beyaz Tek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Latte (Porsiyon)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Kazandibi",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Sütlaç",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Trileçe Frambuaz",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Trileçe Karamel",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Aşure",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Çikolatalı Ekler (Porsiyon)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Limonlu Ekler (Porsiyon)",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Beyaz Ekler",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Petifür",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Rulo Petifür Muzlu",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Rulo Petifür Çilek",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Çiko Limon Parfe",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Çilekli Adet Rulo",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Muzlu Adet Rulo",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Krokanlı Şu Topu",
-        "birim": "adet"
+        "birim": ""
       },
       {
         "ad": "Çilekli Şu Topu",
-        "birim": "adet"
+        "birim": ""
       }
     ]
   }
@@ -1565,7 +1596,7 @@ KATALOG.forEach((kategori, ki) => {
 
   kategori.urunler.forEach((urun, ui) => {
     const row = document.createElement("div");
-    row.dataset.ad = urun.ad.toLocaleLowerCase("tr");
+    row.dataset.ad = (urun.ad + " " + gorunenAd(urun)).toLocaleLowerCase("tr");
     row.dataset.gizliKey = kategori.kategori + "|" + urun.ad;
 
     if (kategori.boylu && !urun.boysuz) {
@@ -1575,13 +1606,13 @@ KATALOG.forEach((kategori, ki) => {
       for (let b = 0; b <= boyMax; b++) {
         boyHtml += `<div class="boy-input"><label>Boy ${b}</label><input type="text" inputmode="decimal" class="miktar-alani" placeholder="0" data-ki="${ki}" data-ui="${ui}" data-boy="${b}"></div>`;
       }
-      row.innerHTML = `<div class="urun-ad">${urun.ad}</div><div class="boy-grid">${boyHtml}</div>`;
+      row.innerHTML = `<div class="urun-ad">${gorunenAd(urun)}</div><div class="boy-grid">${boyHtml}</div>`;
     } else {
       row.className = "urun-row";
       row.innerHTML = `
         <div>
-          <div class="urun-ad">${urun.ad}</div>
-          <div class="urun-birim">${urun.birim}</div>
+          <div class="urun-ad">${gorunenAd(urun)}</div>
+          ${urun.birim ? `<div class="urun-birim">${urun.birim}</div>` : ""}
           ${sosKutusu(urun, ki, ui)}
         </div>
         <input type="text" inputmode="decimal" class="miktar-input miktar-alani" placeholder="0" data-ki="${ki}" data-ui="${ui}">
@@ -1608,12 +1639,12 @@ KATALOG.forEach((kategori, ki) => {
   kategori.urunler.forEach((urun, ui) => {
     const row = document.createElement("div");
     row.className = "urun-row";
-    row.dataset.ad = urun.ad.toLocaleLowerCase("tr");
+    row.dataset.ad = (urun.ad + " " + gorunenAd(urun)).toLocaleLowerCase("tr");
     row.dataset.gizliKey = kategori.kategori + "|" + urun.ad;
     row.innerHTML = `
       <div>
-        <div class="urun-ad">${urun.ad}</div>
-        <div class="urun-birim">${urun.birim}</div>
+        <div class="urun-ad">${gorunenAd(urun)}</div>
+        ${urun.birim ? `<div class="urun-birim">${urun.birim}</div>` : ""}
       </div>
       <input type="text" inputmode="decimal" class="miktar-input miktar-alani" placeholder="0" data-zayi-ki="${ki}" data-zayi-ui="${ui}">
     `;
