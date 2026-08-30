@@ -680,6 +680,41 @@ async function excelIndir() {
       mh.getRow(r).height = 78.75;
     });
 
+    // ————— toplam
+    // Her urunun 16 sube toplami. dagilim'a formulle bagli, boylece
+    // dagilim'da elle bir duzeltme yapilinca burasi da guncellenir.
+    const tp = wb.addWorksheet("toplam", { pageSetup: { paperSize: 9 } });
+    tp.getColumn(1).width = 47.7;
+    tp.getColumn(2).width = 25;
+
+    [["ÜRÜNLER", 1], ["toplam adet", 2]].forEach(([ad, c]) => {
+      const h = tp.getCell(1, c);
+      h.value = ad;
+      h.font = { name: "Calibri", size: 28, bold: true };
+      h.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      h.border = KENAR_INCE;
+    });
+    tp.getRow(1).height = 38;
+
+    const sonHarf = sutunHarfi(sonSutun);
+    urunler.forEach((urun, i) => {
+      const r = i + 2;
+      const dgSatir = urunSatiri[urun];
+      const a = tp.getCell(r, 1);
+      a.value = EXCEL_URUN_ADI[urun] || urun;
+      a.font = { name: "Calibri", size: 24 };
+      a.alignment = { vertical: "middle" };
+      a.border = KENAR_INCE;
+
+      const b = tp.getCell(r, 2);
+      const toplam = subeler.reduce((t, s) => t + ((matris[urun] || {})[s] || 0), 0);
+      b.value = { formula: `SUM('dağılım'!B${dgSatir}:${sonHarf}${dgSatir})`, result: toplam };
+      b.font = { name: "Calibri", size: 28 };
+      b.alignment = { horizontal: "center", vertical: "middle" };
+      b.border = KENAR_INCE;
+      tp.getRow(r).height = 37;
+    });
+
     const tarih = baslangicEl.value || bitisEl.value || "";
     const ekAd = (baslangicEl.value && bitisEl.value && baslangicEl.value !== bitisEl.value)
       ? baslangicEl.value + "_" + bitisEl.value
@@ -692,7 +727,7 @@ async function excelIndir() {
     a.download = ekAd + ".xlsx";
     a.click();
     URL.revokeObjectURL(a.href);
-    goster("basarili", "Excel indirildi: dağılım + muhasebe sayfaları. " +
+    goster("basarili", "Excel indirildi: dağılım + muhasebe + toplam sayfaları. " +
       "Şube notları Excel'e girmez, panelde ve CSV'de kalır.");
   } catch (err) {
     goster("hata", "Excel oluşturulamadı: " + (err && err.message ? err.message : err));

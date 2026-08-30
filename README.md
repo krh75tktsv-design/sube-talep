@@ -85,6 +85,8 @@ internet gerekir):
 - **`muhasebe`** — aynı veri, muhasebe için gruplanmış 28 satır. Hücreler
   `dağılım`'a **canlı formülle** bağlıdır: `dağılım`'da elle bir düzeltme
   yaparsanız `muhasebe` kendiliğinden güncellenir.
+- **`toplam`** — her ürünün 16 şube toplamı, tek sütun
+  (`SUM('dağılım'!B3:Q3)`). O da `dağılım`'a canlı bağlı.
 
 Gruplama `MUHASEBE_SATIRLARI` sabitinde durur; ör. CHEESCAKE ÇEŞİTLERİ =
 DİLİM FRAMBUAZ CHE + DİLİM LİMONLU CHEES, MUHALLEBİ ÇEŞİTLERİ = ÇİLEKLİ +
@@ -94,6 +96,8 @@ bir ürün `muhasebe`'de kendi satırı olarak çıkar, kaybolmaz.
 
 Bilinmesi gerekenler:
 
+- `toplam` sayfası, elde eklenen `PAZARTESİ-2026-08-31.xlsx` düzenine göre
+  yapıldı; ürün adları `dağılım` ile aynı yazımda tutuldu.
 - Örnek dosyadaki `İlk bölüm toplam` ve `TOPLAM USTA` sayfaları üretilmez;
   ikisi de `dağılım`'dan türeyen toplamlardı ve elde bakımsız kalmışlardı
   (eksik ürün, yanlış satıra bakan formül, silinmiş formüller).
