@@ -1,0 +1,16 @@
+{
+  "name": "Milli Saraylar Panel",
+  "short_name": "MS Panel",
+  "description": "Milli Saraylar şube taleplerini görüntüleme paneli",
+  "start_url": "./milli-saraylar-paneli.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F8F7F4",
+  "theme_color": "#111827",
+  "icons": [
+    { "src": "ikon/msp-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "ikon/msp-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "ikon/msp-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

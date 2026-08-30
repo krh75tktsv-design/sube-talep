@@ -9,8 +9,10 @@ gelir/gider, banka hesapları, cari takibi, ödeme-tahsilat ve şube karşılaş
 - `app.js` — Tüm uygulama mantığı (render, filtreler, düzenleme, dışa aktarma vb.)
 - `sube-talep.html` / `talep-paneli.html` — Şube ürün talebi formu ve merkez paneli
 - `ekip-paneli.html` + `ekip-paneli.js` — Ekip iletişim paneli (aşağıda)
+- `milli-saraylar.html` / `milli-saraylar-paneli.html` — Milli Saraylar talep formu ve paneli
 - `apps-script/Code.gs` — Şube talepleri Web App'i
 - `apps-script/EkipPaneli.gs` — Ekip paneli Web App'i (ayrı e-tablo, ayrı URL)
+- `apps-script/MilliSaraylar.gs` — Milli Saraylar Web App'i (ayrı e-tablo, ayrı URL)
 
 ## Ekip Paneli
 
@@ -55,6 +57,99 @@ sürüm > Dağıt** demeyi unutmayın; yoksa değişiklik canlıya çıkmaz
   işaretlenir — yanlışlıkla silineni o hücreyi boşaltarak geri alırsınız.
 - Mesajlar 90, devir notları 180 gün sonra gece temizliğinde silinir
   (`SAKLAMA_GUN` sabitinden değiştirilebilir).
+
+## Milli Saraylar Talep Formu
+
+16 Milli Saraylar şubesinin (HAREM, KAFE, SAAT, KÜÇÜKSU, IHLAMUR, ŞEKER,
+MASLAK, ÇEŞMİ, ABRAH, LİMON, BEYLER, ÇAMLICA, MECİDİYE, YILDIZ, AYNALI,
+KASKAT) 34 kalemlik ürün listesinden talep göndermesi için ayrı bir sistem.
+Şube Talepleri ve Ekip Paneli'nden **tamamen bağımsız**: kendi e-tablosu,
+kendi Web App URL'si. Biri bozulursa diğeri etkilenmez.
+
+- `milli-saraylar.html` — şube personelinin doldurduğu form. Şube seçilir,
+  şifre girilir, ürünlerin karşısına miktar yazılır. Ek not alanı, ürün
+  arama, "gönderdiklerimi göster" ve şifre değiştirme var.
+- `milli-saraylar-paneli.html` — merkezin gördüğü panel. Tarih aralığı
+  seçilir; ürün × şube matrisi, şube ve genel toplamlar, talep göndermeyen
+  şubeler, şube notları. Excel (.xlsx) ve CSV indirme, yatay yazdırma düzeni.
+
+### Excel çıktısı
+
+"Excel İndir (.xlsx)" düğmesi, elde kullanılan `CUMARTESİ-1.xlsx`
+düzeninde iki sayfalık bir dosya üretir (ExcelJS 4.4.0, CDN'den yüklenir —
+internet gerekir):
+
+- **`dağılım`** — ham matris. A1'de gün adı + tarih (sarı zeminli, birleşik),
+  2. satırda ÜRÜNLER + 16 şube, 3-36. satırlarda 34 ürün. Boş hücreler boş
+  bırakılır (0 yazılmaz), yatay A4, ilk sütun dondurulmuş.
+- **`muhasebe`** — aynı veri, muhasebe için gruplanmış 28 satır. Hücreler
+  `dağılım`'a **canlı formülle** bağlıdır: `dağılım`'da elle bir düzeltme
+  yaparsanız `muhasebe` kendiliğinden güncellenir.
+
+Gruplama `MUHASEBE_SATIRLARI` sabitinde durur; ör. CHEESCAKE ÇEŞİTLERİ =
+DİLİM FRAMBUAZ CHE + DİLİM LİMONLU CHEES, MUHALLEBİ ÇEŞİTLERİ = ÇİLEKLİ +
+OREO + MUZLU MAGNOLİA, MEYVALI PASTA = HASBAHÇE + MOİS + KIRMIZI MEYVALI.
+Ürün listesine ekleme yaparsanız bu sabite de eklemeyi unutmayın — eklenmemiş
+bir ürün `muhasebe`'de kendi satırı olarak çıkar, kaybolmaz.
+
+Bilinmesi gerekenler:
+
+- Örnek dosyadaki `İlk bölüm toplam` ve `TOPLAM USTA` sayfaları üretilmez;
+  ikisi de `dağılım`'dan türeyen toplamlardı ve elde bakımsız kalmışlardı
+  (eksik ürün, yanlış satıra bakan formül, silinmiş formüller).
+- Şube notları Excel'e girmez; panelde ve CSV'de kalır.
+- Ürün adları `dağılım`'da eski dosyalardaki yazımla birebir aynıdır
+  (`TİRAMİSU  (dilim)` içindeki çift boşluk dahil) — `EXCEL_URUN_ADI`
+  sabitinde tutulur.
+- `apps-script/MilliSaraylar.gs` — iki sayfayı besleyen Web App.
+  Sekmeler: `Talepler` (kayıtlar) ve `Subeler` (şube, şifre, rol, aktif).
+
+### Şifreler
+
+Talep yapan personel sayısı fazla olduğu için her şube panele **kendi
+şifresiyle** girer. Şifreler bilerek kodun içinde değil, **Google
+E-Tablo'nun `Subeler` sekmesinde** tutulur:
+
+- Bu depo GitHub'da herkese açık; koda yazılan bir şifreyi isteyen herkes
+  okuyabilirdi. Şifreler tarayıcıya da hiç gönderilmez — doğrulama
+  yalnızca Apps Script tarafında yapılır.
+- Şube ekleme/çıkarma, şifre değiştirme, bir şubeyi kapatma (`Aktif`
+  sütununa `hayir`) e-tablodan yapılır; kod değişmez.
+- `Subeler` sekmesindeki **MERKEZ** satırı panelin şifresidir, şubelere
+  verilmez. Yalnızca `rol` sütunu `merkez` olan hesap tüm şubelerin
+  kayıtlarını görebilir; bir şube yalnızca kendi gönderdiklerine erişir.
+- 4 haneli şifre iç ekip için yeterli bir ayrımdır, gerçek bir güvenlik
+  katmanı değildir: Web App URL'sini bilen biri şube listesini görebilir
+  ve şifre deneyebilir.
+
+Giriş bir kez yapılır, tarayıcı hatırlar; telefona PWA olarak kurulunca
+her açılışta şifre sormaz. "Çıkış" düğmesi hatırlananı siler.
+
+### Kurulum
+
+Adım adım anlatım `apps-script/MilliSaraylar.gs` dosyasının en üstünde.
+Özetle: yeni e-tablo > Apps Script'e dosyayı yapıştır > `kurulum`
+fonksiyonunu çalıştır (16 şube + MERKEZ için rastgele şifre üretir) >
+Web App olarak dağıt > çıkan URL'yi **iki HTML dosyasındaki**
+`APPS_SCRIPT_URL` sabitine yapıştır.
+
+`.gs` dosyasını değiştirdiğinde **Dağıt > Dağıtımları yönet > kalem >
+Sürüm: Yeni sürüm > Dağıt** demeyi unutma; yoksa değişiklik canlıya
+çıkmaz (URL aynı kalır).
+
+### Bilinmesi gerekenler
+
+- Ürün listesi iki dosyada birden duruyor: formda `URUNLER`, panelde
+  `URUN_SIRA`. Ürün eklerken/çıkarırken ikisini de güncelle — panelde
+  eksik kalan bir ürün kaybolmaz, tablonun sonuna eklenir.
+- Aynı talep iki kez gönderilirse iki kez kaydedilir; panel ikisini
+  toplayarak gösterir. Yanlış kaydı düzeltmek için panelin "▦ E-Tablo"
+  düğmesiyle e-tabloyu açıp satırı düzelt, sonra "Yenile"ye bas.
+- Talepler ertesi gün için girildiği varsayılır: hem formdaki tarih hem
+  panelin tarih aralığı varsayılan olarak **yarını** gösterir.
+- `kurulumTetikleyiciOlustur` fonksiyonunu bir kez çalıştırırsan her
+  akşam 22:00'de ertesi gün için talep göndermemiş şubeleri mail atar
+  (opsiyonel).
 
 ## Yerelde çalıştırma
 

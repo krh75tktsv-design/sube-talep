@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Telefona uygulama gibi kurulabilmesi icin (PWA). Service worker YOK:
+     onbellek kaynakli eski surum sorunlarini onlemek adina bilerek eklenmedi. -->
+<link rel="manifest" href="milli-saraylar.webmanifest">
+<meta name="theme-color" content="#7F1D1D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Milli Saraylar Talep">
+<link rel="apple-touch-icon" href="ikon/ms-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="ikon/ms-192.png">
+<title>Milli Saraylar Talep Formu</title>
+<style>
+  :root{--ink:#111827;--paper:#F8F7F4;--bordo:#7F1D1D;--altin:#A16207;
+        --line:#E5E2DA;--muted:#6B7280;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+       background:var(--paper);color:var(--ink);}
+  .wrap{max-width:560px;margin:0 auto;padding:24px 16px 110px;}
+  h1{font-size:19px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:20px;line-height:1.45;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);
+        margin:18px 0 6px;text-transform:uppercase;letter-spacing:.04em;}
+  select,input[type=date],input[type=search],input[type=password],input[type=text],textarea{
+    width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;
+    font-size:15px;background:#fff;font-family:inherit;color:inherit;}
+  button{width:100%;padding:15px;margin-top:24px;background:var(--bordo);color:#fff;
+         border:0;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;}
+  button.ikincil{background:#fff;color:var(--bordo);border:1.5px solid var(--bordo);}
+  button.sade{background:none;color:var(--muted);border:0;font-size:13px;
+              font-weight:500;padding:8px;margin-top:10px;text-decoration:underline;}
+  button:disabled{opacity:.5;}
+  .durum{margin-top:14px;padding:12px;border-radius:10px;font-size:14px;
+         text-align:center;display:none;line-height:1.45;}
+  .durum.basarili{display:block;background:#ECFDF5;color:#065F46;}
+  .durum.hata{display:block;background:#FEF2F2;color:#991B1B;}
+  .durum.bos{display:block;background:#fff;color:var(--muted);border:1px solid var(--line);}
+
+  /* Giris ekrani */
+  .giris{max-width:400px;margin:0 auto;padding:48px 20px;}
+  .marka{text-align:center;margin-bottom:28px;}
+  .marka .rozet{display:inline-flex;align-items:center;justify-content:center;
+    width:64px;height:64px;border-radius:18px;background:var(--bordo);color:#F5D68A;
+    font-size:23px;font-weight:700;letter-spacing:.02em;margin-bottom:14px;}
+  .marka h1{font-size:20px;margin:0;}
+  .marka .sub{margin:6px 0 0;}
+
+  /* Ust bar */
+  .ustbar{display:flex;align-items:center;justify-content:space-between;
+    background:#fff;border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;margin-bottom:18px;gap:10px;}
+  .ustbar .kim{font-size:14px;font-weight:700;}
+  .ustbar .kim span{display:block;font-size:11px;font-weight:600;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.04em;}
+  .ustbar button{width:auto;margin:0;padding:8px 12px;font-size:12.5px;
+    background:none;color:var(--muted);border:1px solid var(--line);border-radius:8px;}
+
+  /* Urun listesi */
+  .liste{background:#fff;border:1px solid var(--line);border-radius:12px;
+         overflow:hidden;margin-top:8px;}
+  .urun-row{display:flex;align-items:center;justify-content:space-between;
+    padding:11px 14px;border-bottom:1px solid var(--line);gap:10px;}
+  .urun-row:last-child{border-bottom:0;}
+  .urun-row.gizli{display:none;}
+  .urun-ad{font-size:13.5px;font-weight:500;}
+  .urun-row.dolu{background:#FEF6F6;}
+  /* input.* olarak yazildi: yukaridaki input[type=text] kurali daha guclu
+     oldugundan sade .miktar-input width:100%'e yeniliyordu. */
+  input.miktar-input{width:76px;padding:9px;border:1px solid var(--line);border-radius:8px;
+    font-size:15px;text-align:center;font-family:inherit;flex-shrink:0;}
+  input.miktar-input:focus{outline:2px solid var(--bordo);outline-offset:-1px;}
+  .bos-sonuc{padding:18px 14px;font-size:13.5px;color:var(--muted);text-align:center;}
+
+  .gecmis-tablo{width:100%;border-collapse:collapse;background:#fff;
+    border:1px solid var(--line);border-radius:12px;overflow:hidden;
+    font-size:13.5px;margin-top:12px;}
+  .gecmis-tablo th{background:#FAFAF8;font-size:11px;text-transform:uppercase;
+    letter-spacing:.03em;color:var(--muted);font-weight:700;padding:9px 12px;text-align:left;}
+  .gecmis-tablo td{padding:9px 12px;border-top:1px solid var(--line);}
+  .gecmis-tablo td:last-child,.gecmis-tablo th:last-child{text-align:right;}
+  .gecmis-tablo tr.grup td{background:#FDECEC;font-weight:700;font-size:12px;text-align:left;}
+
+  .bolum-baslik{margin:30px 0 4px;font-size:15px;font-weight:700;
+    display:flex;align-items:center;gap:8px;}
+  .bolum-baslik span{font-size:11px;font-weight:600;color:var(--muted);background:#fff;
+    border:1px solid var(--line);border-radius:99px;padding:2px 8px;
+    text-transform:uppercase;letter-spacing:.04em;}
+  .bolum-aciklama{font-size:12.5px;color:var(--muted);margin-bottom:10px;line-height:1.45;}
+  .ozet-bar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);
+    padding:11px 16px;font-size:13px;color:var(--muted);text-align:center;
+    font-variant-numeric:tabular-nums;}
+  .gizle{display:none;}
+</style>
+</head>
+<body>
+
+<!-- ————————————————— giriş ekranı ————————————————— -->
+<div class="giris" id="girisEkran">
+  <div class="marka">
+    <div class="rozet">MS</div>
+    <h1>Milli Saraylar Talep</h1>
+    <div class="sub">Şubenizi seçip size verilen şifreyi girin.</div>
+  </div>
+
+  <label for="girisSube">Şube</label>
+  <select id="girisSube"><option value="">Yükleniyor…</option></select>
+
+  <label for="girisSifre">Şifre</label>
+  <input type="password" id="girisSifre" inputmode="numeric" autocomplete="current-password"
+         placeholder="••••">
+
+  <button id="girisBtn">Giriş Yap</button>
+  <div class="durum" id="girisDurum"></div>
+</div>
+
+<!-- ————————————————— talep ekranı ————————————————— -->
+<div class="wrap gizle" id="anaEkran">
+  <div class="ustbar">
+    <div class="kim"><span>Şube</span><b id="aktifSube">—</b></div>
+    <button id="cikisBtn">Çıkış</button>
+  </div>
+
+  <h1>Ürün Talebi</h1>
+  <div class="sub">İhtiyacınız olan ürünlerin karşısına miktarı yazın.
+    Boş bıraktıklarınız gönderilmez.</div>
+
+  <label for="tarih">Talep Tarihi</label>
+  <input type="date" id="tarih">
+
+  <label for="ara">Ürün Ara</label>
+  <input type="search" id="ara" placeholder="ürün adı yazın…">
+
+  <div class="liste" id="urunListesi"></div>
+
+  <label for="not">Ek Not (opsiyonel)</label>
+  <textarea id="not" rows="2" placeholder="Listede olmayan bir istek varsa buraya yazın"></textarea>
+
+  <button id="gonderBtn">Talep Gönder</button>
+  <div class="durum" id="gonderDurum"></div>
+
+  <div class="bolum-baslik" style="margin-top:34px;">Gönderdiklerim</div>
+  <div class="bolum-aciklama">Seçili talep tarihi için şubenizin gönderdiği
+    kayıtları listeler. Bir hata görürseniz merkeze bildirin.</div>
+  <button id="gecmisBtn" class="ikincil">Gönderdiklerimi Göster</button>
+  <div class="durum" id="gecmisDurum"></div>
+  <div id="gecmisListesi"></div>
+
+  <button id="sifreBtn" class="sade">Şifremi değiştir</button>
+  <div class="durum" id="sifreDurum"></div>
+</div>
+
+<div class="ozet-bar gizle" id="ozetBar">Henüz miktar girilmedi</div>
+
+<script>
+// ---- AYARLAR: kuruluma göre burayı düzenle ----
+// apps-script/MilliSaraylar.gs dosyasını dağıttığında aldığın Web App URL'si.
+// Panel dosyası (milli-saraylar-paneli.html) da aynı URL'yi kullanır.
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx58qbR62lIzD9fAoXSgdV8Vh3_MMb52AEmmcSNeKZkE4Fr81YB7_-ww61DZnZsUJ_I/exec";
+
+// Talep edilebilecek ürünler. Sıralama formda göründüğü sıradır.
+const URUNLER = [
+  "TİRAMİSU (dilim)",
+  "DİLİM FRAMBUAZ CHE",
+  "DİLİM LİMONLU CHEES",
+  "HASBAHÇE",
+  "LATTE PASTA",
+  "ÇİLEKLİ TART",
+  "ÇİLEKLİ MUHALLEBİ",
+  "OREO MUHALLEBİ",
+  "PROFİTEROL",
+  "MOZAİK",
+  "TRİLİÇE (dilim)",
+  "MALAGA",
+  "KAZANDİBİ",
+  "MİLFÖY",
+  "SAN SEBASTİAN",
+  "FISTIKLI PASTA",
+  "MOİS",
+  "KIRMIZI MEYVALI",
+  "KESTANE ÇİKOLATALI",
+  "ÇİKOLATALI PARFE",
+  "LİMONLU PARFE",
+  "LİMONLU TART",
+  "MUZLU MAGNOLİA",
+  "SÜTLAÇ",
+  "KROKAN",
+  "FISTIKLI KÜP",
+  "DUBAİ MUHALLEBİSİ",
+  "LOTUS PASTA",
+  "GLUTENSİZ ÇİKOLATALI",
+  "LİMONLU FİT",
+  "MALAGA YENİ SOS",
+  "HURMALI BROWNİ",
+  "HAVUÇLU BROWNİ",
+  "DUBAİ ÇİKOLATASI",
+];
+
+const OTURUM_ANAHTARI = "milliSaraylarOturum";
+
+// Oturum tarayıcıda saklanır ki her açılışta şifre sorulmasın.
+// Şifre yalnızca sunucuda doğrulanır; sayfanın kaynağında hiçbir şifre yoktur.
+let oturum = null;
+try {
+  const kayitli = localStorage.getItem(OTURUM_ANAHTARI);
+  if (kayitli) oturum = JSON.parse(kayitli);
+} catch (e) { oturum = null; }
+
+const girisEkran = document.getElementById("girisEkran");
+const anaEkran = document.getElementById("anaEkran");
+const ozetBar = document.getElementById("ozetBar");
+
+function goster(tur, mesaj, hedef) {
+  hedef.className = "durum " + tur;
+  hedef.textContent = mesaj;
+}
+
+function htmlKac(s) {
+  return String(s === undefined || s === null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function kurulumEksik(hedef) {
+  if (!APPS_SCRIPT_URL.includes("BURAYA_")) return false;
+  goster("hata", "Kurulum tamamlanmadı: APPS_SCRIPT_URL henüz ayarlanmamış.", hedef);
+  return true;
+}
+
+// Apps Script'e istek. text/plain gönderilir; tarayıcı böylece ön kontrol
+// (preflight) isteği atmaz, Web App da CORS ayarı gerektirmez.
+async function istek(govde) {
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(govde),
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
+
+// ————————————————————————————————————————————— giriş
+
+const girisSubeEl = document.getElementById("girisSube");
+const girisSifreEl = document.getElementById("girisSifre");
+const girisBtn = document.getElementById("girisBtn");
+const girisDurum = document.getElementById("girisDurum");
+
+async function subeleriYukle() {
+  if (APPS_SCRIPT_URL.includes("BURAYA_")) {
+    girisSubeEl.innerHTML = '<option value="">Kurulum tamamlanmadı</option>';
+    kurulumEksik(girisDurum);
+    return;
+  }
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, { method: "GET" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const adlar = data.subeler || [];
+    girisSubeEl.innerHTML = '<option value="">Şube seçin…</option>' +
+      adlar.map(a => `<option value="${htmlKac(a)}">${htmlKac(a)}</option>`).join("");
+  } catch (err) {
+    girisSubeEl.innerHTML = '<option value="">Liste alınamadı</option>';
+    goster("hata", "Şube listesi alınamadı. İnternet bağlantınızı kontrol edin.", girisDurum);
+  }
+}
+
+girisBtn.addEventListener("click", girisYap);
+girisSifreEl.addEventListener("keydown", (e) => { if (e.key === "Enter") girisYap(); });
+
+async function girisYap() {
+  const sube = girisSubeEl.value;
+  const sifre = girisSifreEl.value.trim();
+  if (kurulumEksik(girisDurum)) return;
+  if (!sube || !sifre) {
+    goster("hata", "Şube seçip şifrenizi girin.", girisDurum);
+    return;
+  }
+  girisBtn.disabled = true;
+  girisBtn.textContent = "Kontrol ediliyor…";
+  try {
+    const data = await istek({ islem: "giris", sube, sifre });
+    if (!data.ok) {
+      goster("hata", data.hata || "Giriş yapılamadı.", girisDurum);
+      return;
+    }
+    oturum = { sube: data.sube, sifre };
+    try { localStorage.setItem(OTURUM_ANAHTARI, JSON.stringify(oturum)); } catch (e) {}
+    girisSifreEl.value = "";
+    girisDurum.className = "durum";
+    paneliAc();
+  } catch (err) {
+    goster("hata", "Bağlanılamadı, internet bağlantınızı kontrol edip tekrar deneyin.", girisDurum);
+  } finally {
+    girisBtn.disabled = false;
+    girisBtn.textContent = "Giriş Yap";
+  }
+}
+
+document.getElementById("cikisBtn").addEventListener("click", () => {
+  if (!confirm("Çıkış yapılsın mı? Bir dahaki girişte şifre sorulacak.")) return;
+  oturum = null;
+  try { localStorage.removeItem(OTURUM_ANAHTARI); } catch (e) {}
+  anaEkran.classList.add("gizle");
+  ozetBar.classList.add("gizle");
+  girisEkran.classList.remove("gizle");
+  subeleriYukle();
+});
+
+function paneliAc() {
+  document.getElementById("aktifSube").textContent = oturum.sube;
+  girisEkran.classList.add("gizle");
+  anaEkran.classList.remove("gizle");
+  ozetBar.classList.remove("gizle");
+}
+
+// ————————————————————————————————————————————— talep formu
+
+// Talepler ertesi gün için girildiğinden tarih varsayılan olarak yarındır.
+const tarihInput = document.getElementById("tarih");
+const yarin = new Date();
+yarin.setDate(yarin.getDate() + 1);
+tarihInput.value = yarin.toISOString().slice(0, 10);
+
+const listeEl = document.getElementById("urunListesi");
+listeEl.innerHTML = URUNLER.map((ad, i) => `
+  <div class="urun-row" data-ad="${htmlKac(ad.toLocaleLowerCase("tr"))}">
+    <div class="urun-ad">${htmlKac(ad)}</div>
+    <input type="text" inputmode="decimal" class="miktar-input" placeholder="0" data-i="${i}">
+  </div>`).join("") + '<div class="bos-sonuc gizle" id="bosSonuc">Aramanıza uyan ürün yok.</div>';
+
+// Miktar alanları metin girişi olduğu için yazılanı rakam + tek ayraçla sınırlar.
+listeEl.addEventListener("input", (olay) => {
+  const el = olay.target;
+  if (!el.classList.contains("miktar-input")) return;
+  let v = el.value.replace(/[^\d.,]/g, "");
+  const ilk = v.search(/[.,]/);
+  if (ilk !== -1) v = v.slice(0, ilk + 1) + v.slice(ilk + 1).replace(/[.,]/g, "");
+  if (v !== el.value) el.value = v;
+  el.closest(".urun-row").classList.toggle("dolu", miktarOku(v) > 0);
+  ozetiTazele();
+});
+
+function miktarOku(deger) {
+  const sayi = Number(String(deger).trim().replace(",", "."));
+  return isNaN(sayi) ? 0 : sayi;
+}
+
+function ozetiTazele() {
+  let kalem = 0, toplam = 0;
+  document.querySelectorAll(".miktar-input").forEach(inp => {
+    const m = miktarOku(inp.value);
+    if (m > 0) { kalem++; toplam += m; }
+  });
+  ozetBar.textContent = kalem === 0
+    ? "Henüz miktar girilmedi"
+    : `${kalem} kalem · toplam ${toplam.toLocaleString("tr-TR")} adet`;
+}
+
+const araInput = document.getElementById("ara");
+araInput.addEventListener("input", () => {
+  const q = araInput.value.trim().toLocaleLowerCase("tr");
+  let gorunen = 0;
+  document.querySelectorAll(".urun-row").forEach(row => {
+    const eslesiyor = !q || row.dataset.ad.includes(q);
+    row.classList.toggle("gizli", !eslesiyor);
+    if (eslesiyor) gorunen++;
+  });
+  document.getElementById("bosSonuc").classList.toggle("gizle", gorunen > 0);
+});
+
+const gonderBtn = document.getElementById("gonderBtn");
+const gonderDurum = document.getElementById("gonderDurum");
+gonderBtn.addEventListener("click", gonder);
+
+async function gonder() {
+  const tarih = tarihInput.value;
+  const not = document.getElementById("not").value.trim();
+
+  const kalemler = [];
+  document.querySelectorAll(".miktar-input").forEach(inp => {
+    const miktar = miktarOku(inp.value);
+    if (miktar > 0) kalemler.push({ urun: URUNLER[inp.dataset.i], miktar });
+  });
+
+  if (!tarih) { goster("hata", "Talep tarihi seçin.", gonderDurum); return; }
+  if (kalemler.length === 0 && !not) {
+    goster("hata", "En az bir ürün için miktar girin.", gonderDurum);
+    return;
+  }
+  if (kurulumEksik(gonderDurum)) return;
+
+  gonderBtn.disabled = true;
+  gonderBtn.textContent = "Gönderiliyor…";
+  try {
+    const data = await istek({
+      islem: "kaydet", sube: oturum.sube, sifre: oturum.sifre, tarih, kalemler, not,
+    });
+    if (!data.ok) { goster("hata", data.hata || "Gönderilemedi.", gonderDurum); return; }
+    goster("basarili", `Talebiniz gönderildi (${kalemler.length} kalem). Teşekkürler!`, gonderDurum);
+    document.querySelectorAll(".miktar-input").forEach(inp => {
+      inp.value = "";
+      inp.closest(".urun-row").classList.remove("dolu");
+    });
+    document.getElementById("not").value = "";
+    ozetiTazele();
+  } catch (err) {
+    goster("hata", "Gönderilemedi, internet bağlantınızı kontrol edip tekrar deneyin.", gonderDurum);
+  } finally {
+    gonderBtn.disabled = false;
+    gonderBtn.textContent = "Talep Gönder";
+  }
+}
+
+// ————————————————————————————————————————————— gönderdiklerim
+
+const gecmisBtn = document.getElementById("gecmisBtn");
+const gecmisDurum = document.getElementById("gecmisDurum");
+const gecmisListesi = document.getElementById("gecmisListesi");
+gecmisBtn.addEventListener("click", gecmisiGoster);
+
+async function gecmisiGoster() {
+  const tarih = tarihInput.value;
+  if (!tarih) { goster("hata", "Önce talep tarihi seçin.", gecmisDurum); return; }
+  if (kurulumEksik(gecmisDurum)) return;
+
+  gecmisBtn.disabled = true;
+  gecmisBtn.textContent = "Yükleniyor…";
+  gecmisDurum.className = "durum";
+  gecmisListesi.innerHTML = "";
+  try {
+    const data = await istek({
+      islem: "gecmis", sube: oturum.sube, sifre: oturum.sifre, tarih,
+    });
+    if (!data.ok) { goster("hata", data.hata || "Kayıtlar alınamadı.", gecmisDurum); return; }
+    const kayitlar = data.kayitlar || [];
+    if (kayitlar.length === 0) {
+      goster("bos", `${tarih} tarihi için henüz kayıt görünmüyor.`, gecmisDurum);
+      return;
+    }
+    const urunler = kayitlar.filter(k => k.urun !== "NOT");
+    const notlar = kayitlar.filter(k => k.urun === "NOT");
+
+    let html = '<table class="gecmis-tablo"><tr><th>Ürün</th><th>Miktar</th></tr>';
+    if (urunler.length) {
+      html += '<tr class="grup"><td colspan="2">Talep</td></tr>';
+      urunler.forEach(k => {
+        const sayi = Number(k.miktar);
+        const miktar = (k.miktar !== "" && !isNaN(sayi)) ? sayi.toLocaleString("tr-TR") : k.miktar;
+        html += `<tr><td>${htmlKac(k.urun)}</td><td>${htmlKac(miktar)}</td></tr>`;
+      });
+    }
+    if (notlar.length) {
+      html += '<tr class="grup"><td colspan="2">Not</td></tr>';
+      notlar.forEach(k => {
+        html += `<tr><td colspan="2" style="text-align:left">${htmlKac(k.miktar)}</td></tr>`;
+      });
+    }
+    html += "</table>";
+    gecmisListesi.innerHTML = html;
+    goster("basarili", `${tarih} tarihine ${kayitlar.length} kayıt gönderilmiş.`, gecmisDurum);
+  } catch (err) {
+    goster("hata", "Kayıtlar alınamadı, internet bağlantınızı kontrol edip tekrar deneyin.", gecmisDurum);
+  } finally {
+    gecmisBtn.disabled = false;
+    gecmisBtn.textContent = "Gönderdiklerimi Göster";
+  }
+}
+
+// ————————————————————————————————————————————— şifre değiştirme
+
+const sifreDurum = document.getElementById("sifreDurum");
+document.getElementById("sifreBtn").addEventListener("click", async () => {
+  const yeni = (prompt("Yeni şifre (4-8 rakam):") || "").trim();
+  if (!yeni) return;
+  if (!/^\d{4,8}$/.test(yeni)) {
+    goster("hata", "Şifre 4-8 rakamdan oluşmalı.", sifreDurum);
+    return;
+  }
+  try {
+    const data = await istek({
+      islem: "sifreDegistir", sube: oturum.sube, sifre: oturum.sifre, yeni,
+    });
+    if (!data.ok) { goster("hata", data.hata || "Şifre değiştirilemedi.", sifreDurum); return; }
+    oturum.sifre = yeni;
+    try { localStorage.setItem(OTURUM_ANAHTARI, JSON.stringify(oturum)); } catch (e) {}
+    goster("basarili", "Şifreniz değiştirildi.", sifreDurum);
+  } catch (err) {
+    goster("hata", "Şifre değiştirilemedi, tekrar deneyin.", sifreDurum);
+  }
+});
+
+// ————————————————————————————————————————————— açılış
+
+if (oturum && oturum.sube && oturum.sifre) {
+  paneliAc();
+  ozetiTazele();
+} else {
+  subeleriYukle();
+}
+</script>
+</body>
+</html>

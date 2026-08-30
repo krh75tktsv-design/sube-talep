@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="milli-saraylar-panel.webmanifest">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Milli Saraylar Panel">
+<link rel="apple-touch-icon" href="ikon/msp-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="ikon/msp-192.png">
+<title>Milli Saraylar Talep Paneli</title>
+<!-- .xlsx uretimi icin; talep-paneli.html ile ayni surum. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{--ink:#111827;--paper:#F8F7F4;--bordo:#7F1D1D;--altin:#A16207;
+        --line:#E5E2DA;--muted:#6B7280;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+       background:var(--paper);color:var(--ink);}
+  .wrap{max-width:1400px;margin:0 auto;padding:24px 16px 60px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  h2{font-size:15px;margin:28px 0 10px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px;line-height:1.45;}
+  label{display:block;font-size:11px;font-weight:600;color:var(--muted);
+        margin:0 0 5px;text-transform:uppercase;letter-spacing:.04em;}
+  input[type=date],input[type=password],select{padding:10px;border:1px solid var(--line);
+    border-radius:9px;font-size:14px;background:#fff;font-family:inherit;color:inherit;}
+  .araclar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;}
+  button{padding:11px 14px;background:var(--ink);color:#fff;border:0;border-radius:9px;
+         font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+  button.ikincil{background:#fff;color:var(--ink);border:1px solid var(--line);}
+  button:disabled{opacity:.5;cursor:default;}
+  .durum{margin:12px 0;padding:11px;border-radius:9px;font-size:13.5px;display:none;line-height:1.45;}
+  .durum.basarili{display:block;background:#ECFDF5;color:#065F46;}
+  .durum.hata{display:block;background:#FEF2F2;color:#991B1B;}
+  .durum.bos{display:block;background:#fff;color:var(--muted);border:1px solid var(--line);}
+
+  .giris{max-width:380px;margin:0 auto;padding:56px 20px;}
+  .marka{text-align:center;margin-bottom:26px;}
+  .marka .rozet{display:inline-flex;align-items:center;justify-content:center;
+    width:64px;height:64px;border-radius:18px;background:var(--altin);color:#fff;
+    font-size:23px;font-weight:700;margin-bottom:14px;}
+  .giris label{margin-top:16px;}
+  .giris input{width:100%;}
+  .giris button{width:100%;margin-top:20px;padding:14px;font-size:15px;}
+
+  .ustbar{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin-bottom:16px;flex-wrap:wrap;}
+  .ustbar button{background:none;color:var(--muted);border:1px solid var(--line);
+    padding:8px 12px;font-size:12.5px;font-weight:500;}
+
+  .ozet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+  .ozet-hucre{background:#fff;border:1px solid var(--line);border-radius:11px;padding:12px 14px;}
+  .ozet-hucre .ad{font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--muted);font-weight:600;}
+  .ozet-hucre b{display:block;font-size:19px;margin-top:3px;font-variant-numeric:tabular-nums;}
+
+  .tablo-scroll{overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:12px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;
+        white-space:nowrap;font-variant-numeric:tabular-nums;}
+  th{background:#FAFAF8;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;
+     color:var(--muted);font-weight:700;position:sticky;top:0;}
+  th:first-child,td:first-child{text-align:left;white-space:normal;min-width:170px;
+    position:sticky;left:0;background:#fff;font-weight:500;}
+  th:first-child{background:#FAFAF8;z-index:2;}
+  tbody tr:last-child td{border-bottom:0;}
+  td.sifir{color:#D1D5DB;}
+  td.toplam,th.toplam{background:#FDF6E7;font-weight:700;}
+  tfoot td{background:#F3F4F6;font-weight:700;border-top:2px solid var(--line);}
+  tfoot td:first-child{background:#F3F4F6;}
+
+  .not-kart{background:#fff;border:1px solid var(--line);border-radius:11px;
+    padding:12px 14px;margin-bottom:9px;font-size:13.5px;line-height:1.5;}
+  .not-kart .kim{font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--muted);font-weight:700;margin-bottom:4px;}
+
+  .gizle{display:none;}
+
+  @media print{
+    body{background:#fff;}
+    .araclar,.ustbar,.durum,.yazdirma-gizle{display:none !important;}
+    .wrap{max-width:none;padding:0;}
+    .tablo-scroll{border:0;overflow:visible;}
+    table{font-size:8.5pt;}
+    th,td{padding:3px 4px;border-bottom:1px solid #ccc;}
+    th{position:static;}
+    th:first-child,td:first-child{position:static;min-width:0;}
+    thead{display:table-header-group;}
+    @page{size:landscape;margin:10mm;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ————————————————— giriş ————————————————— -->
+<div class="giris" id="girisEkran">
+  <div class="marka">
+    <div class="rozet">MS</div>
+    <h1>Milli Saraylar Paneli</h1>
+    <div class="sub">Merkez şifresiyle giriş yapın.</div>
+  </div>
+  <label for="girisSifre">Merkez Şifresi</label>
+  <input type="password" id="girisSifre" inputmode="numeric" autocomplete="current-password"
+         placeholder="••••••">
+  <button id="girisBtn">Giriş Yap</button>
+  <div class="durum" id="girisDurum"></div>
+</div>
+
+<!-- ————————————————— panel ————————————————— -->
+<div class="wrap gizle" id="anaEkran">
+  <div class="ustbar">
+    <div>
+      <h1>Milli Saraylar Talep Paneli</h1>
+      <div class="sub" style="margin:2px 0 0;">Şubelerin gönderdiği ürün talepleri</div>
+    </div>
+    <button id="cikisBtn">Çıkış</button>
+  </div>
+
+  <div class="araclar">
+    <div>
+      <label for="baslangic">Başlangıç</label>
+      <input type="date" id="baslangic">
+    </div>
+    <div>
+      <label for="bitis">Bitiş</label>
+      <input type="date" id="bitis">
+    </div>
+    <button id="yenile">Yenile</button>
+    <button id="indirExcel">Excel İndir (.xlsx)</button>
+    <button id="indir" class="ikincil">CSV İndir</button>
+    <button id="yazdir" class="ikincil">Yazdır</button>
+    <button id="etabloAc" class="ikincil"
+      title="Yanlış girilen bir kaydı düzeltmek için E-Tablo'yu açar. Bağlantıyı değiştirmek için Shift ile tıklayın.">▦ E-Tablo</button>
+  </div>
+
+  <div class="durum" id="durum"></div>
+  <div id="icerik"></div>
+</div>
+
+<script>
+// ---- AYARLAR ----
+// milli-saraylar.html ile AYNI Web App URL'si.
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx58qbR62lIzD9fAoXSgdV8Vh3_MMb52AEmmcSNeKZkE4Fr81YB7_-ww61DZnZsUJ_I/exec";
+
+// Ürün satırlarının rapordaki sırası. Formdaki sırayla aynı tutulmalı;
+// listede olmayan bir ürün kayıtlarda çıkarsa tablonun sonuna eklenir.
+const URUN_SIRA = [
+  "TİRAMİSU (dilim)", "DİLİM FRAMBUAZ CHE", "DİLİM LİMONLU CHEES", "HASBAHÇE",
+  "LATTE PASTA", "ÇİLEKLİ TART", "ÇİLEKLİ MUHALLEBİ", "OREO MUHALLEBİ",
+  "PROFİTEROL", "MOZAİK", "TRİLİÇE (dilim)", "MALAGA", "KAZANDİBİ", "MİLFÖY",
+  "SAN SEBASTİAN", "FISTIKLI PASTA", "MOİS", "KIRMIZI MEYVALI",
+  "KESTANE ÇİKOLATALI", "ÇİKOLATALI PARFE", "LİMONLU PARFE", "LİMONLU TART",
+  "MUZLU MAGNOLİA", "SÜTLAÇ", "KROKAN", "FISTIKLI KÜP", "DUBAİ MUHALLEBİSİ",
+  "LOTUS PASTA", "GLUTENSİZ ÇİKOLATALI", "LİMONLU FİT", "MALAGA YENİ SOS",
+  "HURMALI BROWNİ", "HAVUÇLU BROWNİ", "DUBAİ ÇİKOLATASI",
+];
+
+// Şube sütun sırası (alfabetik değil, sahadaki sıra). Sunucudan gelen liste
+// bundan farklıysa eksik kalanlar sona eklenir.
+const SUBE_SIRA = [
+  "HAREM", "KAFE", "SAAT", "KÜÇÜKSU", "IHLAMUR", "ŞEKER", "MASLAK", "ÇEŞMİ",
+  "ABRAH", "LİMON", "BEYLER", "ÇAMLICA", "MECİDİYE", "YILDIZ", "AYNALI", "KASKAT",
+];
+
+// Excel'de yazilacak ad, panelde kullanilandan farkliysa burada.
+// Eski CUMARTESI-1.xlsx dosyasindaki yazimla birebir ayni tutuldu ki
+// o dosyalarla yan yana konuldugunda urun adlari eslessin.
+const EXCEL_URUN_ADI = {
+  "TİRAMİSU (dilim)": "TİRAMİSU  (dilim)",
+  "TRİLİÇE (dilim)": "TRİLİÇE  (dilim)",
+};
+
+// muhasebe sayfasinin satirlari: [muhasebe adi, hangi urunlerin toplami].
+// Ornek dosyadaki formullerden birebir cikarildi.
+const MUHASEBE_SATIRLARI = [
+  ["TİRAMİSU", ["TİRAMİSU (dilim)"]],
+  ["CHEESCAKE ÇEŞİTLERİ", ["DİLİM FRAMBUAZ CHE", "DİLİM LİMONLU CHEES"]],
+  ["LATTE PASTA", ["LATTE PASTA"]],
+  ["ÇİLEKLİ TART", ["ÇİLEKLİ TART"]],
+  ["MUHALLEBİ ÇEŞİTLERİ", ["ÇİLEKLİ MUHALLEBİ", "OREO MUHALLEBİ", "MUZLU MAGNOLİA"]],
+  ["PROFİTEROL", ["PROFİTEROL"]],
+  ["MOZAİK PASTA", ["MOZAİK"]],
+  ["TRİLİÇE", ["TRİLİÇE (dilim)"]],
+  ["MALAGA", ["MALAGA", "MALAGA YENİ SOS"]],
+  ["KAZANDİBİ", ["KAZANDİBİ"]],
+  ["ÇİLEKLİ MİLFÖY", ["MİLFÖY"]],
+  ["SAN SEBASTİAN", ["SAN SEBASTİAN"]],
+  ["FISTIKLI ÇİKOLATALI PASTA", ["FISTIKLI PASTA"]],
+  ["MEYVALI PASTA", ["HASBAHÇE", "MOİS", "KIRMIZI MEYVALI"]],
+  ["KESTANELİ PASTA", ["KESTANE ÇİKOLATALI"]],
+  ["ÇİKOLATA-KAHVE PARFE", ["ÇİKOLATALI PARFE"]],
+  ["LİMONLU PARFE", ["LİMONLU PARFE"]],
+  ["LİMONLU TART", ["LİMONLU TART"]],
+  ["SÜTLAÇ", ["SÜTLAÇ"]],
+  ["KROKAN", ["KROKAN"]],
+  ["FISTIKLI KÜP", ["FISTIKLI KÜP"]],
+  ["DUBAİ MUHALLEBİSİ", ["DUBAİ MUHALLEBİSİ"]],
+  ["LOTUS", ["LOTUS PASTA"]],
+  ["GLUTENSİZ ÇİKOLATALI", ["GLUTENSİZ ÇİKOLATALI"]],
+  ["LİMONLU FİT", ["LİMONLU FİT"]],
+  ["HURMALI BROWNİ", ["HURMALI BROWNİ"]],
+  ["HAVUÇLU BROWNİ", ["HAVUÇLU BROWNİ"]],
+  ["DUBAİ ÇİKOLATASI", ["DUBAİ ÇİKOLATASI"]],
+];
+
+const GUN_ADLARI = ["PAZAR", "PAZARTESİ", "SALI", "ÇARŞAMBA", "PERŞEMBE", "CUMA", "CUMARTESİ"];
+
+const MERKEZ = "MERKEZ";
+const OTURUM_ANAHTARI = "milliSaraylarPanelOturum";
+const NOT_URUN = "NOT";
+
+let oturum = null;
+try {
+  const kayitli = localStorage.getItem(OTURUM_ANAHTARI);
+  if (kayitli) oturum = JSON.parse(kayitli);
+} catch (e) { oturum = null; }
+
+let sonKayitlar = [];
+
+const girisEkran = document.getElementById("girisEkran");
+const anaEkran = document.getElementById("anaEkran");
+const durumEl = document.getElementById("durum");
+const icerikEl = document.getElementById("icerik");
+
+function goster(tur, mesaj, hedef) {
+  const el = hedef || durumEl;
+  el.className = "durum " + tur;
+  el.textContent = mesaj;
+}
+
+function htmlKac(s) {
+  return String(s === undefined || s === null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function sayiBicim(n) {
+  return Number(n).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+}
+
+async function istek(govde) {
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(govde),
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
+
+// ————————————————————————————————————————————— giriş
+
+const girisSifreEl = document.getElementById("girisSifre");
+const girisBtn = document.getElementById("girisBtn");
+const girisDurum = document.getElementById("girisDurum");
+
+girisBtn.addEventListener("click", girisYap);
+girisSifreEl.addEventListener("keydown", (e) => { if (e.key === "Enter") girisYap(); });
+
+async function girisYap() {
+  const sifre = girisSifreEl.value.trim();
+  if (APPS_SCRIPT_URL.includes("BURAYA_")) {
+    goster("hata", "Kurulum tamamlanmadı: APPS_SCRIPT_URL henüz ayarlanmamış.", girisDurum);
+    return;
+  }
+  if (!sifre) { goster("hata", "Merkez şifresini girin.", girisDurum); return; }
+
+  girisBtn.disabled = true;
+  girisBtn.textContent = "Kontrol ediliyor…";
+  try {
+    const data = await istek({ islem: "giris", sube: MERKEZ, sifre });
+    if (!data.ok) { goster("hata", data.hata || "Giriş yapılamadı.", girisDurum); return; }
+    if (data.rol !== "merkez") {
+      goster("hata", "Bu şifre panel için yetkili değil.", girisDurum);
+      return;
+    }
+    oturum = { sube: MERKEZ, sifre };
+    try { localStorage.setItem(OTURUM_ANAHTARI, JSON.stringify(oturum)); } catch (e) {}
+    girisSifreEl.value = "";
+    girisDurum.className = "durum";
+    paneliAc();
+  } catch (err) {
+    goster("hata", "Bağlanılamadı, internet bağlantınızı kontrol edin.", girisDurum);
+  } finally {
+    girisBtn.disabled = false;
+    girisBtn.textContent = "Giriş Yap";
+  }
+}
+
+document.getElementById("cikisBtn").addEventListener("click", () => {
+  if (!confirm("Çıkış yapılsın mı?")) return;
+  oturum = null;
+  try { localStorage.removeItem(OTURUM_ANAHTARI); } catch (e) {}
+  anaEkran.classList.add("gizle");
+  girisEkran.classList.remove("gizle");
+});
+
+function paneliAc() {
+  girisEkran.classList.add("gizle");
+  anaEkran.classList.remove("gizle");
+  veriGetir();
+}
+
+// ————————————————————————————————————————————— veri
+
+// Panel varsayılan olarak yarını gösterir: talepler ertesi gün için girilir.
+const baslangicEl = document.getElementById("baslangic");
+const bitisEl = document.getElementById("bitis");
+const yarin = new Date();
+yarin.setDate(yarin.getDate() + 1);
+const yarinStr = yarin.toISOString().slice(0, 10);
+baslangicEl.value = yarinStr;
+bitisEl.value = yarinStr;
+
+document.getElementById("yenile").addEventListener("click", veriGetir);
+baslangicEl.addEventListener("change", veriGetir);
+bitisEl.addEventListener("change", veriGetir);
+
+async function veriGetir() {
+  goster("bos", "Yükleniyor…");
+  icerikEl.innerHTML = "";
+  try {
+    const data = await istek({
+      islem: "kayitlar", sube: oturum.sube, sifre: oturum.sifre,
+      baslangic: baslangicEl.value, bitis: bitisEl.value,
+    });
+    if (!data.ok) { goster("hata", data.hata || "Kayıtlar alınamadı."); return; }
+    sonKayitlar = data.kayitlar || [];
+    ciz(sonKayitlar);
+  } catch (err) {
+    goster("hata", "Kayıtlar alınamadı, internet bağlantınızı kontrol edip tekrar deneyin.");
+  }
+}
+
+// Kayıtlardaki şube adlarını sabit sıraya oturtur; listede olmayanı sona ekler.
+function subeSirasi(kayitlar) {
+  const gorulen = new Set(kayitlar.map(k => k.sube));
+  const ekstra = [...gorulen].filter(s => !SUBE_SIRA.includes(s)).sort();
+  return SUBE_SIRA.concat(ekstra);
+}
+
+function urunSirasi(kayitlar) {
+  const gorulen = new Set(kayitlar.filter(k => k.urun !== NOT_URUN).map(k => k.urun));
+  const ekstra = [...gorulen].filter(u => !URUN_SIRA.includes(u)).sort();
+  return URUN_SIRA.concat(ekstra);
+}
+
+function ciz(kayitlar) {
+  if (kayitlar.length === 0) {
+    goster("bos", "Seçili tarih aralığında kayıt yok.");
+    return;
+  }
+
+  const notlar = kayitlar.filter(k => k.urun === NOT_URUN);
+  const kalemler = kayitlar.filter(k => k.urun !== NOT_URUN);
+
+  const subeler = subeSirasi(kalemler);
+  const urunler = urunSirasi(kalemler);
+
+  // matris[urun][sube] = toplam miktar
+  const matris = {};
+  kalemler.forEach(k => {
+    const m = Number(k.miktar);
+    if (isNaN(m)) return;
+    if (!matris[k.urun]) matris[k.urun] = {};
+    matris[k.urun][k.sube] = (matris[k.urun][k.sube] || 0) + m;
+  });
+
+  const subeToplam = {};
+  let genelToplam = 0;
+  subeler.forEach(s => (subeToplam[s] = 0));
+  Object.keys(matris).forEach(u => {
+    Object.keys(matris[u]).forEach(s => {
+      subeToplam[s] = (subeToplam[s] || 0) + matris[u][s];
+      genelToplam += matris[u][s];
+    });
+  });
+
+  const gonderenSubeler = subeler.filter(s => subeToplam[s] > 0);
+  const eksikler = subeler.filter(s => !subeToplam[s]);
+
+  let html = "";
+
+  // Özet kutuları
+  html += '<div class="ozet-grid">' +
+    ozetHucre("Toplam Adet", sayiBicim(genelToplam)) +
+    ozetHucre("Talep Eden Şube", gonderenSubeler.length + " / " + subeler.length) +
+    ozetHucre("Ürün Çeşidi", Object.keys(matris).length) +
+    ozetHucre("Kayıt Satırı", kayitlar.length) +
+    "</div>";
+
+  if (eksikler.length) {
+    html += '<div class="not-kart" style="margin-top:12px;background:#FFFBEB;border-color:#FDE68A;">' +
+      '<div class="kim">Talep Göndermeyen Şubeler</div>' + htmlKac(eksikler.join(", ")) + "</div>";
+  }
+
+  // Ana matris
+  html += "<h2>Ürün × Şube</h2>";
+  html += '<div class="tablo-scroll"><table><thead><tr><th>Ürün</th>';
+  subeler.forEach(s => (html += `<th>${htmlKac(s)}</th>`));
+  html += '<th class="toplam">TOPLAM</th></tr></thead><tbody>';
+
+  urunler.forEach(u => {
+    const satir = matris[u];
+    if (!satir) return;  // o aralıkta hiç istenmemiş ürün tabloyu şişirmesin
+    let toplam = 0;
+    let hucreler = "";
+    subeler.forEach(s => {
+      const v = satir[s] || 0;
+      toplam += v;
+      hucreler += v ? `<td>${sayiBicim(v)}</td>` : '<td class="sifir">·</td>';
+    });
+    html += `<tr><td>${htmlKac(u)}</td>${hucreler}<td class="toplam">${sayiBicim(toplam)}</td></tr>`;
+  });
+
+  html += "</tbody><tfoot><tr><td>TOPLAM</td>";
+  subeler.forEach(s => (html += `<td>${subeToplam[s] ? sayiBicim(subeToplam[s]) : "·"}</td>`));
+  html += `<td>${sayiBicim(genelToplam)}</td></tr></tfoot></table></div>`;
+
+  // Notlar
+  if (notlar.length) {
+    html += "<h2>Şube Notları</h2>";
+    notlar.forEach(n => {
+      html += '<div class="not-kart"><div class="kim">' + htmlKac(n.sube) +
+        " · " + htmlKac(n.tarih) + "</div>" + htmlKac(n.miktar) + "</div>";
+    });
+  }
+
+  icerikEl.innerHTML = html;
+  const aralik = baslangicEl.value === bitisEl.value
+    ? baslangicEl.value
+    : baslangicEl.value + " – " + bitisEl.value;
+  goster("basarili", `${aralik} · ${kayitlar.length} kayıt, ${gonderenSubeler.length} şube.`);
+}
+
+function ozetHucre(ad, deger) {
+  return `<div class="ozet-hucre"><div class="ad">${htmlKac(ad)}</div><b>${htmlKac(deger)}</b></div>`;
+}
+
+// ————————————————————————————————————————————— dışa aktarma
+
+document.getElementById("yazdir").addEventListener("click", () => window.print());
+
+document.getElementById("indir").addEventListener("click", () => {
+  if (sonKayitlar.length === 0) { goster("hata", "İndirilecek kayıt yok."); return; }
+
+  const kalemler = sonKayitlar.filter(k => k.urun !== NOT_URUN);
+  const subeler = subeSirasi(kalemler);
+  const urunler = urunSirasi(kalemler);
+  const matris = {};
+  kalemler.forEach(k => {
+    const m = Number(k.miktar);
+    if (isNaN(m)) return;
+    if (!matris[k.urun]) matris[k.urun] = {};
+    matris[k.urun][k.sube] = (matris[k.urun][k.sube] || 0) + m;
+  });
+
+  // Excel'in Türkçe yerel ayarı için ayraç noktalı virgül, ondalık virgül.
+  const satirlar = [["Ürün"].concat(subeler).concat(["TOPLAM"])];
+  urunler.forEach(u => {
+    if (!matris[u]) return;
+    let toplam = 0;
+    const hucreler = subeler.map(s => {
+      const v = matris[u][s] || 0;
+      toplam += v;
+      return v ? String(v).replace(".", ",") : "";
+    });
+    satirlar.push([u].concat(hucreler).concat([String(toplam).replace(".", ",")]));
+  });
+
+  // Ekrandaki tablo ile ayni kalsin diye TOPLAM satiri CSV'ye de yazilir.
+  const subeToplam = {};
+  let genelToplam = 0;
+  subeler.forEach(s => (subeToplam[s] = 0));
+  Object.keys(matris).forEach(u => Object.keys(matris[u]).forEach(s => {
+    subeToplam[s] += matris[u][s];
+    genelToplam += matris[u][s];
+  }));
+  satirlar.push(["TOPLAM"]
+    .concat(subeler.map(s => (subeToplam[s] ? String(subeToplam[s]).replace(".", ",") : "")))
+    .concat([String(genelToplam).replace(".", ",")]));
+
+  const notlar = sonKayitlar.filter(k => k.urun === NOT_URUN);
+  if (notlar.length) {
+    satirlar.push([]);
+    satirlar.push(["NOTLAR"]);
+    notlar.forEach(n => satirlar.push([n.sube, n.tarih, String(n.miktar)]));
+  }
+
+  const csv = satirlar.map(r => r.map(h => {
+    const s = String(h === undefined ? "" : h);
+    return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(";")).join("\r\n");
+
+  const ad = "milli-saraylar-" + baslangicEl.value +
+    (bitisEl.value !== baslangicEl.value ? "_" + bitisEl.value : "") + ".csv";
+  // BOM: Excel dosyayı UTF-8 olarak açsın, Türkçe karakterler bozulmasın.
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = ad;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// ————————————————————————————————————————————— Excel (.xlsx)
+
+const KENAR_INCE = {
+  top: { style: "thin" }, left: { style: "thin" },
+  bottom: { style: "thin" }, right: { style: "thin" },
+};
+
+function sutunHarfi(no) {
+  let s = "";
+  while (no > 0) { const k = (no - 1) % 26; s = String.fromCharCode(65 + k) + s; no = (no - k - 1) / 26; }
+  return s;
+}
+
+function ddmmyyyy(iso) {
+  const [y, a, g] = String(iso).split("-");
+  return `${g}.${a}.${y}`;
+}
+
+// "2026-08-31" -> "CUMARTESİ". Tarih dizesi parcalanarak kurulur; new Date(iso)
+// UTC gece yarisi verdiginden yerel saat diliminde gun kayabiliyor.
+function gunAdi(iso) {
+  const [y, a, g] = String(iso).split("-").map(Number);
+  return GUN_ADLARI[new Date(y, a - 1, g).getDay()];
+}
+
+function excelBaslik() {
+  const bas = baslangicEl.value, bit = bitisEl.value;
+  if (bas && bit && bas !== bit) return ddmmyyyy(bas) + " – " + ddmmyyyy(bit);
+  const t = bas || bit;
+  return t ? gunAdi(t) + " · " + ddmmyyyy(t) : "MİLLİ SARAYLAR TALEP";
+}
+
+// Ekrandaki matrisin aynisi, ama sabit sirayla: hic talep gelmemis sube ve
+// urun de bos satir/sutun olarak durur — sayfa her gun ayni bicimde cikar.
+function excelMatrisi() {
+  const kalemler = sonKayitlar.filter(k => k.urun !== NOT_URUN);
+  const matris = {};
+  kalemler.forEach(k => {
+    const s = Number(k.miktar);
+    if (isNaN(s)) return;
+    if (!matris[k.urun]) matris[k.urun] = {};
+    matris[k.urun][k.sube] = (matris[k.urun][k.sube] || 0) + s;
+  });
+  return {
+    matris,
+    subeler: subeSirasi(kalemler),
+    urunler: urunSirasi(kalemler),  // URUN_SIRA + listede olmayanlar sonda
+  };
+}
+
+async function excelIndir() {
+  if (typeof ExcelJS === "undefined") {
+    goster("hata", "Excel kütüphanesi yüklenemedi (internet gerekiyor). CSV indirmeyi deneyin.");
+    return;
+  }
+  if (sonKayitlar.length === 0) { goster("hata", "İndirilecek kayıt yok."); return; }
+
+  const btn = document.getElementById("indirExcel");
+  btn.disabled = true;
+  btn.textContent = "Hazırlanıyor…";
+  try {
+    const { matris, subeler, urunler } = excelMatrisi();
+    const sonSutun = 1 + subeler.length;               // A + subeler
+    const wb = new ExcelJS.Workbook();
+
+    // ————— dağılım
+    const dg = wb.addWorksheet("dağılım", {
+      views: [{ state: "frozen", xSplit: 1 }],
+      pageSetup: { orientation: "landscape", paperSize: 9 },
+    });
+    dg.getColumn(1).width = 40;
+    for (let c = 2; c <= sonSutun; c++) dg.getColumn(c).width = 17;
+
+    dg.mergeCells(1, 1, 1, sonSutun);
+    const bas = dg.getCell(1, 1);
+    bas.value = excelBaslik();
+    bas.font = { name: "Calibri", size: 26, bold: true };
+    bas.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
+    bas.alignment = { horizontal: "center", vertical: "middle" };
+    bas.border = { left: { style: "medium" }, top: { style: "medium" }, bottom: { style: "medium" } };
+    dg.getRow(1).height = 39.75;
+
+    const basliklar = ["ÜRÜNLER"].concat(subeler);
+    basliklar.forEach((ad, i) => {
+      const h = dg.getCell(2, i + 1);
+      h.value = ad;
+      h.font = { name: "Calibri", size: 22, bold: true };
+      h.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      h.border = KENAR_INCE;
+    });
+    dg.getRow(2).height = 60.75;
+
+    // Urun -> dagilim satir no; muhasebe formulleri bunu kullanir.
+    const urunSatiri = {};
+    urunler.forEach((urun, i) => {
+      const r = i + 3;
+      urunSatiri[urun] = r;
+      const a = dg.getCell(r, 1);
+      a.value = EXCEL_URUN_ADI[urun] || urun;
+      a.font = { name: "Calibri", size: 24 };
+      a.alignment = { vertical: "middle" };
+      a.border = KENAR_INCE;
+      subeler.forEach((sube, si) => {
+        const h = dg.getCell(r, si + 2);
+        const v = (matris[urun] || {})[sube];
+        if (v) h.value = v;                 // sifir/bos hucre bos birakilir
+        h.font = { name: "Calibri", size: 36 };
+        h.alignment = { horizontal: "center", vertical: "middle" };
+        h.border = KENAR_INCE;
+      });
+      dg.getRow(r).height = 54;
+    });
+
+    // ————— muhasebe
+    const mh = wb.addWorksheet("muhasebe", {
+      views: [{ state: "frozen", ySplit: 1 }],
+      pageSetup: { orientation: "portrait", paperSize: 9 },
+    });
+    mh.getColumn(1).width = 52;
+    for (let c = 2; c <= sonSutun; c++) mh.getColumn(c).width = 20;
+
+    mh.mergeCells(2, 1, 2, sonSutun);
+    const mbas = mh.getCell(2, 1);
+    mbas.value = { formula: "'dağılım'!A1", result: excelBaslik() };
+    mbas.font = { name: "Calibri", size: 26, bold: true };
+    mbas.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
+    mbas.alignment = { horizontal: "center", vertical: "middle" };
+    mbas.border = { left: { style: "medium" }, top: { style: "medium" }, bottom: { style: "medium" } };
+    mh.getRow(2).height = 34.5;
+
+    basliklar.forEach((ad, i) => {
+      const h = mh.getCell(3, i + 1);
+      h.value = ad;
+      h.font = { name: "Calibri", size: 28, bold: true };
+      h.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      h.border = KENAR_INCE;
+    });
+    mh.getRow(3).height = 75;
+
+    // Eslemede gecmeyen urun (liste sonradan degistiyse) muhasebede
+    // kaybolmasin diye kendi satiri olarak eklenir.
+    const eslenen = new Set();
+    MUHASEBE_SATIRLARI.forEach(([, kaynaklar]) => kaynaklar.forEach(u => eslenen.add(u)));
+    const satirlar = MUHASEBE_SATIRLARI.concat(
+      urunler.filter(u => !eslenen.has(u)).map(u => [EXCEL_URUN_ADI[u] || u, [u]]));
+
+    satirlar.forEach(([ad, kaynaklar], i) => {
+      const r = i + 4;
+      const a = mh.getCell(r, 1);
+      a.value = ad;
+      a.font = { name: "Calibri", size: 24 };
+      a.alignment = { vertical: "middle" };
+      a.border = KENAR_INCE;
+
+      // Kaynagi dagilim'da bulunmayan satir (urun listeden cikarilmis olabilir)
+      // bos birakilir; formul gecersiz basvuru uretmez.
+      const gecerli = kaynaklar.filter(u => urunSatiri[u]);
+      subeler.forEach((sube, si) => {
+        const h = mh.getCell(r, si + 2);
+        if (gecerli.length) {
+          const sutun = sutunHarfi(si + 2);
+          const toplam = gecerli.reduce((t, u) => t + ((matris[u] || {})[sube] || 0), 0);
+          h.value = {
+            formula: gecerli.map(u => `'dağılım'!${sutun}${urunSatiri[u]}`).join("+"),
+            result: toplam,
+          };
+        }
+        h.font = { name: "Calibri", size: 42 };
+        h.alignment = { horizontal: "center", vertical: "middle" };
+        h.border = KENAR_INCE;
+      });
+      mh.getRow(r).height = 78.75;
+    });
+
+    const tarih = baslangicEl.value || bitisEl.value || "";
+    const ekAd = (baslangicEl.value && bitisEl.value && baslangicEl.value !== bitisEl.value)
+      ? baslangicEl.value + "_" + bitisEl.value
+      : (tarih ? gunAdi(tarih) + "-" + tarih : "milli-saraylar");
+
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([buf],
+      { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    a.download = ekAd + ".xlsx";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    goster("basarili", "Excel indirildi: dağılım + muhasebe sayfaları. " +
+      "Şube notları Excel'e girmez, panelde ve CSV'de kalır.");
+  } catch (err) {
+    goster("hata", "Excel oluşturulamadı: " + (err && err.message ? err.message : err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Excel İndir (.xlsx)";
+  }
+}
+
+document.getElementById("indirExcel").addEventListener("click", excelIndir);
+
+// ————————————————————————————————————————————— e-tablo bağlantısı
+
+// Yapıştırılan adresten e-tablo kimliğini çıkarıp standart /edit adresine çevirir.
+function etabloAdresiniDuzelt(girilen) {
+  const eslesme = String(girilen).match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (eslesme) return "https://docs.google.com/spreadsheets/d/" + eslesme[1] + "/edit";
+  if (/^[a-zA-Z0-9-_]{20,}$/.test(String(girilen).trim())) {
+    return "https://docs.google.com/spreadsheets/d/" + String(girilen).trim() + "/edit";
+  }
+  return "";
+}
+
+const ETABLO_ANAHTARI = "milliSaraylarEtabloUrl";
+
+function etabloAdresiSor(oncekiUrl) {
+  const girilen = prompt(
+    "Milli Saraylar e-tablosunu tarayıcıda açın ve adres çubuğundaki adresi kopyalayıp buraya yapıştırın:",
+    oncekiUrl || "");
+  if (girilen === null) return "";
+  const url = etabloAdresiniDuzelt(girilen.trim());
+  if (!url) {
+    alert("Adres tanınmadı. docs.google.com/spreadsheets/d/... ile başlayan adresin tamamını yapıştırın.");
+    return "";
+  }
+  try { localStorage.setItem(ETABLO_ANAHTARI, url); } catch (e) {}
+  return url;
+}
+
+const ETABLO_MESAJ = "E-Tablo yeni sekmede açıldı. Düzeltmeden sonra Yenile'ye basın.";
+
+// Adres önce yerelde aranır, yoksa sunucuya sorulur (Web App e-tablosunun
+// kendi adresi), o da olmazsa elle istenir. Shift ile tıklamak elle
+// girmeye zorlar — yanlış dosya kayıtlıysa kaçış yolu.
+document.getElementById("etabloAc").addEventListener("click", async (olay) => {
+  let url = "";
+  try { url = localStorage.getItem(ETABLO_ANAHTARI) || ""; } catch (e) { url = ""; }
+
+  if (olay.shiftKey) {
+    url = etabloAdresiSor(url);
+    if (!url) return;
+    window.open(url, "_blank");
+    goster("bos", ETABLO_MESAJ);
+    return;
+  }
+
+  if (url) {
+    window.open(url, "_blank");
+    goster("bos", ETABLO_MESAJ + " Yanlış dosya açıldıysa butona Shift ile tıklayın.");
+    return;
+  }
+
+  // Sekme tıklama anında açılır; adresi sunucu yanıtı gelince yazarız.
+  // Await'ten sonra açılan pencere açılır-pencere engeline takılırdı.
+  const pencere = window.open("", "_blank");
+  try {
+    const data = await istek({ islem: "etabloUrl", sube: oturum.sube, sifre: oturum.sifre });
+    if (data.ok && data.url) {
+      try { localStorage.setItem(ETABLO_ANAHTARI, data.url); } catch (e) {}
+      if (pencere) pencere.location = data.url; else window.open(data.url, "_blank");
+      goster("bos", ETABLO_MESAJ);
+      return;
+    }
+  } catch (err) {
+    // Eski dağıtımda "etabloUrl" işlemi yok; aşağıda elle sorulur.
+  }
+
+  if (pencere) pencere.close();
+  url = etabloAdresiSor(url);
+  if (!url) return;
+  window.open(url, "_blank");
+  goster("bos", ETABLO_MESAJ);
+});
+
+// ————————————————————————————————————————————— açılış
+
+if (oturum && oturum.sifre) paneliAc();
+</script>
+</body>
+</html>
