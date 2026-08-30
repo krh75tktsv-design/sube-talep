@@ -149,14 +149,40 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx58qbR62lIzD9f
 // Ürün satırlarının rapordaki sırası. Formdaki sırayla aynı tutulmalı;
 // listede olmayan bir ürün kayıtlarda çıkarsa tablonun sonuna eklenir.
 const URUN_SIRA = [
-  "TİRAMİSU (dilim)", "DİLİM FRAMBUAZ CHE", "DİLİM LİMONLU CHEES", "HASBAHÇE",
-  "LATTE PASTA", "ÇİLEKLİ TART", "ÇİLEKLİ MUHALLEBİ", "OREO MUHALLEBİ",
-  "PROFİTEROL", "MOZAİK", "TRİLİÇE (dilim)", "MALAGA", "KAZANDİBİ", "MİLFÖY",
-  "SAN SEBASTİAN", "FISTIKLI PASTA", "MOİS", "KIRMIZI MEYVALI",
-  "KESTANE ÇİKOLATALI", "ÇİKOLATALI PARFE", "LİMONLU PARFE", "LİMONLU TART",
-  "MUZLU MAGNOLİA", "SÜTLAÇ", "KROKAN", "FISTIKLI KÜP", "DUBAİ MUHALLEBİSİ",
-  "LOTUS PASTA", "GLUTENSİZ ÇİKOLATALI", "LİMONLU FİT", "MALAGA YENİ SOS",
-  "HURMALI BROWNİ", "HAVUÇLU BROWNİ", "DUBAİ ÇİKOLATASI",
+  "TİRAMİSU  (dilim)",
+  "DİLİM FRAMBUAZ CHEES",
+  "DİLİM LİMONLU CHEES",
+  "HASBAHÇE",
+  "LATTE PASTA",
+  "ÇİLEKLİ TART",
+  "ÇİLEKLİ MUHALLEBİ",
+  "OREO MUHALLEBİ",
+  "MUZLU MUHALLEBİ",
+  "DUBAİ MUHALLEBİSİ",
+  "PROFİTEROL KASE",
+  "MOZAİK",
+  "TRİLİÇE  (dilim)",
+  "MALAGA",
+  "KAZANDİBİ",
+  "MİLFÖY",
+  "SAN SEBASTİAN",
+  "FISTIKLI PASTA",
+  "MOİS PASTA",
+  "KIRMIZI MEYVALI",
+  "KESTANE ÇİKOLATALI",
+  "ÇİKOLATALI PARFE",
+  "LİMONLU PARFE",
+  "LİMONLU TART",
+  "SÜTLAÇ",
+  "KROKANLI PASTA",
+  "FISTIKLI KÜP PASTA",
+  "LOTUS PASTA",
+  "UNSUZ  ÇİKOLATA PASTA",
+  "LİMONLU FİT PASTA",
+  "MALAGA YENİ SOS",
+  "HURMALI BROWNİ",
+  "HAVUÇLU BROWNİ",
+  "DUBAİ ÇİKOLATASI",
 ];
 
 // Şube sütun sırası (alfabetik değil, sahadaki sıra). Sunucudan gelen liste
@@ -166,42 +192,34 @@ const SUBE_SIRA = [
   "ABRAH", "LİMON", "BEYLER", "ÇAMLICA", "MECİDİYE", "YILDIZ", "AYNALI", "KASKAT",
 ];
 
-// Excel'de yazilacak ad, panelde kullanilandan farkliysa burada.
-// Eski CUMARTESI-1.xlsx dosyasindaki yazimla birebir ayni tutuldu ki
-// o dosyalarla yan yana konuldugunda urun adlari eslessin.
-const EXCEL_URUN_ADI = {
-  "TİRAMİSU (dilim)": "TİRAMİSU  (dilim)",
-  "TRİLİÇE (dilim)": "TRİLİÇE  (dilim)",
-};
-
 // muhasebe sayfasinin satirlari: [muhasebe adi, hangi urunlerin toplami].
 // Ornek dosyadaki formullerden birebir cikarildi.
 const MUHASEBE_SATIRLARI = [
-  ["TİRAMİSU", ["TİRAMİSU (dilim)"]],
-  ["CHEESCAKE ÇEŞİTLERİ", ["DİLİM FRAMBUAZ CHE", "DİLİM LİMONLU CHEES"]],
+  ["TİRAMİSU", ["TİRAMİSU  (dilim)"]],
+  ["CHEESCAKE ÇEŞİTLERİ", ["DİLİM FRAMBUAZ CHEES", "DİLİM LİMONLU CHEES"]],
   ["LATTE PASTA", ["LATTE PASTA"]],
   ["ÇİLEKLİ TART", ["ÇİLEKLİ TART"]],
-  ["MUHALLEBİ ÇEŞİTLERİ", ["ÇİLEKLİ MUHALLEBİ", "OREO MUHALLEBİ", "MUZLU MAGNOLİA"]],
-  ["PROFİTEROL", ["PROFİTEROL"]],
+  ["MUHALLEBİ ÇEŞİTLERİ", ["ÇİLEKLİ MUHALLEBİ", "OREO MUHALLEBİ", "MUZLU MUHALLEBİ"]],
+  ["PROFİTEROL KASE", ["PROFİTEROL KASE"]],
   ["MOZAİK PASTA", ["MOZAİK"]],
-  ["TRİLİÇE", ["TRİLİÇE (dilim)"]],
+  ["TRİLİÇE", ["TRİLİÇE  (dilim)"]],
   ["MALAGA", ["MALAGA", "MALAGA YENİ SOS"]],
   ["KAZANDİBİ", ["KAZANDİBİ"]],
   ["ÇİLEKLİ MİLFÖY", ["MİLFÖY"]],
   ["SAN SEBASTİAN", ["SAN SEBASTİAN"]],
   ["FISTIKLI ÇİKOLATALI PASTA", ["FISTIKLI PASTA"]],
-  ["MEYVALI PASTA", ["HASBAHÇE", "MOİS", "KIRMIZI MEYVALI"]],
+  ["MEYVALI PASTA", ["HASBAHÇE", "MOİS PASTA", "KIRMIZI MEYVALI"]],
   ["KESTANELİ PASTA", ["KESTANE ÇİKOLATALI"]],
   ["ÇİKOLATA-KAHVE PARFE", ["ÇİKOLATALI PARFE"]],
   ["LİMONLU PARFE", ["LİMONLU PARFE"]],
   ["LİMONLU TART", ["LİMONLU TART"]],
   ["SÜTLAÇ", ["SÜTLAÇ"]],
-  ["KROKAN", ["KROKAN"]],
-  ["FISTIKLI KÜP", ["FISTIKLI KÜP"]],
+  ["KROKANLI PASTA", ["KROKANLI PASTA"]],
+  ["FISTIKLI KÜP PASTA", ["FISTIKLI KÜP PASTA"]],
   ["DUBAİ MUHALLEBİSİ", ["DUBAİ MUHALLEBİSİ"]],
   ["LOTUS", ["LOTUS PASTA"]],
-  ["GLUTENSİZ ÇİKOLATALI", ["GLUTENSİZ ÇİKOLATALI"]],
-  ["LİMONLU FİT", ["LİMONLU FİT"]],
+  ["UNSUZ  ÇİKOLATA PASTA", ["UNSUZ  ÇİKOLATA PASTA"]],
+  ["LİMONLU FİT PASTA", ["LİMONLU FİT PASTA"]],
   ["HURMALI BROWNİ", ["HURMALI BROWNİ"]],
   ["HAVUÇLU BROWNİ", ["HAVUÇLU BROWNİ"]],
   ["DUBAİ ÇİKOLATASI", ["DUBAİ ÇİKOLATASI"]],
@@ -604,7 +622,7 @@ async function excelIndir() {
       const r = i + 3;
       urunSatiri[urun] = r;
       const a = dg.getCell(r, 1);
-      a.value = EXCEL_URUN_ADI[urun] || urun;
+      a.value = urun;
       a.font = { name: "Calibri", size: 24 };
       a.alignment = { vertical: "middle" };
       a.border = KENAR_INCE;
@@ -650,7 +668,7 @@ async function excelIndir() {
     const eslenen = new Set();
     MUHASEBE_SATIRLARI.forEach(([, kaynaklar]) => kaynaklar.forEach(u => eslenen.add(u)));
     const satirlar = MUHASEBE_SATIRLARI.concat(
-      urunler.filter(u => !eslenen.has(u)).map(u => [EXCEL_URUN_ADI[u] || u, [u]]));
+      urunler.filter(u => !eslenen.has(u)).map(u => [u, [u]]));
 
     satirlar.forEach(([ad, kaynaklar], i) => {
       const r = i + 4;
@@ -701,7 +719,7 @@ async function excelIndir() {
       const r = i + 2;
       const dgSatir = urunSatiri[urun];
       const a = tp.getCell(r, 1);
-      a.value = EXCEL_URUN_ADI[urun] || urun;
+      a.value = urun;
       a.font = { name: "Calibri", size: 24 };
       a.alignment = { vertical: "middle" };
       a.border = KENAR_INCE;

@@ -274,3 +274,47 @@ function eksikSubeleriUyar() {
     "Milli Saraylar Talep Uyarısı - " + yarinStr,
     yarinStr + " tarihi için henüz talep göndermeyen şubeler:\n\n" + eksikler.join("\n"));
 }
+
+// ————————————————————————————————————————————— tek seferlik: ürün adı düzeltme
+//
+// 2026-08-30'da ürün listesi yeniden adlandırıldı. Bu fonksiyon, o tarihten
+// önce kaydedilmiş satırlardaki eski adları yenisiyle değiştirir; yoksa
+// panel aynı ürünü iki ayrı satır gibi gösterir.
+//
+// Çalıştırmak için: fonksiyon listesinden "urunAdlariniGuncelle" seç,
+// Çalıştır'a bas. Bir kez yeter; tekrar çalıştırmak zararsızdır (bulacak
+// eski ad kalmadığı için hiçbir şeyi değiştirmez). Dağıtım yenilemek
+// GEREKMEZ — bu fonksiyon web app üzerinden çağrılmaz.
+
+const ESKI_YENI_URUN = {
+  "TİRAMİSU (dilim)": "TİRAMİSU  (dilim)",
+  "DİLİM FRAMBUAZ CHE": "DİLİM FRAMBUAZ CHEES",
+  "PROFİTEROL": "PROFİTEROL KASE",
+  "TRİLİÇE (dilim)": "TRİLİÇE  (dilim)",
+  "MOİS": "MOİS PASTA",
+  "MUZLU MAGNOLİA": "MUZLU MUHALLEBİ",
+  "KROKAN": "KROKANLI PASTA",
+  "FISTIKLI KÜP": "FISTIKLI KÜP PASTA",
+  "GLUTENSİZ ÇİKOLATALI": "UNSUZ  ÇİKOLATA PASTA",
+  "LİMONLU FİT": "LİMONLU FİT PASTA",
+};
+
+function urunAdlariniGuncelle() {
+  const sy = sekme("Talepler");
+  if (sy.getLastRow() < 2) return;
+
+  const aralik = sy.getRange(2, 4, sy.getLastRow() - 1, 1);  // D sütunu: Ürün
+  const degerler = aralik.getValues();
+  let degisen = 0;
+
+  degerler.forEach(function (satir) {
+    const yeni = ESKI_YENI_URUN[String(satir[0]).trim()];
+    if (yeni) { satir[0] = yeni; degisen++; }
+  });
+
+  if (degisen > 0) aralik.setValues(degerler);
+
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    degisen + " satır güncellendi.", "Ürün adı düzeltme", 10);
+  Logger.log(degisen + " satır güncellendi.");
+}

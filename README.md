@@ -89,10 +89,10 @@ internet gerekir):
   (`SUM('dağılım'!B3:Q3)`). O da `dağılım`'a canlı bağlı.
 
 Gruplama `MUHASEBE_SATIRLARI` sabitinde durur; ör. CHEESCAKE ÇEŞİTLERİ =
-DİLİM FRAMBUAZ CHE + DİLİM LİMONLU CHEES, MUHALLEBİ ÇEŞİTLERİ = ÇİLEKLİ +
-OREO + MUZLU MAGNOLİA, MEYVALI PASTA = HASBAHÇE + MOİS + KIRMIZI MEYVALI.
-Ürün listesine ekleme yaparsanız bu sabite de eklemeyi unutmayın — eklenmemiş
-bir ürün `muhasebe`'de kendi satırı olarak çıkar, kaybolmaz.
+DİLİM FRAMBUAZ CHEES + DİLİM LİMONLU CHEES, MUHALLEBİ ÇEŞİTLERİ = ÇİLEKLİ +
+OREO + MUZLU MUHALLEBİ, MEYVALI PASTA = HASBAHÇE + MOİS PASTA + KIRMIZI
+MEYVALI. Ürün listesine ekleme yaparsanız bu sabite de eklemeyi unutmayın —
+eklenmemiş bir ürün `muhasebe`'de kendi satırı olarak çıkar, kaybolmaz.
 
 Bilinmesi gerekenler:
 
@@ -102,9 +102,10 @@ Bilinmesi gerekenler:
   ikisi de `dağılım`'dan türeyen toplamlardı ve elde bakımsız kalmışlardı
   (eksik ürün, yanlış satıra bakan formül, silinmiş formüller).
 - Şube notları Excel'e girmez; panelde ve CSV'de kalır.
-- Ürün adları `dağılım`'da eski dosyalardaki yazımla birebir aynıdır
-  (`TİRAMİSU  (dilim)` içindeki çift boşluk dahil) — `EXCEL_URUN_ADI`
-  sabitinde tutulur.
+- Ürün adları Excel'de ve formda birebir aynıdır; ayrı bir görünen-ad
+  eşlemesi yoktur. Adlardaki çift boşluk (`TİRAMİSU  (dilim)`,
+  `UNSUZ  ÇİKOLATA PASTA`) bilerek korunur — elde kullanılan Excel
+  dosyalarındaki yazımla eşleşsin diye.
 - `apps-script/MilliSaraylar.gs` — iki sayfayı besleyen Web App.
   Sekmeler: `Talepler` (kayıtlar) ve `Subeler` (şube, şifre, rol, aktif).
 
@@ -146,6 +147,12 @@ Sürüm: Yeni sürüm > Dağıt** demeyi unutma; yoksa değişiklik canlıya
 - Ürün listesi iki dosyada birden duruyor: formda `URUNLER`, panelde
   `URUN_SIRA`. Ürün eklerken/çıkarırken ikisini de güncelle — panelde
   eksik kalan bir ürün kaybolmaz, tablonun sonuna eklenir.
+- **Ürün adı aynı zamanda e-tabloya yazılan anahtardır.** Bir ürünü yeniden
+  adlandırırsan eski kayıtlar eski adla kalır ve panelde ayrı satır gibi
+  görünür. `MilliSaraylar.gs` içindeki `urunAdlariniGuncelle` fonksiyonu bu
+  iş için: `ESKI_YENI_URUN` eşlemesini güncelleyip fonksiyonu Apps Script
+  editöründen bir kez çalıştır (dağıtım yenilemek gerekmez). 2026-08-30'daki
+  yeniden adlandırmanın eşlemesi orada duruyor.
 - Aynı talep iki kez gönderilirse iki kez kaydedilir; panel ikisini
   toplayarak gösterir. Yanlış kaydı düzeltmek için panelin "▦ E-Tablo"
   düğmesiyle e-tabloyu açıp satırı düzelt, sonra "Yenile"ye bas.
