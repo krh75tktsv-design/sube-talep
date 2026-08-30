@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>Ekip Paneli</title>
+<style>
+  :root{
+    --ink:#111827; --paper:#F8F7F4; --brass:#B45309; --line:#E5E2DA; --muted:#6B7280;
+    --kart:#fff; --yesil:#065F46; --yesil-bg:#ECFDF5; --kirmizi:#991B1B; --kirmizi-bg:#FEF2F2;
+    --sari-bg:#FEF3C7; --alt-bar: calc(58px + env(safe-area-inset-bottom));
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--paper);
+    color:var(--ink);font-size:15px;line-height:1.45;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;font-size:15px;}
+
+  /* ——— giriş ekranı ——— */
+  #girisEkran{max-width:380px;margin:0 auto;padding:56px 20px;}
+  #girisEkran h1{font-size:22px;margin:0 0 6px;}
+  #girisEkran .alt{color:var(--muted);font-size:13.5px;margin-bottom:28px;}
+  .alan{margin-bottom:16px;}
+  .alan label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);
+    margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;}
+  .alan select,.alan input,.alan textarea{width:100%;padding:12px;border:1px solid var(--line);
+    border-radius:10px;background:#fff;}
+  .alan textarea{resize:vertical;min-height:76px;}
+  #pin{letter-spacing:.5em;text-align:center;font-size:22px;padding:14px 12px;}
+  .ana-buton{width:100%;padding:15px;background:var(--ink);color:#fff;border:0;border-radius:12px;
+    font-size:15px;font-weight:600;}
+  .ana-buton:disabled{opacity:.45;}
+  .ikincil-buton{background:#fff;color:var(--brass);border:1.5px solid var(--brass);}
+
+  .durum{margin-top:14px;padding:11px 13px;border-radius:10px;font-size:13.5px;display:none;}
+  .durum.gorunur{display:block;}
+  .durum.basarili{background:var(--yesil-bg);color:var(--yesil);}
+  .durum.hata{background:var(--kirmizi-bg);color:var(--kirmizi);}
+  .durum.bilgi{background:var(--sari-bg);color:#78350F;}
+
+  /* ——— uygulama kabuğu ——— */
+  #uygulama{display:none;min-height:100%;padding-bottom:var(--alt-bar);}
+  #uygulama.acik{display:block;}
+  header{position:sticky;top:0;z-index:20;background:var(--ink);color:#fff;
+    padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:10px;}
+  header .kim{flex:1;min-width:0;}
+  header .ad{font-size:15px;font-weight:600;line-height:1.2;}
+  header .birim{font-size:11.5px;opacity:.65;text-transform:uppercase;letter-spacing:.05em;}
+  header .simge{background:rgba(255,255,255,.12);border:0;color:#fff;width:34px;height:34px;
+    border-radius:9px;font-size:15px;display:grid;place-items:center;flex-shrink:0;}
+  header .simge.calisiyor{opacity:.4;}
+
+  main{max-width:640px;margin:0 auto;padding:16px 14px 24px;}
+  .sayfa{display:none;}
+  .sayfa.acik{display:block;}
+  .baslik-satir{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 12px;}
+  .baslik-satir h2{font-size:17px;margin:0;}
+  .baslik-satir .not{font-size:12px;color:var(--muted);}
+
+  .kart{background:var(--kart);border:1px solid var(--line);border-radius:12px;
+    padding:13px 14px;margin-bottom:10px;}
+  .kart .ust{display:flex;align-items:center;flex-wrap:wrap;gap:5px 8px;font-size:11.5px;
+    color:var(--muted);margin-bottom:5px;}
+  .kart .ust .yazan{font-weight:700;color:var(--ink);font-size:12.5px;white-space:nowrap;}
+  .kart .ust .sag{margin-left:auto;}
+  .kart h3{margin:0 0 4px;font-size:15px;}
+  .kart p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;}
+  .kart.onemli{border-left:4px solid var(--brass);}
+  .kart.acil{border-left:4px solid #B91C1C;background:#FFFBFB;}
+
+  .rozet{display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.05em;padding:2px 7px;border-radius:99px;background:var(--paper);
+    color:var(--muted);border:1px solid var(--line);}
+  .rozet.brass{background:var(--sari-bg);color:#78350F;border-color:#FDE68A;}
+  .rozet.acil{background:#FEE2E2;color:#991B1B;border-color:#FECACA;}
+  .rozet.yesil{background:var(--yesil-bg);color:var(--yesil);border-color:#A7F3D0;}
+
+  .kart-alt{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:9px;
+    border-top:1px solid var(--line);flex-wrap:wrap;}
+  .mini{font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:8px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);}
+  .mini.secili{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .mini.sil{color:var(--kirmizi);border-color:#FECACA;margin-left:auto;}
+  .mini:disabled{opacity:.45;}
+
+  .cip-satir{display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px;-webkit-overflow-scrolling:touch;}
+  .cip{flex-shrink:0;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:99px;
+    border:1px solid var(--line);background:#fff;color:var(--muted);white-space:nowrap;}
+  .cip.secili{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .cip .adet{opacity:.6;font-weight:500;}
+
+  details.form-kutu{background:var(--kart);border:1px solid var(--line);border-radius:12px;
+    margin-bottom:14px;overflow:hidden;}
+  details.form-kutu > summary{padding:12px 14px;font-size:14px;font-weight:600;list-style:none;
+    display:flex;justify-content:space-between;align-items:center;color:var(--brass);}
+  details.form-kutu > summary::-webkit-details-marker{display:none;}
+  details.form-kutu > summary::after{content:"+";font-size:18px;font-weight:400;}
+  details.form-kutu[open] > summary::after{content:"−";}
+  details.form-kutu .govde{padding:2px 14px 16px;border-top:1px solid var(--line);}
+  .ikili{display:flex;gap:10px;}
+  .ikili > *{flex:1;min-width:0;}
+
+  .onay-grid{display:flex;flex-wrap:wrap;gap:7px;}
+  .onay{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;
+    padding:7px 11px;border:1px solid var(--line);border-radius:99px;background:#fff;color:var(--muted);}
+  .onay input{width:15px;height:15px;margin:0;accent-color:var(--brass);}
+  .onay.isaretli{border-color:var(--brass);color:var(--brass);background:var(--sari-bg);}
+
+  /* ——— mesaj akışı ——— */
+  /* Mesaj sayfası ekranı doldursun ki yazım alanı sohbet uygulamalarındaki
+     gibi hep altta dursun, az mesaj varken ortada asılı kalmasın. */
+  #sayfaMesaj.acik{display:flex;flex-direction:column;min-height:calc(100vh - 190px);}
+  @supports (height:100dvh){#sayfaMesaj.acik{min-height:calc(100dvh - 190px);}}
+  #mesajListe{flex:1;display:flex;flex-direction:column;justify-content:flex-end;
+    gap:8px;margin-bottom:14px;}
+  .balon{max-width:82%;background:var(--kart);border:1px solid var(--line);border-radius:13px;
+    padding:9px 12px;align-self:flex-start;}
+  .balon.benim{align-self:flex-end;background:var(--ink);color:#fff;border-color:var(--ink);}
+  .balon .kim{font-size:11.5px;font-weight:700;color:var(--brass);margin-bottom:2px;}
+  .balon.benim .kim{display:none;}
+  .balon .metin{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14.5px;}
+  .balon .saat{font-size:10.5px;color:var(--muted);margin-top:3px;text-align:right;}
+  .balon.benim .saat{color:rgba(255,255,255,.55);}
+  .balon-sil{background:none;border:0;color:inherit;opacity:.75;font-size:10.5px;
+    font-family:inherit;padding:0 0 0 9px;text-decoration:underline;}
+  .gun-ayrac{align-self:center;font-size:11px;font-weight:700;color:var(--muted);
+    background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:3px 12px;
+    text-transform:uppercase;letter-spacing:.04em;margin:6px 0;}
+  #mesajYazim{position:sticky;bottom:0;background:var(--paper);padding:8px 0 4px;
+    display:flex;gap:8px;align-items:flex-end;}
+  #mesajMetin{flex:1;padding:11px 13px;border:1px solid var(--line);border-radius:20px;
+    background:#fff;resize:none;max-height:110px;line-height:1.35;}
+  #mesajGonder{width:44px;height:44px;flex-shrink:0;border:0;border-radius:50%;
+    background:var(--ink);color:#fff;font-size:17px;}
+
+  .bos{text-align:center;color:var(--muted);font-size:13.5px;padding:34px 16px;
+    background:var(--kart);border:1px dashed var(--line);border-radius:12px;}
+
+  /* ——— alt sekme çubuğu ——— */
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;
+    border-top:1px solid var(--line);display:flex;
+    padding-bottom:env(safe-area-inset-bottom);}
+  nav button{flex:1;border:0;background:none;padding:8px 2px 7px;color:var(--muted);
+    font-size:10.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px;
+    position:relative;}
+  nav button .ikon{font-size:18px;line-height:1;}
+  nav button.secili{color:var(--ink);}
+  nav button .sayac{position:absolute;top:4px;right:calc(50% - 22px);min-width:17px;height:17px;
+    border-radius:99px;background:#B91C1C;color:#fff;font-size:10px;font-weight:700;
+    display:none;place-items:center;padding:0 4px;}
+  nav button .sayac.gorunur{display:grid;}
+
+  @media (min-width:700px){
+    main{padding-top:22px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ————————————————————————— giriş ————————————————————————— -->
+<div id="girisEkran">
+  <h1>Ekip Paneli</h1>
+  <div class="alt">Duyurular, birim mesajları, görevler ve vardiya devir notları.</div>
+
+  <div class="alan">
+    <label for="kisiSec">Kim giriyor?</label>
+    <select id="kisiSec"><option value="">Yükleniyor…</option></select>
+  </div>
+
+  <div class="alan">
+    <label for="pin">4 haneli PIN</label>
+    <input id="pin" type="tel" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••">
+  </div>
+
+  <button class="ana-buton" id="girisButon">Gir</button>
+  <div class="durum" id="girisDurum"></div>
+</div>
+
+<!-- ————————————————————————— uygulama ————————————————————————— -->
+<div id="uygulama">
+  <header>
+    <div class="kim">
+      <div class="ad" id="basAd">—</div>
+      <div class="birim" id="basBirim">—</div>
+    </div>
+    <button class="simge" id="yenileButon" title="Yenile" aria-label="Yenile">↻</button>
+    <button class="simge" id="ayarButon" title="Ayarlar" aria-label="Ayarlar">⋯</button>
+  </header>
+
+  <main>
+    <!-- Duyurular -->
+    <section class="sayfa acik" id="sayfaDuyuru">
+      <div class="baslik-satir">
+        <h2>Duyurular</h2>
+        <span class="not" id="duyuruNot"></span>
+      </div>
+
+      <details class="form-kutu" id="duyuruFormKutu" hidden>
+        <summary>Yeni duyuru yayınla</summary>
+        <div class="govde">
+          <div class="alan">
+            <label for="dBaslik">Başlık</label>
+            <input id="dBaslik" maxlength="90" placeholder="Örn. Cumartesi sevkiyat saati değişti">
+          </div>
+          <div class="alan">
+            <label for="dMetin">Metin</label>
+            <textarea id="dMetin" rows="4" placeholder="Duyurunun detayı…"></textarea>
+          </div>
+          <div class="alan">
+            <label>Kimlere gitsin?</label>
+            <div class="onay-grid" id="dHedef"></div>
+          </div>
+          <div class="alan">
+            <label for="dOncelik">Öncelik</label>
+            <select id="dOncelik">
+              <option value="normal">Normal</option>
+              <option value="onemli">Önemli</option>
+              <option value="acil">Acil</option>
+            </select>
+          </div>
+          <button class="ana-buton" id="dGonder">Yayınla</button>
+          <div class="durum" id="dDurum"></div>
+        </div>
+      </details>
+
+      <div id="duyuruListe"></div>
+    </section>
+
+    <!-- Mesajlar -->
+    <section class="sayfa" id="sayfaMesaj">
+      <div class="cip-satir" id="kanalCipler"></div>
+      <div id="mesajListe"></div>
+      <div id="mesajYazim">
+        <textarea id="mesajMetin" rows="1" placeholder="Mesaj yaz…"></textarea>
+        <button id="mesajGonder" aria-label="Gönder">↑</button>
+      </div>
+      <div class="durum" id="mDurum"></div>
+    </section>
+
+    <!-- Görevler -->
+    <section class="sayfa" id="sayfaGorev">
+      <div class="baslik-satir">
+        <h2>Görevler</h2>
+        <span class="not" id="gorevNot"></span>
+      </div>
+
+      <details class="form-kutu">
+        <summary>Yeni görev aç</summary>
+        <div class="govde">
+          <div class="alan">
+            <label for="gBaslik">Ne yapılacak?</label>
+            <input id="gBaslik" maxlength="140" placeholder="Örn. Maslak için 40 kg galeta hazırla">
+          </div>
+          <div class="ikili">
+            <div class="alan">
+              <label for="gBirim">Birim</label>
+              <select id="gBirim"></select>
+            </div>
+            <div class="alan">
+              <label for="gKisi">Kişi</label>
+              <select id="gKisi"></select>
+            </div>
+          </div>
+          <div class="alan">
+            <label for="gTarih">Son tarih</label>
+            <input id="gTarih" type="date">
+          </div>
+          <button class="ana-buton" id="gGonder">Görevi Aç</button>
+          <div class="durum" id="gDurum"></div>
+        </div>
+      </details>
+
+      <div class="cip-satir" id="gorevCipler"></div>
+      <div id="gorevListe"></div>
+    </section>
+
+    <!-- Devir notları -->
+    <section class="sayfa" id="sayfaDevir">
+      <div class="baslik-satir">
+        <h2>Vardiya Devir Notu</h2>
+        <span class="not">Bir sonraki vardiyaya bırakılan not</span>
+      </div>
+
+      <details class="form-kutu">
+        <summary>Devir notu bırak</summary>
+        <div class="govde">
+          <div class="ikili">
+            <div class="alan">
+              <label for="vBirim">Birim</label>
+              <select id="vBirim"></select>
+            </div>
+            <div class="alan">
+              <label for="vTarih">Tarih</label>
+              <input id="vTarih" type="date">
+            </div>
+          </div>
+          <div class="alan">
+            <label for="vMetin">Not</label>
+            <textarea id="vMetin" rows="5" placeholder="Devreden iş, yarım kalanlar, dikkat edilecekler…"></textarea>
+          </div>
+          <button class="ana-buton" id="vGonder">Notu Kaydet</button>
+          <div class="durum" id="vDurum"></div>
+        </div>
+      </details>
+
+      <div class="cip-satir" id="devirCipler"></div>
+      <div id="devirListe"></div>
+    </section>
+
+    <!-- Ayarlar -->
+    <section class="sayfa" id="sayfaAyar">
+      <div class="baslik-satir"><h2>Ayarlar</h2></div>
+      <div class="kart">
+        <h3>PIN değiştir</h3>
+        <div class="alan" style="margin-top:10px;">
+          <label for="yeniPin">Yeni 4 haneli PIN</label>
+          <input id="yeniPin" type="tel" inputmode="numeric" maxlength="4" placeholder="••••">
+        </div>
+        <button class="ana-buton ikincil-buton" id="pinGonder">Kaydet</button>
+        <div class="durum" id="pDurum"></div>
+      </div>
+      <div class="kart">
+        <h3>Ekip</h3>
+        <div id="ekipListe" style="margin-top:8px;"></div>
+        <p style="font-size:12.5px;color:var(--muted);margin-top:10px;">
+          Kişi eklemek/çıkarmak için Google E-Tablo'daki <strong>Kisiler</strong> sekmesini düzenleyin.
+        </p>
+      </div>
+      <button class="ana-buton ikincil-buton" id="cikisButon" style="margin-top:6px;">Çıkış Yap</button>
+    </section>
+  </main>
+
+  <nav>
+    <button data-sayfa="Duyuru" class="secili"><span class="ikon">📣</span>Duyuru<span class="sayac" id="sayacDuyuru"></span></button>
+    <button data-sayfa="Mesaj"><span class="ikon">💬</span>Mesaj<span class="sayac" id="sayacMesaj"></span></button>
+    <button data-sayfa="Gorev"><span class="ikon">✓</span>Görev<span class="sayac" id="sayacGorev"></span></button>
+    <button data-sayfa="Devir"><span class="ikon">🌙</span>Devir<span class="sayac" id="sayacDevir"></span></button>
+  </nav>
+</div>
+
+<script src="ekip-paneli.js"></script>
+</body>
+</html>

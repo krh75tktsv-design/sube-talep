@@ -3,6 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Telefona uygulama gibi kurulabilmesi icin (PWA). Service worker YOK:
+     onbellek kaynakli eski surum sorunlarini onlemek adina bilerek eklenmedi. -->
+<link rel="manifest" href="sube.webmanifest">
+<meta name="theme-color" content="#B45309">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="LA VİTA Şube Talep">
+<link rel="apple-touch-icon" href="ikon/sube-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="ikon/sube-192.png">
 <title>Şube Ürün Talebi</title>
 <style>
   :root{--ink:#111827;--paper:#F8F7F4;--brass:#B45309;--line:#E5E2DA;--muted:#6B7280;}

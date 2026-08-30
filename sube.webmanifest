@@ -1,0 +1,16 @@
+{
+  "name": "LA VİTA Şube Talep",
+  "short_name": "Şube Talep",
+  "description": "Şube ürün talebi ve zayi bildirimi formu",
+  "start_url": "./sube-talep.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8F7F4",
+  "theme_color": "#B45309",
+  "icons": [
+    { "src": "ikon/sube-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "ikon/sube-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "ikon/sube-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

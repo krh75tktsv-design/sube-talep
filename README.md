@@ -7,6 +7,54 @@ gelir/gider, banka hesapları, cari takibi, ödeme-tahsilat ve şube karşılaş
 
 - `index.html` — Sayfa iskeleti, stiller ve başlangıç verisi (seed data)
 - `app.js` — Tüm uygulama mantığı (render, filtreler, düzenleme, dışa aktarma vb.)
+- `sube-talep.html` / `talep-paneli.html` — Şube ürün talebi formu ve merkez paneli
+- `ekip-paneli.html` + `ekip-paneli.js` — Ekip iletişim paneli (aşağıda)
+- `apps-script/Code.gs` — Şube talepleri Web App'i
+- `apps-script/EkipPaneli.gs` — Ekip paneli Web App'i (ayrı e-tablo, ayrı URL)
+
+## Ekip Paneli
+
+~30 kişilik ekibin (üretim, sevkiyat, satış, sipariş alma, yönetim)
+haberleşmesi için dört bölümlü tek sayfa:
+
+- **Duyurular** — yönetici yayınlar, hedef birim seçilebilir, öncelik
+  (normal / önemli / acil) verilebilir. Herkes "Okudum" der; yönetici
+  kimin okuyup okumadığını kartın üzerinde görür.
+- **Mesajlar** — "Genel" + her birim için ayrı kanal. Birim içi ve
+  birimler arası yazışma. Herkes kendi mesajını, yönetici her mesajı silebilir.
+- **Görevler** — kişiye veya birime iş atama, son tarih, açık / devam /
+  bitti durumu. Süresi geçen görev kırmızı işaretlenir.
+- **Devir notu** — vardiya sonunda birimin bıraktığı not, tarih ve birim
+  bazlı arşiv.
+
+Giriş: listeden isim + kişiye özel 4 haneli PIN. Tarayıcı hatırlar,
+her açılışta tekrar sorulmaz. Kişi ekleme/çıkarma ve rol (yonetici/uye)
+Google E-Tablo'daki `Kisiler` sekmesinden yapılır — kod değişmez.
+
+### Kurulum
+
+Kurulum tamamlandı: Web App dağıtıldı ve URL'si `ekip-paneli.js`
+içindeki `APPS_SCRIPT_URL` sabitine yazıldı.
+
+Sıfırdan tekrar kurmak gerekirse adım adım anlatım
+`apps-script/EkipPaneli.gs` dosyasının en üstünde. `.gs` dosyasını
+değiştirdiğinizde **Dağıt > Dağıtımları yönet > kalem > Sürüm: Yeni
+sürüm > Dağıt** demeyi unutmayın; yoksa değişiklik canlıya çıkmaz
+(URL aynı kalır).
+
+### Bilinmesi gerekenler
+
+- Panel **anlık değil**: yeni mesaj/duyuru ortalama 45 saniye içinde
+  görünür (sekme öne geldiğinde hemen tazelenir). Gerçek zamanlı
+  bildirim için Firebase'e geçmek gerekir.
+- 4 haneli PIN **iç ekip için** yeterli bir ayrımdır, gerçek bir
+  güvenlik katmanı değildir: Web App URL'sini bilen biri isim listesini
+  görebilir ve PIN deneyebilir. Panelde maaş, banka vb. hassas bilgi
+  paylaşmayın.
+- Silinen kayıtlar e-tablodan gerçekten silinmez, `Silindi` sütunu
+  işaretlenir — yanlışlıkla silineni o hücreyi boşaltarak geri alırsınız.
+- Mesajlar 90, devir notları 180 gün sonra gece temizliğinde silinir
+  (`SAKLAMA_GUN` sabitinden değiştirilebilir).
 
 ## Yerelde çalıştırma
 
