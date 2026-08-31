@@ -62,6 +62,7 @@
   .durum.hata{display:block;background:#FEF2F2;color:#991B1B;}
   .tarih-gun{margin-top:6px;font-size:14px;font-weight:600;color:var(--brass);}
   .tarih-gun.pazar{color:#991B1B;}
+  .tarih-uyari{display:none;margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#FEF2F2;color:#991B1B;font-size:13px;font-weight:500;line-height:1.4;}
   .ozet-bar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 16px;font-size:13px;color:var(--muted);text-align:center;}
 </style>
 </head>
@@ -85,6 +86,7 @@
   <label for="not">Ek Not (opsiyonel)</label>
   <textarea id="not" rows="2" placeholder="Katalog dışı bir istek varsa buraya yazın"></textarea>
 
+  <div class="tarih-uyari" id="tarihUyari">Seçili sipariş tarihi <b>pazar</b>. Pazar günü üretim yok — talebiniz pazartesiye ait olacaksa tarihi değiştirin.</div>
   <button id="gonderTalep">Talep Gönder</button>
   <div class="durum" id="durumTalep"></div>
 
@@ -1550,6 +1552,7 @@ if (subeParam && SUBELER.includes(subeParam)) {
 
 const tarihInput = document.getElementById("tarih");
 const tarihGunEl = document.getElementById("tarihGun");
+const tarihUyariEl = document.getElementById("tarihUyari");
 
 // toISOString UTC'ye çevirdiği için gece saatlerinde bir gün geriye kayıyordu;
 // tarihi yerel saate göre kur.
@@ -1563,15 +1566,18 @@ const GUN_ADLARI = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "C
 // Şubeler tarihi karıştırdığı için hangi güne denk geldiği açıkça yazılır.
 function tarihGunuYaz() {
   const v = tarihInput.value;
-  if (!v) { tarihGunEl.textContent = ""; return; }
+  if (!v) { tarihGunEl.textContent = ""; tarihUyariEl.style.display = "none"; return; }
   const [y, a, g] = v.split("-").map(Number);
   const d = new Date(y, a - 1, g);
   const bugun = new Date();
   const farkGun = Math.round((d - new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate())) / 86400000);
   const ek = farkGun === 0 ? " · bugün" : farkGun === 1 ? " · yarın" : farkGun === -1 ? " · dün" : "";
   tarihGunEl.textContent = `${String(g).padStart(2, "0")}.${String(a).padStart(2, "0")}.${y} ${GUN_ADLARI[d.getDay()]}${ek}`;
-  // Pazar günü üretim yok; gün adı kırmızı yazılır, engel yoktur.
-  tarihGunEl.classList.toggle("pazar", d.getDay() === 0);
+  // Pazar günü üretim yok. Uyarı yalnızca talep bölümünde çıkar; zayi bildirimi
+  // pazar günü de geçerli olabildiği için orada ne uyarı ne de onay vardır.
+  const pazar = d.getDay() === 0;
+  tarihGunEl.classList.toggle("pazar", pazar);
+  tarihUyariEl.style.display = pazar ? "block" : "none";
 }
 
 // Pazar günü üretim yok. Cumartesi akşamı talep girildiğinde varsayılan
