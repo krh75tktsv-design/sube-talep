@@ -60,6 +60,7 @@
   .durum{margin-top:14px;padding:12px;border-radius:10px;font-size:14px;text-align:center;display:none;}
   .durum.basarili{display:block;background:#ECFDF5;color:#065F46;}
   .durum.hata{display:block;background:#FEF2F2;color:#991B1B;}
+  .tarih-gun{margin-top:6px;font-size:14px;font-weight:600;color:var(--brass);}
   .ozet-bar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 16px;font-size:13px;color:var(--muted);text-align:center;}
 </style>
 </head>
@@ -71,8 +72,9 @@
   <label for="sube">Şube</label>
   <select id="sube"></select>
 
-  <label for="tarih">Talep Tarihi</label>
+  <label for="tarih">Sipariş Tarihi</label>
   <input type="date" id="tarih">
+  <div class="tarih-gun" id="tarihGun"></div>
 
   <label for="ara">Ürün Ara</label>
   <input type="search" id="ara" placeholder="ürün adı yazın…">
@@ -95,7 +97,7 @@
   <div class="durum" id="durumZayi"></div>
 
   <div class="zayi-baslik" style="margin-top:34px;">Gönderdiklerim</div>
-  <div class="zayi-aciklama">Seçili talep tarihi için şubenizin gönderdiği
+  <div class="zayi-aciklama">Seçili sipariş tarihi için şubenizin gönderdiği
     kayıtları listeler. Bir hata görürseniz merkeze bildirin.</div>
   <button id="gonderilenleriGoster" class="ikincil">Gönderdiklerimi Göster</button>
   <div class="durum" id="durumGecmis"></div>
@@ -1546,9 +1548,35 @@ if (subeParam && SUBELER.includes(subeParam)) {
 }
 
 const tarihInput = document.getElementById("tarih");
+const tarihGunEl = document.getElementById("tarihGun");
+
+// toISOString UTC'ye çevirdiği için gece saatlerinde bir gün geriye kayıyordu;
+// tarihi yerel saate göre kur.
+function yerelTarih(d) {
+  const ay = String(d.getMonth() + 1).padStart(2, "0");
+  const gun = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${ay}-${gun}`;
+}
+
+const GUN_ADLARI = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+// Şubeler tarihi karıştırdığı için hangi güne denk geldiği açıkça yazılır.
+function tarihGunuYaz() {
+  const v = tarihInput.value;
+  if (!v) { tarihGunEl.textContent = ""; return; }
+  const [y, a, g] = v.split("-").map(Number);
+  const d = new Date(y, a - 1, g);
+  const bugun = new Date();
+  const farkGun = Math.round((d - new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate())) / 86400000);
+  const ek = farkGun === 0 ? " · bugün" : farkGun === 1 ? " · yarın" : farkGun === -1 ? " · dün" : "";
+  tarihGunEl.textContent = `${String(g).padStart(2, "0")}.${String(a).padStart(2, "0")}.${y} ${GUN_ADLARI[d.getDay()]}${ek}`;
+}
+
 const yarin = new Date();
 yarin.setDate(yarin.getDate() + 1);
-tarihInput.value = yarin.toISOString().slice(0, 10);
+tarihInput.value = yerelTarih(yarin);
+tarihInput.addEventListener("change", tarihGunuYaz);
+tarihInput.addEventListener("input", tarihGunuYaz);
+tarihGunuYaz();
 
 const kategorilerEl = document.getElementById("kategoriler");
 
