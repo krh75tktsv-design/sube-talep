@@ -1234,28 +1234,43 @@ function sayfaYazdirmaAyarla(ws, yon) {
   ws.pageSetup = { orientation: yon || "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
 }
 
-// Şube sayısı arttıkça tablo genişliyor; "1 sayfaya sığdır" bunu telafi etmek
-// için yazıyı küçültüyordu, yani punto güne göre değişiyordu. Bunun yerine sayfa
-// sabit bir ölçekle basılır: punto şube sayısından bağımsız olarak hep aynı
-// büyüklükte çıkar, tablo sığmazsa yana doğru ikinci sayfaya taşar.
+// Yazdırma ölçeği:
+//  - Tablo sayfadan darsa sayfayı dolduracak kadar büyütülür (punto büyük çıksın).
+//  - Şube sayısı REFERANS_SUBE_SAYISI'yı geçerse ölçek daha fazla küçülmez;
+//    tablo yana doğru ikinci sayfaya taşar. Böylece punto güne göre değişmez.
+// Excel'in "1 sayfaya sığdır" seçeneği ölçeği ezdiği için kapatılır.
 const REFERANS_SUBE_SAYISI = 4;
-// A4'te bir sayfaya sığan yaklaşık sütun genişliği toplamı (Excel birimi).
-const SAYFA_BIRIM = { portrait: 94, landscape: 135 };
+const A4_INC = { portrait: 8.27, landscape: 11.69 };
+const KENAR_BOSLUK_INC = 0.25;
+const DPI = 96;
+const VARSAYILAN_SUTUN = 8.43;
+// Excel sütun genişliği (karakter birimi) -> piksel
+function sutunPiksel(w) { return w ? Math.round(7 * w + 5) : 0; }
 
 function yazdirmaOlcekAyarla(ws, subeSayisi) {
-  if (!subeSayisi) return;
-  let toplam = 0;
-  for (let c = 1; c <= ws.columnCount; c++) toplam += ws.getColumn(c).width || 0;
-  const urunGen = ws.getColumn(1).width || 0;
-  // Ölçek, referans şube sayısındaki genişliğe göre belirlenir; gerçek şube
-  // sayısı ne olursa olsun değişmez.
-  const subeBirim = (toplam - urunGen) / subeSayisi;
-  const referans = urunGen + REFERANS_SUBE_SAYISI * subeBirim;
   const yon = (ws.pageSetup && ws.pageSetup.orientation) || "portrait";
-  const birim = SAYFA_BIRIM[yon] || SAYFA_BIRIM.portrait;
-  const olcek = Math.min(100, Math.max(10, Math.round((birim / referans) * 100)));
+  const kullanilabilirPx = (A4_INC[yon] - 2 * KENAR_BOSLUK_INC) * DPI;
+
+  // Genişliği verilmemiş ara sütunlar da varsayılan genişlikte basılır.
+  let toplamPx = 0;
+  for (let c = 1; c <= ws.columnCount; c++) {
+    toplamPx += sutunPiksel(ws.getColumn(c).width || VARSAYILAN_SUTUN);
+  }
+  if (!toplamPx) return;
+
+  let olcek = (kullanilabilirPx / toplamPx) * 100;
+
+  // Referans şube sayısının ötesinde küçültme yok; tablo yana taşsın.
+  if (subeSayisi > REFERANS_SUBE_SAYISI) {
+    const urunPx = sutunPiksel(ws.getColumn(1).width || VARSAYILAN_SUTUN);
+    const subePx = (toplamPx - urunPx) / subeSayisi;
+    olcek = Math.max(olcek, (kullanilabilirPx / (urunPx + REFERANS_SUBE_SAYISI * subePx)) * 100);
+  }
+
   ws.pageSetup = Object.assign({}, ws.pageSetup, {
-    fitToPage: false, scale: olcek,
+    fitToPage: false, fitToWidth: 0, fitToHeight: 0,
+    scale: Math.min(100, Math.max(10, Math.floor(olcek))),
+    margins: { left: KENAR_BOSLUK_INC, right: KENAR_BOSLUK_INC, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
   });
 }
 
@@ -1596,6 +1611,8 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     for (let i = yanBas + 1; i <= yanSon; i++) ws.getColumn(i).width = BC.veriGen;
   }
 
+  // Üretim sayfasında şube sütunu yok; ölçek yalnızca sayfaya sığdırmak için.
+  yazdirmaOlcekAyarla(ws, 0);
   ws.views = [{ state: "frozen", ySplit: 3 }];
 }
 
@@ -1841,6 +1858,7 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
 
   ws.getColumn(1).width = BC.urunGen;
   for (let i = 2; i <= toplamCol; i++) ws.getColumn(i).width = BC.veriGen;
+  yazdirmaOlcekAyarla(ws, 0);
   ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
 
