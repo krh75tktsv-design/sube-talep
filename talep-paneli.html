@@ -205,6 +205,8 @@ async function yukleVeCiz() {
 const RAPOR_DUZENI = [
   // Pasta Fransız / Tek Pastalar (Fransız)
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Tiramisu"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Karpatka"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Ballı Rus Pastası"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Fraisier (Çilekli Beyaz)"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Fraisier (Siyah)"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Hasbahçe (Fransız)"],
@@ -218,17 +220,15 @@ const RAPOR_DUZENI = [
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Fıstıklı Pasta"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Portakal Küp"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Snickers"],
-  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Ballı Rus Pastası"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Limonlu Yaz Pastası"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Mangolu Pasta"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Glutensiz Çikolatalı Pasta"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Panna Cotta Mango"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Panna Cotta Frambuaz"],
+  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Portakallı Fit Kek"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Yaban Mersinli Pasta"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Çilekli Tart"],
   ["Pasta Fransız", "Tek Pastalar (Fransız)", "Çilekli Milföy"],
-  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Portakallı Fit Kek"],
-  ["Pasta Fransız", "Tek Pastalar (Fransız)", "Karpatka"],
   // Pasta Fransız / Fransız Ekler
   ["Pasta Fransız", "Fransız Ekler", "Çikolatalı Ekler"],
   ["Pasta Fransız", "Fransız Ekler", "Tiramisulu Ekler"],
@@ -277,9 +277,9 @@ const RAPOR_DUZENI = [
   ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Hasbahçe Siyah"],
   ["Pasta Klasik", "Klasik Pastalar (Boylu)", "*Vişne Beyaz"],
   ["Pasta Klasik", "Klasik Pastalar (Boylu)", "Badem Krokan"],
-  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "San Sebastian (Klasik)"],
-  // Şube formundaki "Ekstra sos" kutucuğu işaretlenince oluşan istek satırı.
-  ["Pasta Klasik", "Klasik Pastalar (Boylu)", "San Sebastian (Klasik) — Ekstra Sos"],
+  // Pasta Klasik / Klasik Pastalar
+  ["Pasta Klasik", "Klasik Pastalar", "San Sebastian (Klasik)"],
+  ["Pasta Klasik", "Klasik Pastalar", "San Sebastian (Klasik) — Ekstra Sos"],
   // Tatlı Kurabiye / Tatlı Kurabiyeler
   ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "İncirli Coco"],
   ["Tatlı Kurabiye", "Tatlı Kurabiyeler", "Kayısılı Coco"],
@@ -384,12 +384,12 @@ const RAPOR_DUZENI = [
   ["Tuzlu Kurabiye", "Adet Ürünler", "Paskalya"],
   ["Tuzlu Kurabiye", "Adet Ürünler", "Paskalya Çikolatalı"],
   ["Tuzlu Kurabiye", "Adet Ürünler", "Tahinli Çörek"],
-  ["Tuzlu Kurabiye", "Adet Ürünler", "Acıbadem"],
-  ["Tuzlu Kurabiye", "Adet Ürünler", "Acıbadem Minik"],
-  ["Tuzlu Kurabiye", "Adet Ürünler", "Ayçöreği"],
   ["Tuzlu Kurabiye", "Adet Ürünler", "Beze Büyük"],
   ["Tuzlu Kurabiye", "Adet Ürünler", "Beze Beyaz Minik"],
   ["Tuzlu Kurabiye", "Adet Ürünler", "Beze Renkli Minik"],
+  ["Tuzlu Kurabiye", "Adet Ürünler", "Acıbadem"],
+  ["Tuzlu Kurabiye", "Adet Ürünler", "Acıbadem Minik"],
+  ["Tuzlu Kurabiye", "Adet Ürünler", "Ayçöreği"],
   // Tuzlu Kurabiye / Galeta / Kıtır / Cips / Diğer Tuzlu
   ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Batonsale Sade"],
   ["Tuzlu Kurabiye", "Galeta / Kıtır / Cips / Diğer Tuzlu", "Batonsale Çörekotlu"],
@@ -415,14 +415,10 @@ const RAPOR_DUZENI = [
   ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Supangle"],
   ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Profiterol Kase"],
   ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Mozaik"],
-  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Vişneli Tek"],
   ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Hasbahçe Tek"],
   ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Fıstıklı Çikolatalı Tek"],
   ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Kestaneli Tek"],
-  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Profiterol Tek"],
   ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Ganaj Tek"],
-  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Frambuaz Siyah Tek"],
-  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Frambuaz Beyaz Tek"],
   ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Latte (Porsiyon)"],
   // Porsiyon Tatlılar / Minik Tatlılar
   ["Porsiyon Tatlılar", "Minik Tatlılar", "Çikolatalı Ekler (Porsiyon)"],
@@ -437,11 +433,12 @@ const RAPOR_DUZENI = [
   ["Porsiyon Tatlılar", "Minik Tatlılar", "Krokanlı Şu Topu"],
   ["Porsiyon Tatlılar", "Minik Tatlılar", "Çilekli Şu Topu"],
   // Porsiyon Tatlılar / Sütlü Tatlı
-  ["Porsiyon Tatlılar", "Sütlü Tatlı", "Trileçe Frambuaz"],
-  ["Porsiyon Tatlılar", "Sütlü Tatlı", "Trileçe Karamel"],
   ["Porsiyon Tatlılar", "Sütlü Tatlı", "Kazandibi"],
   ["Porsiyon Tatlılar", "Sütlü Tatlı", "Sütlaç"],
   ["Porsiyon Tatlılar", "Sütlü Tatlı", "Aşure"],
+  // Porsiyon Tatlılar / Porsiyon Tatlılar
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Trileçe Frambuaz"],
+  ["Porsiyon Tatlılar", "Porsiyon Tatlılar", "Trileçe Karamel"],
 ];
 
 const URUN_SAYFA = {};       // ürün -> rapor sayfası
@@ -467,6 +464,8 @@ const KALDIRILAN_URUNLER = new Set([
   "Diyet Kurabiyeler (Tuzlu)",
   // Katalogdan çıkarıldı.
   "Batonsale Susamlı", "Batonsale Anasonlu", "Galet Anasonlu",
+  // Porsiyon Tatlılar'dan çıkarıldı.
+  "Vişneli Tek", "Profiterol Tek", "Frambuaz Siyah Tek", "Frambuaz Beyaz Tek",
 ]);
 
 // Boylu bir bölümde olsa da tek boy üretilen ürünler: raporda ve panelde
@@ -703,14 +702,10 @@ const URUN_BIRIM = {
   "Supangle": "",
   "Profiterol Kase": "",
   "Mozaik": "",
-  "Vişneli Tek": "",
   "Hasbahçe Tek": "",
   "Fıstıklı Çikolatalı Tek": "",
   "Kestaneli Tek": "",
-  "Profiterol Tek": "",
   "Ganaj Tek": "",
-  "Frambuaz Siyah Tek": "",
-  "Frambuaz Beyaz Tek": "",
   "Latte (Porsiyon)": "",
   "Çikolatalı Ekler (Porsiyon)": "",
   "Limonlu Ekler (Porsiyon)": "",
@@ -758,13 +753,13 @@ function raporAdi(etiket, kayitBirim) {
 // Bölüm içindeki alt gruplar (rapor-duzeni.xlsx'teki ALT GRUP sütunu).
 // Alt grup değiştiğinde araya ince bir boş satır konur.
 const URUN_ALT_GRUP = {
-  "Çikolatalı Ekler ": "Ekler",
+  "Çikolatalı Ekler": "Ekler",
   "Tiramisulu Ekler": "Ekler",
-  "Frambuazlı Ekler ": "Ekler",
+  "Frambuazlı Ekler": "Ekler",
   "Fıstıklı Ekler": "Ekler",
   "Karamel Ekler": "Ekler",
   "Lavanta Ekler": "Ekler",
-  "Limonlu Ekler ": "Ekler",
+  "Limonlu Ekler": "Ekler",
   "İncirli Coco": "Coco",
   "Kayısılı Coco": "Coco",
   "Coco Hindistan Cevizli": "Coco",
@@ -837,7 +832,7 @@ const URUN_ALT_GRUP = {
   "Krokanlı Şu Topu": "Şu Topu",
   "Çilekli Şu Topu": "Şu Topu",
   "Trileçe Frambuaz": "Trileçe",
-  "Trileçe Karamel": "Trileçe",
+  "Trileçe Karamel": "Trileçe"
 };
 const AYIRICI_SATIR_YUKSEKLIGI = 5;
 
