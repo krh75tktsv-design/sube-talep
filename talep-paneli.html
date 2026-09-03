@@ -446,13 +446,21 @@ const URUN_BOLUM = {};       // ürün -> sayfa içindeki bölüm
 const URUN_SIRA_INDEX = {};  // ürün -> tablodaki genel sıra
 const RAPOR_SAYFA_SIRASI = [];
 const BOLUM_SIRASI = [];
+const SAYFA_BOLUM_URUNLERI = {};   // sayfa -> { bölüm: [ürün, ...] }
 RAPOR_DUZENI.forEach(([sayfa, bolum, urun], i) => {
   URUN_SAYFA[urun] = sayfa;
   URUN_BOLUM[urun] = bolum;
   URUN_SIRA_INDEX[urun] = i;
   if (!RAPOR_SAYFA_SIRASI.includes(sayfa)) RAPOR_SAYFA_SIRASI.push(sayfa);
   if (!BOLUM_SIRASI.includes(bolum)) BOLUM_SIRASI.push(bolum);
+  const sb = (SAYFA_BOLUM_URUNLERI[sayfa] = SAYFA_BOLUM_URUNLERI[sayfa] || {});
+  (sb[bolum] = sb[bolum] || []).push(urun);
 });
+
+// Bu sayfalar hiç sipariş gelmese de rapora girer: bütün ürün satırları ve
+// aşağıdaki şubeler her zaman görünür, böylece çıktı elle doldurulabilir.
+const TAM_LISTE_SAYFALARI = ["Tuzlu Kurabiye"];
+const SAYFA_ZORUNLU_SUBELER = { "Tuzlu Kurabiye": ["Nişantaşı", "Fulya", "Maslak"] };
 
 // Katalogdan kaldırılan ürünler: daha önce girilmiş kayıtlar da panelde ve
 // raporda gösterilmez (Google E-Tablo'daki veriye dokunulmaz).
@@ -1307,7 +1315,7 @@ async function uretimRaporuIndir() {
 
     RAPOR_SAYFA_SIRASI.forEach(sayfaAdi => {
       const sayfaKayitlari = kayitlar.filter(k => URUN_SAYFA[k.urun] === sayfaAdi);
-      if (sayfaKayitlari.length === 0) return;
+      if (sayfaKayitlari.length === 0 && TAM_LISTE_SAYFALARI.indexOf(sayfaAdi) === -1) return;
       if (BOYLU_URUN_SIRALARI[sayfaAdi]) {
         boyluUretimSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
         boyluDagitimSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
@@ -1341,7 +1349,11 @@ async function uretimRaporuIndir() {
 
 function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const ws = wb.addWorksheet(sayfaAdi.substring(0, 31));
-  const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
+  const tamListe = TAM_LISTE_SAYFALARI.indexOf(sayfaAdi) !== -1;
+  const subeler = subeSirala([...new Set([
+    ...(SAYFA_ZORUNLU_SUBELER[sayfaAdi] || []),
+    ...kayitlar.map(k => k.sube),
+  ])]);
   const BC = sayfaBicimi(sayfaAdi);
   const BP = BC.punto, BY = BC.yukseklik;
   const UP = BC.urunPunto, UY = BC.urunYuk;
@@ -1386,12 +1398,18 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     birimler[etiket] = k.birim;
   });
 
-  const kategoriler = bolumSirala(new Set(kayitlar.map(urunBolumu)));
+  const kategoriler = bolumSirala(new Set([
+    ...(tamListe ? Object.keys(SAYFA_BOLUM_URUNLERI[sayfaAdi] || {}) : []),
+    ...kayitlar.map(urunBolumu),
+  ]));
 
   let r = headerRow + 1;
   kategoriler.forEach((kategori, ki) => {
     const kategoriKayitlari = kayitlar.filter(k => urunBolumu(k) === kategori);
-    const urunEtiketleri = urunSirala(new Set(kategoriKayitlari.map(urunEtiketi)));
+    const urunEtiketleri = urunSirala(new Set([
+      ...(tamListe ? ((SAYFA_BOLUM_URUNLERI[sayfaAdi] || {})[kategori] || []) : []),
+      ...kategoriKayitlari.map(urunEtiketi),
+    ]));
 
     ws.getRow(r).height = BY;
     const kc = ws.getCell(r, 1);
@@ -1432,7 +1450,7 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
         for (let i = bas + 1; i < bas + SS; i++) hucreStilVer(ws.getCell(r, i), { boyut: UP });
       });
       const tc = ws.getCell(r, toplamCol);
-      tc.value = toplam;
+      tc.value = toplam || null;
       hucreStilVer(tc, { bold: true, boyut: UP, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center", vertical: "middle" } });
       r++;
     });
