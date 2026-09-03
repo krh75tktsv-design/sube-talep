@@ -107,7 +107,25 @@ Bilinmesi gerekenler:
   `UNSUZ  ÇİKOLATA PASTA`) bilerek korunur — elde kullanılan Excel
   dosyalarındaki yazımla eşleşsin diye.
 - `apps-script/MilliSaraylar.gs` — iki sayfayı besleyen Web App.
-  Sekmeler: `Talepler` (kayıtlar) ve `Subeler` (şube, şifre, rol, aktif).
+  Sekmeler: `Talepler` (kayıtlar), `Subeler` (şube, şifre, rol, aktif) ve
+  `Gorunurluk` (hangi ürün hangi şubede gizli).
+
+### Şube bazlı ürün görünürlüğü
+
+Bazı ürünler bazı şubelerde satılmıyor. `Gorunurluk` sekmesinde satırlar
+ürün, sütunlar şube; bir hücreye **`yok`** yazılırsa o ürün o şubenin
+formunda hiç görünmez — aramada da çıkmaz, yanlışlıkla gönderilemez.
+
+- Değişiklik e-tablodan yapılır: hücreye `yok` yaz ya da sil. Kod değişmez,
+  dağıtım yenilemek gerekmez, şube formu bir sonraki açılışta görür.
+- **Panel ve Excel bundan etkilenmez.** `dağılım` yine 34 satır × 16 sütun
+  tam ızgara; gizli olan hücre sadece boş görünür.
+- Liste alınamazsa (internet/sunucu sorunu) hiçbir ürün gizlenmez, form tüm
+  ürünlerle çalışır. Eksik gösterip şubeyi ürünsüz bırakmaktansa fazla
+  göstermek yeğdir; yanlış giren talep panelde görülür.
+- Sekmeyi ilk kez kurmak için `gorunurlukKur` fonksiyonu bir kez
+  çalıştırılır (2026-09-03'te işaretlenen tabloyu yazar). Sekme zaten varsa
+  hiçbir şey yapmaz — elle yapılan değişiklikleri ezmez.
 
 ### Şifreler
 

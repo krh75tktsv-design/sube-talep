@@ -148,6 +148,7 @@ function doPost(e) {
     case "gecmis":        return gecmis(kisi, v);
     case "kayitlar":      return kayitlar(kisi, v);
     case "etabloUrl":     return etabloUrl(kisi);
+    case "gizliUrunler":  return gizliUrunler(kisi);
     case "sifreDegistir": return sifreDegistir(kisi, v);
     default:              return json({ ok: false, hata: "Bilinmeyen işlem." });
   }
@@ -317,4 +318,256 @@ function urunAdlariniGuncelle() {
   SpreadsheetApp.getActiveSpreadsheet().toast(
     degisen + " satır güncellendi.", "Ürün adı düzeltme", 10);
   Logger.log(degisen + " satır güncellendi.");
+}
+
+// ————————————————————————————————————————————— şube bazlı ürün görünürlüğü
+//
+// Bazı ürünler bazı şubelerde satılmıyor; o şubenin formunda hiç görünmesin
+// istiyoruz. Liste "Gorunurluk" sekmesinde durur: satırlar ürün, sütunlar
+// şube, hücreye "yok" yazılan ürün o şubenin formunda gizlenir.
+//
+// Değişiklik e-tablodan yapılır, kod değişmez, dağıtım yenilemek gerekmez.
+// Panel ve Excel bundan etkilenmez — orada ızgara tam kalır, gizli hücre
+// yalnızca boş görünür.
+
+const GORUNURLUK_SEKMESI = "Gorunurluk";
+const GIZLI_ISARETI = "yok";
+
+function gizliUrunler(kisi) {
+  return json({ ok: true, gizli: subeninGizlileri(kisi.ad) });
+}
+
+function subeninGizlileri(subeAdi) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sy = ss.getSheetByName(GORUNURLUK_SEKMESI);
+  if (!sy || sy.getLastRow() < 2) return [];
+
+  const veri = sy.getRange(1, 1, sy.getLastRow(), sy.getLastColumn()).getValues();
+  const basliklar = veri[0];
+  let sutun = -1;
+  for (let c = 1; c < basliklar.length; c++) {
+    if (String(basliklar[c]).trim() === subeAdi) { sutun = c; break; }
+  }
+  if (sutun === -1) return [];
+
+  const gizli = [];
+  for (let r = 1; r < veri.length; r++) {
+    const urun = String(veri[r][0]).trim();
+    const hucre = String(veri[r][sutun]).trim().toLowerCase();
+    if (urun && hucre === GIZLI_ISARETI) gizli.push(urun);
+  }
+  return gizli;
+}
+
+// Tek seferlik: Gorunurluk sekmesini oluşturup elle işaretlenen tabloyu yazar.
+// Fonksiyon listesinden "gorunurlukKur" seç, Çalıştır. Sekme zaten varsa
+// hiçbir şey yapmaz — elle yaptığın değişiklikleri ezmez.
+// (Sıfırdan kurmak istersen önce sekmeyi e-tablodan sil.)
+
+const GORUNURLUK_URUNLERI = [
+  "TİRAMİSU  (dilim)",
+  "DİLİM FRAMBUAZ CHEES",
+  "DİLİM LİMONLU CHEES",
+  "HASBAHÇE",
+  "LATTE PASTA",
+  "ÇİLEKLİ TART",
+  "ÇİLEKLİ MUHALLEBİ",
+  "OREO MUHALLEBİ",
+  "MUZLU MUHALLEBİ",
+  "DUBAİ MUHALLEBİSİ",
+  "PROFİTEROL KASE",
+  "MOZAİK",
+  "TRİLİÇE  (dilim)",
+  "MALAGA",
+  "KAZANDİBİ",
+  "MİLFÖY",
+  "SAN SEBASTİAN",
+  "FISTIKLI PASTA",
+  "MOİS PASTA",
+  "KIRMIZI MEYVALI",
+  "KESTANE ÇİKOLATALI",
+  "ÇİKOLATALI PARFE",
+  "LİMONLU PARFE",
+  "LİMONLU TART",
+  "SÜTLAÇ",
+  "KROKANLI PASTA",
+  "FISTIKLI KÜP PASTA",
+  "LOTUS PASTA",
+  "UNSUZ  ÇİKOLATA PASTA",
+  "LİMONLU FİT PASTA",
+  "MALAGA YENİ SOS",
+  "HURMALI BROWNİ",
+  "HAVUÇLU BROWNİ",
+  "DUBAİ ÇİKOLATASI",
+];
+
+const GORUNURLUK_TOHUM = {
+  "HAREM": [
+    "MALAGA",
+    "FISTIKLI PASTA",
+    "KIRMIZI MEYVALI",
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+    "KROKANLI PASTA",
+    "UNSUZ  ÇİKOLATA PASTA",
+    "LİMONLU FİT PASTA",
+    "HURMALI BROWNİ",
+    "HAVUÇLU BROWNİ",
+  ],
+  "KAFE": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+  ],
+  "SAAT": [
+    "MUZLU MUHALLEBİ",
+    "KAZANDİBİ",
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+    "SÜTLAÇ",
+    "MALAGA YENİ SOS",
+  ],
+  "KÜÇÜKSU": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+    "SÜTLAÇ",
+    "MALAGA YENİ SOS",
+  ],
+  "IHLAMUR": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+    "UNSUZ  ÇİKOLATA PASTA",
+    "LİMONLU FİT PASTA",
+    "HURMALI BROWNİ",
+    "HAVUÇLU BROWNİ",
+  ],
+  "ŞEKER": [
+    "TİRAMİSU  (dilim)",
+    "ÇİLEKLİ MUHALLEBİ",
+    "OREO MUHALLEBİ",
+    "MUZLU MUHALLEBİ",
+    "PROFİTEROL KASE",
+    "MALAGA",
+    "KAZANDİBİ",
+    "FISTIKLI PASTA",
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "SÜTLAÇ",
+    "KROKANLI PASTA",
+    "UNSUZ  ÇİKOLATA PASTA",
+    "LİMONLU FİT PASTA",
+    "HURMALI BROWNİ",
+    "HAVUÇLU BROWNİ",
+  ],
+  "MASLAK": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+    "UNSUZ  ÇİKOLATA PASTA",
+    "LİMONLU FİT PASTA",
+    "HURMALI BROWNİ",
+    "HAVUÇLU BROWNİ",
+  ],
+  "ÇEŞMİ": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+  ],
+  "ABRAH": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+  ],
+  "LİMON": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU TART",
+    "KROKANLI PASTA",
+    "UNSUZ  ÇİKOLATA PASTA",
+    "LİMONLU FİT PASTA",
+    "HURMALI BROWNİ",
+    "HAVUÇLU BROWNİ",
+  ],
+  "BEYLER": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+    "KROKANLI PASTA",
+    "UNSUZ  ÇİKOLATA PASTA",
+    "LİMONLU FİT PASTA",
+    "HURMALI BROWNİ",
+    "HAVUÇLU BROWNİ",
+  ],
+  "ÇAMLICA": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+    "UNSUZ  ÇİKOLATA PASTA",
+    "LİMONLU FİT PASTA",
+    "HURMALI BROWNİ",
+    "HAVUÇLU BROWNİ",
+  ],
+  "MECİDİYE": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+    "KROKANLI PASTA",
+  ],
+  "YILDIZ": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+    "UNSUZ  ÇİKOLATA PASTA",
+    "LİMONLU FİT PASTA",
+    "HURMALI BROWNİ",
+    "HAVUÇLU BROWNİ",
+  ],
+  "AYNALI": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+    "UNSUZ  ÇİKOLATA PASTA",
+    "LİMONLU FİT PASTA",
+    "HURMALI BROWNİ",
+    "HAVUÇLU BROWNİ",
+  ],
+  "KASKAT": [
+    "ÇİKOLATALI PARFE",
+    "LİMONLU PARFE",
+    "LİMONLU TART",
+    "UNSUZ  ÇİKOLATA PASTA",
+    "LİMONLU FİT PASTA",
+    "HURMALI BROWNİ",
+    "HAVUÇLU BROWNİ",
+  ],
+};
+
+function gorunurlukKur() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss.getSheetByName(GORUNURLUK_SEKMESI)) {
+    ss.toast("Gorunurluk sekmesi zaten var, dokunulmadı.", "Görünürlük", 10);
+    return;
+  }
+  const sy = ss.insertSheet(GORUNURLUK_SEKMESI);
+
+  const basliklar = ["ÜRÜNLER"].concat(SUBELER);
+  const satirlar = [basliklar];
+  GORUNURLUK_URUNLERI.forEach(function (urun) {
+    const satir = [urun];
+    SUBELER.forEach(function (sube) {
+      const liste = GORUNURLUK_TOHUM[sube] || [];
+      satir.push(liste.indexOf(urun) !== -1 ? GIZLI_ISARETI : "");
+    });
+    satirlar.push(satir);
+  });
+
+  sy.getRange(1, 1, satirlar.length, basliklar.length).setValues(satirlar);
+  sy.getRange(1, 1, 1, basliklar.length).setFontWeight("bold");
+  sy.setFrozenRows(1);
+  sy.setFrozenColumns(1);
+  sy.setColumnWidth(1, 220);
+  ss.toast("Gorunurluk sekmesi kuruldu.", "Görünürlük", 10);
 }

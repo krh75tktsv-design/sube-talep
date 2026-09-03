@@ -66,6 +66,8 @@
     padding:11px 14px;border-bottom:1px solid var(--line);gap:10px;}
   .urun-row:last-child{border-bottom:0;}
   .urun-row.gizli{display:none;}
+  /* O subede satilmayan urun: aramada da cikmasin diye ayri sinif. */
+  .urun-row.sube-disi{display:none;}
   .urun-ad{font-size:13.5px;font-weight:500;}
   .urun-row.dolu{background:#FEF6F6;}
   /* input.* olarak yazildi: yukaridaki input[type=text] kurali daha guclu
@@ -306,6 +308,8 @@ document.getElementById("cikisBtn").addEventListener("click", () => {
   anaEkran.classList.add("gizle");
   ozetBar.classList.add("gizle");
   girisEkran.classList.remove("gizle");
+  document.querySelectorAll(".urun-row.sube-disi")
+    .forEach(row => row.classList.remove("sube-disi"));
   subeleriYukle();
 });
 
@@ -314,6 +318,7 @@ function paneliAc() {
   girisEkran.classList.add("gizle");
   anaEkran.classList.remove("gizle");
   ozetBar.classList.remove("gizle");
+  gizliUrunleriUygula();
 }
 
 // ————————————————————————————————————————————— talep formu
@@ -351,6 +356,7 @@ function miktarOku(deger) {
 function ozetiTazele() {
   let kalem = 0, toplam = 0;
   document.querySelectorAll(".miktar-input").forEach(inp => {
+    if (inp.closest(".urun-row").classList.contains("sube-disi")) return;
     const m = miktarOku(inp.value);
     if (m > 0) { kalem++; toplam += m; }
   });
@@ -364,12 +370,44 @@ araInput.addEventListener("input", () => {
   const q = araInput.value.trim().toLocaleLowerCase("tr");
   let gorunen = 0;
   document.querySelectorAll(".urun-row").forEach(row => {
+    // Şubede satılmayan ürün aramayla da açılmaz.
+    if (row.classList.contains("sube-disi")) return;
     const eslesiyor = !q || row.dataset.ad.includes(q);
     row.classList.toggle("gizli", !eslesiyor);
     if (eslesiyor) gorunen++;
   });
   document.getElementById("bosSonuc").classList.toggle("gizle", gorunen > 0);
 });
+
+// ————————————————————————————————————————————— şubede satılmayan ürünler
+//
+// Liste e-tablodaki "Gorunurluk" sekmesinden gelir; kod değişmeden
+// güncellenebilir. İstek başarısız olursa hiçbir ürün gizlenmez —
+// eksik gösterip şubeyi ürünsüz bırakmaktansa fazla göstermek yeğdir.
+async function gizliUrunleriUygula() {
+  let gizli = [];
+  try {
+    const data = await istek({
+      islem: "gizliUrunler", sube: oturum.sube, sifre: oturum.sifre,
+    });
+    if (data.ok && Array.isArray(data.gizli)) gizli = data.gizli;
+  } catch (err) {
+    console.warn("Görünürlük listesi alınamadı, tüm ürünler gösteriliyor.", err);
+    return;
+  }
+
+  const kume = new Set(gizli.map(u => String(u).trim()));
+  document.querySelectorAll(".miktar-input").forEach(inp => {
+    const disi = kume.has(URUNLER[inp.dataset.i]);
+    inp.closest(".urun-row").classList.toggle("sube-disi", disi);
+    // Gizlenen satirda kalmis bir deger yanlislikla gonderilmesin.
+    if (disi && inp.value) {
+      inp.value = "";
+      inp.closest(".urun-row").classList.remove("dolu");
+    }
+  });
+  ozetiTazele();
+}
 
 const gonderBtn = document.getElementById("gonderBtn");
 const gonderDurum = document.getElementById("gonderDurum");
@@ -381,6 +419,7 @@ async function gonder() {
 
   const kalemler = [];
   document.querySelectorAll(".miktar-input").forEach(inp => {
+    if (inp.closest(".urun-row").classList.contains("sube-disi")) return;
     const miktar = miktarOku(inp.value);
     if (miktar > 0) kalemler.push({ urun: URUNLER[inp.dataset.i], miktar });
   });

@@ -355,10 +355,11 @@ function tekrarModaliAc(kayit, tip){
     renderIslemIcerik(tip);
   });
 }
-function disaAktarToolbarHTML(tabKey){
+function disaAktarToolbarHTML(tabKey, ekstraHTML){
   return `<div class="export-toolbar">
     <button class="btn btn-ghost btn-sm" id="export-csv-${tabKey}">⬇ CSV İndir</button>
     <button class="btn btn-ghost btn-sm" id="export-print-${tabKey}">🖶 Yazdır / PDF Kaydet</button>
+    ${ekstraHTML || ''}
   </div>`;
 }
 function disaAktarWire(tabKey, dosyaAdiFn, basliklarFn, satirlarFn){
@@ -616,6 +617,30 @@ function renderOzet(){
 /* ---------------- Gelirler / Giderler ---------------- */
 let EDITING = { gelir: null, gider: null };
 let SECILI_GIDER = new Set();
+let AY_SECIMI = { gelir: null, gider: null };
+
+/* Bugünden geriye doğru son n ayı (bu ay dahil) döner: en yakın ay önce. */
+function sonNAy(n){
+  const bugun = new Date();
+  const sonuc = [];
+  for(let i=0;i<n;i++){
+    const d = new Date(bugun.getFullYear(), bugun.getMonth()-i, 1);
+    const yil = d.getFullYear(), ay0 = d.getMonth();
+    sonuc.push({
+      anahtar: `${yil}-${String(ay0+1).padStart(2,'0')}`,
+      etiket: d.toLocaleDateString("tr-TR",{month:"short"}) + " '" + String(yil).slice(2),
+      tamEtiket: d.toLocaleDateString("tr-TR",{month:"long", year:"numeric"}),
+      yil, ay0,
+    });
+  }
+  return sonuc;
+}
+function ayAraligiHesapla(yil, ay0){
+  const bas = `${yil}-${String(ay0+1).padStart(2,'0')}-01`;
+  const sonGun = new Date(yil, ay0+1, 0).getDate();
+  const bit = `${yil}-${String(ay0+1).padStart(2,'0')}-${String(sonGun).padStart(2,'0')}`;
+  return { bas, bit };
+}
 
 function islemFiltreli(tip){
   const liste = tip==='gelir' ? DATA.gelirler : DATA.giderler;
@@ -663,9 +688,29 @@ function renderIslemIcerik(tip){
   const seciliKayitlar = isGider ? f(DATA.giderler).filter(g=>SECILI_GIDER.has(g.id)) : [];
   const seciliToplam = seciliKayitlar.reduce((a,b)=>a+b.tutar,0);
 
+  let secimOzetHTML = "";
+  if(AY_SECIMI[tip]){
+    const [sy, sm] = AY_SECIMI[tip].split("-").map(Number);
+    const secAy0 = sm - 1;
+    const secAraligi = ayAraligiHesapla(sy, secAy0);
+    const secToplam = ayToplami(tip, sy, secAy0, new Date(sy, secAy0+1, 0).getDate());
+    const secKayitSayisi = f(liste).filter(x=>tarihAralikta(x.tarih, secAraligi.bas, secAraligi.bit) && (!isGider || x.durum!=='Bekliyor')).length;
+    const secFark = secToplam - buAyToplam;
+    const secFarkYuzde = buAyToplam !== 0 ? (secFark/buAyToplam*100) : (secToplam>0 ? 100 : 0);
+    const secIyiMi = tip==='gelir' ? secFark>=0 : secFark<=0;
+    const secRenk = secFark===0 ? 'var(--text-3)' : (secIyiMi ? 'var(--income)' : 'var(--expense)');
+    const secOk = secFark>0 ? '▲' : secFark<0 ? '▼' : '—';
+    const ayEtiket = new Date(sy, secAy0, 1).toLocaleDateString("tr-TR",{month:"long", year:"numeric"});
+    secimOzetHTML = `
+    <div class="kpi-card"><div class="kpi-label">${ayEtiket} Toplam ${tip==='gelir'?'Gelir':'Gider'}</div><div class="kpi-value tabular" style="color:${renk}">${fmt(secToplam)}</div><div class="kpi-sub">${secKayitSayisi} kayıt</div></div>
+    <div class="kpi-card"><div class="kpi-label">Bu Aya Göre</div><div class="kpi-value tabular" style="color:${secRenk}">${secOk} %${Math.abs(secFarkYuzde).toFixed(1)}</div><div class="kpi-sub">${fmt(buAyToplam)} → ${fmt(secToplam)}</div></div>
+    `;
+  }
+
   document.getElementById(`kpi-${tip}`).innerHTML = `
     <div class="kpi-card"><div class="kpi-label">Bu Ay Toplam ${tip==='gelir'?'Gelir':'Gider'}</div><div class="kpi-value tabular" style="color:${renk}">${fmt(buAyToplam)}</div><div class="kpi-sub">${buAyKayitSayisi} kayıt · ${fmtTarih(`${buYil}-${String(buAy0+1).padStart(2,'0')}-01`)} – bugün</div></div>
     <div class="kpi-card"><div class="kpi-label">Geçen Aya Göre (İlk ${buGun} gün)</div><div class="kpi-value tabular" style="color:${farkRenk}">${farkOk} %${Math.abs(farkYuzde).toFixed(1)}</div><div class="kpi-sub">${fmt(gecenAyToplam)} → ${fmt(buAyToplam)}</div></div>
+    ${secimOzetHTML}
     ${isGider ? `
     <div class="kpi-card"><div class="kpi-label">Seçili Toplam</div><div class="kpi-value tabular" style="color:${renk}">${fmt(seciliToplam)}</div><div class="kpi-sub">${seciliKayitlar.length} kayıt seçili${seciliKayitlar.length ? ' · <a href="#" id="btn-secim-temizle-gider" style="color:var(--text-3);text-decoration:underline;">temizle</a>' : ''}</div></div>
     <div class="kpi-card"><div class="kpi-label">Bekleyen Ödeme</div><div class="kpi-value tabular neg">${fmt(bekleyenToplam)}</div><div class="kpi-sub">${bekleyenGider.length} kayıt</div></div>
@@ -907,10 +952,16 @@ function renderIslemSayfa(tip){
   const isGider = tip==='gider';
   SECILI_GIDER.clear();
 
+  const aylar = sonNAy(3);
+  const ayButonlariHTML = aylar.map(a => {
+    const aktif = AY_SECIMI[tip] === a.anahtar;
+    return `<button class="btn ${aktif?'':'btn-ghost'} btn-sm" data-ay-buton="${a.anahtar}" title="${a.tamEtiket}">${a.etiket}</button>`;
+  }).join("");
+
   document.getElementById("content").innerHTML = `
     <div class="kpi-grid" style="margin-bottom:14px;" id="kpi-${tip}"></div>
     ${isGider ? `<div id="haftalik-${tip}" style="margin-bottom:14px;"></div>` : ''}
-    ${disaAktarToolbarHTML(tip)}
+    ${disaAktarToolbarHTML(tip, ayButonlariHTML)}
 
     <div class="card" id="filtre-${tip}">
       <div class="card-head">Filtrele</div>
@@ -961,8 +1012,28 @@ function renderIslemSayfa(tip){
   );
   document.getElementById(`filtre-temizle-${tip}`).addEventListener("click", ()=>{
     FILTERS[tip] = isGider ? { kategori:"tumu", durum:"tumu", banka:"tumu", arama:"", bas:"", bit:"" } : { kategori:"tumu", arama:"", bas:"", bit:"" };
+    AY_SECIMI[tip] = null;
     renderIslemSayfa(tip);
   });
+  {
+    document.querySelectorAll("[data-ay-buton]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const anahtar = btn.dataset.ayButon;
+        if(AY_SECIMI[tip] === anahtar){
+          AY_SECIMI[tip] = null;
+          FILTERS[tip].bas = _buAy.bas;
+          FILTERS[tip].bit = _buAy.bit;
+        } else {
+          const secilen = aylar.find(a => a.anahtar === anahtar);
+          AY_SECIMI[tip] = anahtar;
+          const arlk = ayAraligiHesapla(secilen.yil, secilen.ay0);
+          FILTERS[tip].bas = arlk.bas;
+          FILTERS[tip].bit = arlk.bit;
+        }
+        renderIslemSayfa(tip);
+      });
+    });
+  }
   renderIslemIcerik(tip);
 
   document.getElementById("btn-ekle").addEventListener("click", async ()=>{
