@@ -386,7 +386,6 @@ const GORUNURLUK_URUNLERI = [
   "MOİS PASTA",
   "KIRMIZI MEYVALI",
   "KESTANE ÇİKOLATALI",
-  "ÇİKOLATALI PARFE",
   "LİMONLU PARFE",
   "LİMONLU TART",
   "SÜTLAÇ",
@@ -406,7 +405,6 @@ const GORUNURLUK_TOHUM = {
     "MALAGA",
     "FISTIKLI PASTA",
     "KIRMIZI MEYVALI",
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
     "KROKANLI PASTA",
@@ -416,28 +414,24 @@ const GORUNURLUK_TOHUM = {
     "HAVUÇLU BROWNİ",
   ],
   "KAFE": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
   ],
   "SAAT": [
     "MUZLU MUHALLEBİ",
     "KAZANDİBİ",
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
     "SÜTLAÇ",
     "MALAGA YENİ SOS",
   ],
   "KÜÇÜKSU": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
     "SÜTLAÇ",
     "MALAGA YENİ SOS",
   ],
   "IHLAMUR": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
     "UNSUZ  ÇİKOLATA PASTA",
@@ -454,7 +448,6 @@ const GORUNURLUK_TOHUM = {
     "MALAGA",
     "KAZANDİBİ",
     "FISTIKLI PASTA",
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "SÜTLAÇ",
     "KROKANLI PASTA",
@@ -464,7 +457,6 @@ const GORUNURLUK_TOHUM = {
     "HAVUÇLU BROWNİ",
   ],
   "MASLAK": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
     "UNSUZ  ÇİKOLATA PASTA",
@@ -473,17 +465,14 @@ const GORUNURLUK_TOHUM = {
     "HAVUÇLU BROWNİ",
   ],
   "ÇEŞMİ": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
   ],
   "ABRAH": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
   ],
   "LİMON": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU TART",
     "KROKANLI PASTA",
     "UNSUZ  ÇİKOLATA PASTA",
@@ -492,7 +481,6 @@ const GORUNURLUK_TOHUM = {
     "HAVUÇLU BROWNİ",
   ],
   "BEYLER": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
     "KROKANLI PASTA",
@@ -502,7 +490,6 @@ const GORUNURLUK_TOHUM = {
     "HAVUÇLU BROWNİ",
   ],
   "ÇAMLICA": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
     "UNSUZ  ÇİKOLATA PASTA",
@@ -511,13 +498,11 @@ const GORUNURLUK_TOHUM = {
     "HAVUÇLU BROWNİ",
   ],
   "MECİDİYE": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
     "KROKANLI PASTA",
   ],
   "YILDIZ": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
     "UNSUZ  ÇİKOLATA PASTA",
@@ -526,7 +511,6 @@ const GORUNURLUK_TOHUM = {
     "HAVUÇLU BROWNİ",
   ],
   "AYNALI": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
     "UNSUZ  ÇİKOLATA PASTA",
@@ -535,7 +519,6 @@ const GORUNURLUK_TOHUM = {
     "HAVUÇLU BROWNİ",
   ],
   "KASKAT": [
-    "ÇİKOLATALI PARFE",
     "LİMONLU PARFE",
     "LİMONLU TART",
     "UNSUZ  ÇİKOLATA PASTA",

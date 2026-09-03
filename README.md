@@ -62,7 +62,7 @@ sürüm > Dağıt** demeyi unutmayın; yoksa değişiklik canlıya çıkmaz
 
 16 Milli Saraylar şubesinin (HAREM, KAFE, SAAT, KÜÇÜKSU, IHLAMUR, ŞEKER,
 MASLAK, ÇEŞMİ, ABRAH, LİMON, BEYLER, ÇAMLICA, MECİDİYE, YILDIZ, AYNALI,
-KASKAT) 34 kalemlik ürün listesinden talep göndermesi için ayrı bir sistem.
+KASKAT) 33 kalemlik ürün listesinden talep göndermesi için ayrı bir sistem.
 Şube Talepleri ve Ekip Paneli'nden **tamamen bağımsız**: kendi e-tablosu,
 kendi Web App URL'si. Biri bozulursa diğeri etkilenmez.
 
@@ -80,9 +80,11 @@ düzeninde iki sayfalık bir dosya üretir (ExcelJS 4.4.0, CDN'den yüklenir —
 internet gerekir):
 
 - **`dağılım`** — ham matris. A1'de gün adı + tarih (sarı zeminli, birleşik),
-  2. satırda ÜRÜNLER + 16 şube, 3-36. satırlarda 34 ürün. Boş hücreler boş
-  bırakılır (0 yazılmaz), yatay A4, ilk sütun dondurulmuş.
-- **`muhasebe`** — aynı veri, muhasebe için gruplanmış 28 satır. Hücreler
+  2. satırda ÜRÜNLER + 16 şube, sonrasında ürünler. Boş hücreler boş
+  bırakılır (0 yazılmaz), yatay A4, ilk sütun dondurulmuş. Listeden
+  çıkarılmış ama eski kayıtlarda geçen bir ürün kaybolmaz — tablonun
+  sonuna eklenir ve `muhasebe`'de kendi satırını alır.
+- **`muhasebe`** — aynı veri, muhasebe için gruplanmış 27 satır. Hücreler
   `dağılım`'a **canlı formülle** bağlıdır: `dağılım`'da elle bir düzeltme
   yaparsanız `muhasebe` kendiliğinden güncellenir.
 - **`toplam`** — her ürünün 16 şube toplamı, tek sütun
