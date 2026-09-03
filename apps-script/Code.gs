@@ -21,9 +21,11 @@
 const SHEET_ADI = "Talepler";
 const UYARI_EPOSTASI = "serkansalihoglu@lavita.com.tr";
 const SUBELER = ["Nişantaşı", "Fulya", "Maslak", "Kireçburnu", "Beykent", "Z.burnu", "S.beyli"];
-// Sadece bu anahtarı bilen (kod dosyasına erişimi olan) veri temizleyebilir.
-// Web sayfalarında hiçbir yerde kullanılmaz/görünmez.
-const TEMIZLEME_ANAHTARI = "zahFI8c_tucmqX4Z5oXRw4k_WGtD_jp5";
+// Veri silme (panelden gönderim silme + toplu temizleme) bu anahtarı ister.
+// ÖNEMLİ: Bu dosya herkese açık bir GitHub deposunda duruyor. Anahtarı BURAYA
+// yazmayın; yalnızca Apps Script editöründeki kopyaya yazın. Depodaki değer
+// her zaman aşağıdaki gibi boş kalmalı.
+const TEMIZLEME_ANAHTARI = "BURAYA_KENDI_ANAHTARINI_YAZ";
 
 function doGet(e) {
   const sayfa = sayfayiGetirYaOlustur();
