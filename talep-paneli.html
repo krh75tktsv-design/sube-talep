@@ -27,6 +27,13 @@
   input[type=date]{padding:11px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff;font-family:inherit;}
   button{padding:11px 18px;background:var(--ink);color:#fff;border:0;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;}
   button.ikincil{background:#0F9D58;color:#fff;border:0;}
+  .gonderim-aciklama{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px;}
+  .gonderim-satir{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px;flex-wrap:wrap;}
+  .gonderim-satir:last-child{border-bottom:0;}
+  .gonderim-satir .buyu{flex:1;min-width:180px;}
+  .gonderim-satir .kucuk{color:var(--muted);font-size:12.5px;}
+  .yinelenen-etiket{background:#FEF2F2;color:#991B1B;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;letter-spacing:.03em;}
+  button.sil{background:#991B1B;color:#fff;border:0;padding:6px 14px;font-size:12.5px;}
   button:disabled{opacity:.5;cursor:default;}
   .durum{margin:14px 0;padding:12px;border-radius:10px;font-size:14px;display:none;}
   .durum.hata{display:block;background:#FEF2F2;color:#991B1B;}
@@ -104,7 +111,18 @@
     <button id="indirOrijinal">Üretim &amp; Dağıtım Raporu (.xlsx)</button>
     <button id="indirZayi">Zayi Raporu (.xlsx)</button>
     <button id="yazdir">Yazdır</button>
+    <button id="gonderimleriAc" class="ikincil" title="Aynı talebin iki kez gönderilmesi gibi hataları buradan silebilirsiniz.">⚙ Gönderimleri Düzelt</button>
     <button id="etabloAc" class="ikincil" title="Yanlış girilen bir kaydı düzeltmek için E-Tablo'yu açar. Bağlantıyı değiştirmek için Shift ile tıklayın.">▦ Google E-Tablo'yu Aç</button>
+  </div>
+
+  <div id="gonderimKutusu" class="kart" style="display:none;">
+    <h2 class="kategori-baslik">Gönderimler</h2>
+    <div class="gonderim-aciklama">Seçili tarih aralığındaki her gönderim ayrı satırda.
+      Aynı şubenin aynı gün gönderdiği <b>birebir aynı</b> gönderimler
+      <span class="yinelenen-etiket">YİNELENEN</span> diye işaretlenir; fazlasını silin.
+      Silme işlemi Google E-Tablo'daki satırları kalıcı olarak kaldırır.</div>
+    <div class="durum" id="durumGonderim"></div>
+    <div id="gonderimListesi"></div>
   </div>
 
   <div class="durum" id="durum"></div>
@@ -145,12 +163,21 @@ const indirOrijinalBtn = document.getElementById("indirOrijinal");
 const indirZayiBtn = document.getElementById("indirZayi");
 const yazdirBtn = document.getElementById("yazdir");
 const etabloAcBtn = document.getElementById("etabloAc");
+const gonderimleriAcBtn = document.getElementById("gonderimleriAc");
+const gonderimKutusuEl = document.getElementById("gonderimKutusu");
+const gonderimListesiEl = document.getElementById("gonderimListesi");
+const durumGonderimEl = document.getElementById("durumGonderim");
 const yazdirAlaniEl = document.getElementById("yazdirAlani");
 
+function yerelTarih(d) {
+  const ay = String(d.getMonth() + 1).padStart(2, "0");
+  const gun = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${ay}-${gun}`;
+}
 const yarin = new Date();
 yarin.setDate(yarin.getDate() + 1);
-baslangicInput.value = yarin.toISOString().slice(0, 10);
-bitisInput.value = yarin.toISOString().slice(0, 10);
+baslangicInput.value = yerelTarih(yarin);
+bitisInput.value = yerelTarih(yarin);
 
 baslangicInput.addEventListener("change", ciz);
 bitisInput.addEventListener("change", ciz);
@@ -160,7 +187,9 @@ indirOrijinalBtn.addEventListener("click", uretimRaporuIndir);
 indirZayiBtn.addEventListener("click", zayiRaporuIndir);
 yazdirBtn.addEventListener("click", raporuYazdir);
 etabloAcBtn.addEventListener("click", etabloyuAc);
+gonderimleriAcBtn.addEventListener("click", gonderimleriAcKapa);
 
+let HAM_KAYITLAR = [];
 let TUM_KAYITLAR = [];
 let ZAYI_KAYITLARI = [];
 let SON_GORUNTULENEN = [];
@@ -181,6 +210,7 @@ async function yukleVeCiz() {
     const data = await res.json();
     // Adı değişen ürünlerin eski kayıtları yeni adla gösterilir; katalogdan
     // kaldırılan ürünler hiç gösterilmez.
+    HAM_KAYITLAR = data.kayitlar || [];
     const hepsi = (data.kayitlar || [])
       .map(k => (URUN_ADI_ESKI_YENI[k.urun] ? { ...k, urun: URUN_ADI_ESKI_YENI[k.urun] } : k))
       .map(k => (BOYSUZ_URUNLER.has(k.urun) && k.boy !== "" ? { ...k, boy: "" } : k))
@@ -190,6 +220,7 @@ async function yukleVeCiz() {
     ZAYI_KAYITLARI = hepsi.filter(zayiMi)
       .map(k => ({ ...k, kategori: String(k.kategori).slice(ZAYI_ONEK.length), boy: "" }));
     ciz();
+    if (gonderimKutusuEl.style.display !== "none") gonderimleriCiz();
   } catch (err) {
     goster("hata", "Veriler yüklenemedi, internet bağlantınızı kontrol edip tekrar deneyin.");
   } finally {
@@ -2488,6 +2519,124 @@ function etabloAdresiSor(oncekiUrl) {
   return url;
 }
 
+// ---- Gönderim düzeltme -------------------------------------------------
+// Bir gönderim = aynı şubenin aynı saniyede yazılan tüm satırları.
+// Bağlantı koptuğu için iki kez gönderilen talepler burada yinelenen olarak
+// işaretlenir ve tek tuşla silinebilir.
+const SILME_ANAHTARI_KEY = "lavita.silmeAnahtari";
+
+function gonderimleriAcKapa() {
+  const acik = gonderimKutusuEl.style.display !== "none";
+  gonderimKutusuEl.style.display = acik ? "none" : "";
+  gonderimleriAcBtn.textContent = acik ? "⚙ Gönderimleri Düzelt" : "⚙ Gönderimleri Gizle";
+  if (!acik) gonderimleriCiz();
+}
+
+function gonderimleriGrupla(bas, bit) {
+  const gruplar = {};
+  HAM_KAYITLAR.forEach(k => {
+    if (!k.tarih || k.tarih < bas || k.tarih > bit) return;
+    const anahtar = k.sube + "|" + k.tarih + "|" + (k.zaman || "");
+    const g = gruplar[anahtar] || (gruplar[anahtar] = {
+      sube: k.sube, tarih: k.tarih, zaman: k.zaman || "", kalemler: [],
+    });
+    g.kalemler.push(k);
+  });
+  const liste = Object.values(gruplar);
+  // İçerik imzası aynı olan gönderimler yinelenen sayılır.
+  liste.forEach(g => {
+    g.imza = g.kalemler
+      .map(k => [k.kategori, k.urun, k.boy, k.miktar].join("~"))
+      .sort()
+      .join("|");
+  });
+  const sayac = {};
+  liste.forEach(g => {
+    const a = g.sube + "|" + g.tarih + "|" + g.imza;
+    sayac[a] = (sayac[a] || 0) + 1;
+    g.kopyaNo = sayac[a];
+  });
+  liste.forEach(g => { g.yinelenen = sayac[g.sube + "|" + g.tarih + "|" + g.imza] > 1; });
+  return liste.sort((a, b) => a.tarih.localeCompare(b.tarih) || a.sube.localeCompare(b.sube, "tr") || a.zaman.localeCompare(b.zaman));
+}
+
+function gonderimleriCiz() {
+  const bas = baslangicInput.value, bit = bitisInput.value || bas;
+  durumGonderimEl.className = "durum";
+  if (!bas) { gonderimListesiEl.innerHTML = "<div class='gonderim-aciklama'>Önce tarih seçin.</div>"; return; }
+  const liste = gonderimleriGrupla(bas, bit);
+  if (!liste.length) {
+    gonderimListesiEl.innerHTML = "<div class='gonderim-aciklama'>Bu tarih aralığında gönderim yok.</div>";
+    return;
+  }
+  gonderimListesiEl.innerHTML = liste.map((g, i) => {
+    const zayiSayisi = g.kalemler.filter(zayiMi).length;
+    const notVar = g.kalemler.some(k => k.urun === "NOT");
+    const etiketler = [];
+    if (g.yinelenen) etiketler.push(`<span class="yinelenen-etiket">YİNELENEN ${g.kopyaNo}. KOPYA</span>`);
+    if (zayiSayisi) etiketler.push(`<span class="kucuk">${zayiSayisi} zayi</span>`);
+    if (notVar) etiketler.push(`<span class="kucuk">not var</span>`);
+    return `<div class="gonderim-satir">
+      <div class="buyu"><b>${htmlKac(g.sube)}</b> — ${htmlKac(g.tarih)}
+        <div class="kucuk">gönderim: ${htmlKac(g.zaman || "—")} · ${g.kalemler.length} satır</div></div>
+      <div>${etiketler.join(" ")}</div>
+      <button class="sil" data-i="${i}">Sil</button>
+    </div>`;
+  }).join("");
+  gonderimListesiEl.querySelectorAll("button.sil").forEach(b => {
+    b.addEventListener("click", () => gonderimSil(liste[+b.dataset.i], b));
+  });
+}
+
+function silmeAnahtariniAl() {
+  let a = "";
+  try { a = localStorage.getItem(SILME_ANAHTARI_KEY) || ""; } catch (e) {}
+  if (!a) {
+    a = (window.prompt("Silme anahtarını girin (Apps Script dosyasındaki TEMIZLEME_ANAHTARI):") || "").trim();
+    if (!a) return "";
+    try { localStorage.setItem(SILME_ANAHTARI_KEY, a); } catch (e) {}
+  }
+  return a;
+}
+
+async function gonderimSil(g, btn) {
+  if (!g.zaman) {
+    goster("hata", "Bu kaydın gönderim zamanı yok, panelden silinemiyor. E-Tablo'dan silin.", durumGonderimEl);
+    return;
+  }
+  const onay = window.confirm(
+    `${g.sube} — ${g.tarih}\nGönderim: ${g.zaman}\n${g.kalemler.length} satır\n\n` +
+    "Bu gönderimin tamamı Google E-Tablo'dan KALICI olarak silinecek. Onaylıyor musunuz?");
+  if (!onay) return;
+  const anahtar = silmeAnahtariniAl();
+  if (!anahtar) return;
+
+  btn.disabled = true;
+  btn.textContent = "Siliniyor...";
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ islem: "gonderimSil", anahtar, sube: g.sube, tarih: g.tarih, zaman: g.zaman }),
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (!data.ok) {
+      if (String(data.hata || "").indexOf("anahtar") > -1) {
+        try { localStorage.removeItem(SILME_ANAHTARI_KEY); } catch (e) {}
+      }
+      throw new Error(data.hata || "Silinemedi");
+    }
+    goster("basarili", `${data.silinen} satır silindi.`, durumGonderimEl);
+    await yukleVeCiz();
+  } catch (err) {
+    goster("hata", "Silinemedi: " + err.message, durumGonderimEl);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Sil";
+  }
+}
+
 function etabloyuAc(olay) {
   // Adres koda yazılıysa her zaman o kullanılır (tarayıcıda eski/hatalı bir
   // kayıt varsa devre dışı kalır); yazılı değilse bir kez sorulup saklanır.
@@ -2542,9 +2691,10 @@ async function zayiRaporuIndir() {
   }
 }
 
-function goster(tur, mesaj) {
-  durumEl.className = "durum " + tur;
-  durumEl.textContent = mesaj;
+function goster(tur, mesaj, hedef) {
+  const el = hedef || durumEl;
+  el.className = "durum " + tur;
+  el.textContent = mesaj;
 }
 function gizle() {
   durumEl.className = "durum";

@@ -1796,6 +1796,11 @@ async function gonder(tip) {
   btn.disabled = true;
   btn.textContent = "Gönderiliyor...";
 
+  // Gönderim öncesi kayıt sayısı: bağlantı koparsa verinin sisteme girip
+  // girmediğini buradan anlarız (bkz. gonderimDogrula).
+  const oncekiSayi = await kayitSayisiniOku(sube, tarih);
+  const beklenen = kalemler.length + (not ? 1 : 0);
+
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
@@ -1804,21 +1809,68 @@ async function gonder(tip) {
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
 
-    if (zayiMi) {
-      goster("basarili", `Zayi bildiriminiz gönderildi (${kalemler.length} kalem). Teşekkürler!`, durum);
-      document.querySelectorAll('input[data-zayi-ki]').forEach(inp => (inp.value = ""));
-    } else {
-      goster("basarili", `Talebiniz gönderildi (${kalemler.length} kalem). Teşekkürler!`, durum);
-      document.querySelectorAll('input[data-ki]').forEach(inp => (inp.value = ""));
-      document.querySelectorAll('input[type=checkbox][data-sos-ki]').forEach(cb => (cb.checked = false));
-      document.getElementById("not").value = "";
-    }
+    goster("basarili",
+      `${zayiMi ? "Zayi bildiriminiz" : "Talebiniz"} gönderildi (${kalemler.length} kalem). Teşekkürler!`,
+      durum);
+    formuTemizle(zayiMi);
   } catch (err) {
-    goster("hata", "Gönderilemedi, internet bağlantınızı kontrol edip tekrar deneyin.", durum);
+    // Bağlantı kopsa bile kayıt sisteme girmiş olabiliyordu; "gönderilemedi"
+    // deyip şubeye tekrar göndertmek verileri ikiye katlıyordu. Önce gerçekten
+    // girip girmediğine bakılır.
+    btn.textContent = "Kontrol ediliyor...";
+    const sonuc = await gonderimDogrula(sube, tarih, oncekiSayi, beklenen);
+    if (sonuc === "girdi") {
+      goster("basarili",
+        `Bağlantı koptu ama ${zayiMi ? "zayi bildiriminiz" : "talebiniz"} sisteme kaydedilmiş ` +
+        `(${beklenen} kalem). TEKRAR GÖNDERMEYİN.`, durum);
+      formuTemizle(zayiMi);
+    } else if (sonuc === "girmedi") {
+      goster("hata", "Gönderilemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.", durum);
+    } else {
+      goster("hata",
+        "Gönderim sonucu doğrulanamadı. TEKRAR GÖNDERMEDEN ÖNCE aşağıdaki " +
+        "\"Gönderdiklerimi Göster\" ile kayıtlarınızı kontrol edin.", durum);
+    }
   } finally {
     btn.disabled = false;
     btn.textContent = etiket;
   }
+}
+
+function formuTemizle(zayiMi) {
+  if (zayiMi) {
+    document.querySelectorAll("input[data-zayi-ki]").forEach(inp => (inp.value = ""));
+    return;
+  }
+  document.querySelectorAll("input[data-ki]").forEach(inp => (inp.value = ""));
+  document.querySelectorAll("input[type=checkbox][data-sos-ki]").forEach(cb => (cb.checked = false));
+  document.getElementById("not").value = "";
+}
+
+// Şube+tarih için sistemdeki kayıt sayısı; okunamazsa null.
+async function kayitSayisiniOku(sube, tarih) {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, { method: "GET", cache: "no-store" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.kayitlar || []).filter(k => k.sube === sube && k.tarih === tarih).length;
+  } catch (e) {
+    return null;
+  }
+}
+
+// "girdi" | "girmedi" | "bilinmiyor"
+async function gonderimDogrula(sube, tarih, oncekiSayi, beklenen) {
+  if (oncekiSayi === null) return "bilinmiyor";
+  // Apps Script yazma işlemi bitmemiş olabilir; birkaç kez dene.
+  for (let deneme = 0; deneme < 3; deneme++) {
+    await new Promise(r => setTimeout(r, 1500));
+    const sonraki = await kayitSayisiniOku(sube, tarih);
+    if (sonraki === null) continue;
+    if (sonraki >= oncekiSayi + beklenen) return "girdi";
+    if (deneme === 2) return "girmedi";
+  }
+  return "bilinmiyor";
 }
 
 const gonderilenBtn = document.getElementById("gonderilenleriGoster");

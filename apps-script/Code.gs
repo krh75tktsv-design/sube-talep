@@ -77,6 +77,32 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
+  // Panelden bir gönderimin tamamını siler (yinelenen kayıtları temizlemek için).
+  // veri: { islem: "gonderimSil", anahtar, sube, tarih, zaman }  zaman: "yyyy-MM-dd HH:mm"
+  if (veri.islem === "gonderimSil") {
+    if (veri.anahtar !== TEMIZLEME_ANAHTARI) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ ok: false, hata: "Geçersiz anahtar" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    const sayfa2 = sayfayiGetirYaOlustur();
+    const tz2 = Session.getScriptTimeZone();
+    const satirlar2 = sayfa2.getDataRange().getValues();
+    let silinen = 0;
+    // Alttan yukarı: silme sonrası satır numaraları kaymasın.
+    for (let i = satirlar2.length - 1; i >= 1; i--) {
+      const st = satirlar2[i];
+      if (String(st[2]) !== String(veri.sube)) continue;
+      if (bicimle(st[1], tz2, "yyyy-MM-dd") !== veri.tarih) continue;
+      if (bicimle(st[0], tz2, "yyyy-MM-dd HH:mm") !== veri.zaman) continue;
+      sayfa2.deleteRow(i + 1);
+      silinen++;
+    }
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: true, silinen: silinen }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   const sayfa = sayfayiGetirYaOlustur();
   const zaman = new Date();
 
