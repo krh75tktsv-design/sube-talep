@@ -1311,9 +1311,11 @@ async function uretimRaporuIndir() {
       if (BOYLU_URUN_SIRALARI[sayfaAdi]) {
         boyluUretimSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
         boyluDagitimSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
+        uretimiDagitimaBagla(sayfaAdi);
       } else if (SPLIT_KATEGORILER.includes(sayfaAdi)) {
         duzUretimSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
         duzDagitimSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
+        uretimiDagitimaBagla(sayfaAdi);
       } else {
         raporSayfasiOlustur(wb, sayfaAdi, sayfaKayitlari, tarihBaslik);
       }
@@ -1470,6 +1472,78 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
 
+// Dağıtım sayfasında elle yapılan bir değişiklik üretim toplamına yansısın diye
+// üretim hücreleri sabit sayı yerine dağıtım hücrelerini toplayan formül olur.
+// Tatlı/Tuzlu Kurabiye tek sayfa olduğundan (üretim-dağıtım ayrımı yok) bu
+// mekanizmanın dışındadır.
+// pozitif;negatif;sıfır(boş);metin
+const SIFIRSIZ_BICIM = "#,##0.###;-#,##0.###;;@";
+const BAGLANTI = {};
+function bagUretim(sayfaAdi) {
+  BAGLANTI[sayfaAdi] = BAGLANTI[sayfaAdi] || {};
+  return (BAGLANTI[sayfaAdi].uretim = { hucreler: {}, genel: [] });
+}
+function bagDagitim(sayfaAdi, ws) {
+  BAGLANTI[sayfaAdi] = BAGLANTI[sayfaAdi] || {};
+  return (BAGLANTI[sayfaAdi].dagitim = { ad: ws.name, hucreler: {}, sutunlar: {}, genel: [] });
+}
+function dagitimHucresi(bag, key, hucre, sutun) {
+  (bag.hucreler[key] = bag.hucreler[key] || []).push(hucre.address);
+  if (sutun !== undefined) (bag.sutunlar[sutun] = bag.sutunlar[sutun] || []).push(hucre.address);
+}
+function sayfaRef(sayfa, adres) {
+  return `'${String(sayfa).replace(/'/g, "''")}'!${adres}`;
+}
+// Ardışık satırları A4:A9 biçiminde birleştirir (formül kısalsın).
+function araliklariBirlestir(hucreler) {
+  const sutunlar = {};
+  hucreler.forEach(({ harf, satir }) => (sutunlar[harf] = sutunlar[harf] || []).push(satir));
+  const parcalar = [];
+  Object.keys(sutunlar).forEach(harf => {
+    const satirlar = [...new Set(sutunlar[harf])].sort((a, b) => a - b);
+    let bas = null, son = null;
+    satirlar.forEach(x => {
+      if (bas === null) { bas = son = x; return; }
+      if (x === son + 1) { son = x; return; }
+      parcalar.push(bas === son ? `${harf}${bas}` : `${harf}${bas}:${harf}${son}`);
+      bas = son = x;
+    });
+    if (bas !== null) parcalar.push(bas === son ? `${harf}${bas}` : `${harf}${bas}:${harf}${son}`);
+  });
+  return parcalar;
+}
+function uretimiDagitimaBagla(sayfaAdi) {
+  const b = BAGLANTI[sayfaAdi];
+  if (!b || !b.uretim || !b.dagitim) return;
+  Object.keys(b.uretim.hucreler).forEach(key => {
+    const kaynak = b.dagitim.hucreler[key];
+    if (!kaynak || !kaynak.length) return;
+    const { hucre, deger } = b.uretim.hucreler[key];
+    hucre.value = {
+      formula: `SUM(${kaynak.map(a => sayfaRef(b.dagitim.ad, a)).join(",")})`,
+      result: typeof deger === "number" ? deger : 0,
+    };
+    // Boş hücreler formüle dönünce 0 yazmasın: sıfır bölümü boş bırakılan biçim.
+    hucre.numFmt = SIFIRSIZ_BICIM;
+  });
+  // GENEL TOPLAM satırları kendi sayfasındaki ürün hücrelerini toplasın;
+  // ürün hücreleri formül olduğu için değişiklik buraya da akar.
+  b.uretim.genel.forEach(({ hucre, kaynaklar, deger }) => {
+    const parcalar = araliklariBirlestir(kaynaklar);
+    if (!parcalar.length) return;
+    hucre.value = { formula: `SUM(${parcalar.join(",")})`, result: deger };
+  });
+  (b.dagitim.genel || []).forEach(({ hucre, sutun, deger }) => {
+    const adresler = b.dagitim.sutunlar[sutun] || [];
+    if (!adresler.length) return;
+    const parcalar = araliklariBirlestir(adresler.map(a => {
+      const m = a.match(/^([A-Z]+)(\d+)$/);
+      return { harf: m[1], satir: +m[2] };
+    }));
+    hucre.value = { formula: `SUM(${parcalar.join(",")})`, result: deger };
+  });
+}
+
 function flatVeriHazirla(kayitlar) {
   const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
   const grid = {};
@@ -1488,6 +1562,8 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const BC = sayfaBicimi(sayfaAdi + " - Üretim");
   const BP = BC.punto, BY = BC.yukseklik;
   sayfaYazdirmaAyarla(ws, BC.yon);
+  const bag = bagUretim(sayfaAdi);
+  const urunHucreleri = [];   // GENEL TOPLAM formülünün kaynağı
   const { grid, birimler, kategoriler } = flatVeriHazirla(kayitlar);
 
   const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
@@ -1567,6 +1643,8 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
           boylar.forEach((boy, i) => {
             const c = ws.getCell(r, bas + 1 + i);
             c.value = boyGrid[urun + "|" + boy] || null;
+            bag.hucreler[urun + "|" + boy] = { hucre: c, deger: c.value };
+            urunHucreleri.push({ harf: ws.getColumn(bas + 1 + i).letter, satir: r });
             hucreStilVer(c, { bold: true, boyut: BP, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center", vertical: "middle" } });
           });
           for (let c = bas + 1 + boylar.length; c <= son; c++) hucreStilVer(ws.getCell(r, c), { boyut: BP });
@@ -1582,6 +1660,8 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
           Object.keys(grid).forEach(key => { if (key.startsWith(etiket + "|")) t += grid[key]; });
           const tc = ws.getCell(r, bas + 1);
           tc.value = t;
+          bag.hucreler[etiket] = { hucre: tc, deger: t };
+          urunHucreleri.push({ harf: ws.getColumn(bas + 1).letter, satir: r });
           hucreStilVer(tc, { bold: true, boyut: BP, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center", vertical: "middle" } });
           for (let c = bas + 2; c <= son; c++) hucreStilVer(ws.getCell(r, c), { boyut: BP });
           r++;
@@ -1596,7 +1676,9 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     for (let c = bas + 1; c <= son; c++) {
       hucreStilVer(ws.getCell(r, c), { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
     }
-    ws.getCell(r, bas + 1).value = genelToplam;
+    const gtc = ws.getCell(r, bas + 1);
+    gtc.value = genelToplam;
+    bag.genel.push({ hucre: gtc, kaynaklar: urunHucreleri, deger: genelToplam });
     return son;
   }
 
@@ -1622,6 +1704,7 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const BP = BC.punto, BY = BC.yukseklik;
   const UP = BC.urunPunto, UY = BC.urunYuk;
   sayfaYazdirmaAyarla(ws, BC.yon);
+  const bag = bagDagitim(sayfaAdi, ws);
   const { subeler, grid, birimler, kategoriler } = flatVeriHazirla(kayitlar);
   const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
 
@@ -1664,6 +1747,7 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
       subeler.forEach((sube, i) => {
         const c = ws.getCell(r, 2 + i);
         c.value = grid[etiket + "|" + sube] || null;
+        dagitimHucresi(bag, etiket, c, "d" + (2 + i));
         hucreStilVer(c, { boyut: UP, hizalama: { horizontal: "center", vertical: "middle" } });
       });
       r++;
@@ -1682,6 +1766,7 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
       });
       const c = ws.getCell(r, 2 + i);
       c.value = t;
+      bag.genel.push({ hucre: c, sutun: "d" + (2 + i), deger: t });
       hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
     });
     r++;
@@ -1760,6 +1845,7 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
         subeBoylari[sube].forEach((boy, i) => {
           const c = ws.getCell(br, subeBas[sube] + i);
           c.value = bg[urun + "|" + sube + "|" + boy] || null;
+          dagitimHucresi(bag, urun + "|" + boy, c);
           hucreStilVer(c, { boyut: UP, hizalama: { horizontal: "center", vertical: "middle" } });
         });
       });
@@ -1787,6 +1873,8 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const BC = sayfaBicimi(sayfaAdi + " - Üretim");
   const BP = BC.punto, BY = BC.yukseklik;
   sayfaYazdirmaAyarla(ws, BC.yon);
+  const bag = bagUretim(sayfaAdi);
+  const boyHucreleri = {};   // boy -> GENEL TOPLAM formülünün kaynak hücreleri
   const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
   const subeBoylariKanonik = BOYLU_SUBE_BOYLARI[sayfaAdi] || {};
   const urunSirasi = BOYLU_URUN_SIRALARI[sayfaAdi] || [];
@@ -1838,6 +1926,11 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
       subeler.forEach(sube => { toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
       const c = ws.getCell(r, 2 + i);
       c.value = toplam || null;
+      bag.hucreler[urun + "|" + boy] = { hucre: c, deger: c.value };
+      // GENEL TOPLAM'da istek satırları (Ekstra Sos) sayılmaz.
+      if (!ISTEK_URUNLERI.has(urun)) {
+        (boyHucreleri[boy] = boyHucreleri[boy] || []).push({ harf: ws.getColumn(2 + i).letter, satir: r });
+      }
       hucreStilVer(c, { bold: true, boyut: BP, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center", vertical: "middle" } });
     });
     r++;
@@ -1853,6 +1946,7 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     });
     const c = ws.getCell(r, 2 + i);
     c.value = toplam;
+    bag.genel.push({ hucre: c, kaynaklar: boyHucreleri[boy] || [], deger: toplam });
     hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
   });
 
@@ -1867,6 +1961,7 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const BC = sayfaBicimi(sayfaAdi + " - Dağıtım");
   const BP = BC.punto, BY = BC.yukseklik;
   sayfaYazdirmaAyarla(ws, BC.yon);
+  const bag = bagDagitim(sayfaAdi, ws);
   const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
   const subeBoylariKanonik = BOYLU_SUBE_BOYLARI[sayfaAdi] || {};
   const urunSirasi = BOYLU_URUN_SIRALARI[sayfaAdi] || [];
@@ -1940,6 +2035,8 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
       subeBoylari[sube].forEach((boy, i) => {
         const c = ws.getCell(r, subeBaslangic[sube] + i);
         c.value = grid[urun + "|" + sube + "|" + boy] || null;
+        dagitimHucresi(bag, urun + "|" + boy, c,
+          ISTEK_URUNLERI.has(urun) ? undefined : "b" + (subeBaslangic[sube] + i));
         hucreStilVer(c, { boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
       });
     });
@@ -1956,6 +2053,7 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
       urunlerVar.forEach(urun => { if (!ISTEK_URUNLERI.has(urun)) toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
       const c = ws.getCell(r, subeBaslangic[sube] + i);
       c.value = toplam;
+      bag.genel.push({ hucre: c, sutun: "b" + (subeBaslangic[sube] + i), deger: toplam });
       hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
     });
   });
