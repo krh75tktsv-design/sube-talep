@@ -87,10 +87,11 @@ internet gerekir):
 - **`muhasebe`** — aynı veri, muhasebe için gruplanmış 27 satır. Hücreler
   `dağılım`'a **canlı formülle** bağlıdır: `dağılım`'da elle bir düzeltme
   yaparsanız `muhasebe` kendiliğinden güncellenir. Değeri sıfır olan hücrede
-  `0` yazmaz, boş görünür: formül `IF(...=0,"",...)` biçimindedir, ayrıca
-  sıfırı gizleyen bir sayı biçimi de uygulanır. Yalnızca sayı biçimine
-  güvenilmiyor — Numbers ve bazı telefon görüntüleyicileri özel biçimi yok
-  sayıp `0` gösteriyor.
+  `0` yazmaz, boş görünür: formül `IF(...=0,"",...)` biçimindedir. Bunun için
+  özel sayı biçimi **kullanılmıyor**; denendi ve iki sorun çıktı — sayı
+  biçimini Numbers gibi bazı programlar yok sayıyor, Türkçe ayarda ise
+  `#,##0.###` gibi bir biçim ondalık olmasa bile sayının sonuna virgül
+  basıyor (`15,`). Üç sayfa da `General` biçimde.
 - **`toplam`** — her ürünün 16 şube toplamı, tek sütun
   (`SUM('dağılım'!B3:Q3)`). O da `dağılım`'a canlı bağlı.
 

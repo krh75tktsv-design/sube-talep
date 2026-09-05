@@ -529,16 +529,6 @@ const KENAR_INCE = {
   bottom: { style: "thin" }, right: { style: "thin" },
 };
 
-// Sifir gizleme, ikisi birden:
-// 1) Formul IF ile bos metin dondurur — hangi programda acilirsa acilsin
-//    calisir (Numbers ve bazi telefon goruntuleyicileri ozel sayi bicimini
-//    yok sayiyor, tek basina bicime guvenilmiyor).
-// 2) Ayrica sayi bicimi de sifiri gizler (bicimi destekleyen programlarda
-//    elle 0 yazilirsa o da gorunmez).
-// Formul yerinde kaldigi icin dagilim'da bir duzeltme yapilinca hucre
-// yeniden dolar.
-const SIFIRI_GIZLE = "#,##0.###;-#,##0.###;;@";
-
 function sutunHarfi(no) {
   let s = "";
   while (no > 0) { const k = (no - 1) % 26; s = String.fromCharCode(65 + k) + s; no = (no - k - 1) / 26; }
@@ -694,6 +684,9 @@ async function excelIndir() {
         if (gecerli.length) {
           const sutun = sutunHarfi(si + 2);
           const toplam = gecerli.reduce((t, u) => t + ((matris[u] || {})[sube] || 0), 0);
+          // Sifir olan hucre bos gorunsun diye formul bos metin dondurur.
+          // Ozel sayi bicimi kullanilmiyor: Turkce ayarda "#,##0.###" gibi bir
+          // bicim, ondalik olmasa bile sayinin sonuna virgul basiyordu.
           const ifade = gecerli.map(u => `'dağılım'!${sutun}${urunSatiri[u]}`).join("+");
           h.value = {
             formula: `IF(${ifade}=0,"",${ifade})`,
@@ -703,7 +696,6 @@ async function excelIndir() {
         h.font = { name: "Calibri", size: 42 };
         h.alignment = { horizontal: "center", vertical: "middle" };
         h.border = KENAR_INCE;
-        h.numFmt = SIFIRI_GIZLE;
       });
       mh.getRow(r).height = 78.75;
     });
