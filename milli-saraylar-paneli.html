@@ -529,6 +529,11 @@ const KENAR_INCE = {
   bottom: { style: "thin" }, right: { style: "thin" },
 };
 
+// Sayi bicimi: pozitif;negatif;SIFIR;metin — sifir bolumu bos birakildigi icin
+// degeri 0 olan hucre bos gorunur. Formul yerinde kalir, yalnizca gosterim
+// degisir; dagilim'da bir duzeltme yapilinca hucre yeniden dolar.
+const SIFIRI_GIZLE = "#,##0.###;-#,##0.###;;@";
+
 function sutunHarfi(no) {
   let s = "";
   while (no > 0) { const k = (no - 1) % 26; s = String.fromCharCode(65 + k) + s; no = (no - k - 1) / 26; }
@@ -692,6 +697,7 @@ async function excelIndir() {
         h.font = { name: "Calibri", size: 42 };
         h.alignment = { horizontal: "center", vertical: "middle" };
         h.border = KENAR_INCE;
+        h.numFmt = SIFIRI_GIZLE;
       });
       mh.getRow(r).height = 78.75;
     });
