@@ -87,8 +87,10 @@ internet gerekir):
 - **`muhasebe`** — aynı veri, muhasebe için gruplanmış 27 satır. Hücreler
   `dağılım`'a **canlı formülle** bağlıdır: `dağılım`'da elle bir düzeltme
   yaparsanız `muhasebe` kendiliğinden güncellenir. Değeri sıfır olan hücrede
-  `0` yazmaz, boş görünür — formül silinmez, `#,##0.###;-#,##0.###;;@` sayı
-  biçiminin boş bırakılan sıfır bölümü bunu sağlar.
+  `0` yazmaz, boş görünür: formül `IF(...=0,"",...)` biçimindedir, ayrıca
+  sıfırı gizleyen bir sayı biçimi de uygulanır. Yalnızca sayı biçimine
+  güvenilmiyor — Numbers ve bazı telefon görüntüleyicileri özel biçimi yok
+  sayıp `0` gösteriyor.
 - **`toplam`** — her ürünün 16 şube toplamı, tek sütun
   (`SUM('dağılım'!B3:Q3)`). O da `dağılım`'a canlı bağlı.
 

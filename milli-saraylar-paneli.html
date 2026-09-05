@@ -529,9 +529,14 @@ const KENAR_INCE = {
   bottom: { style: "thin" }, right: { style: "thin" },
 };
 
-// Sayi bicimi: pozitif;negatif;SIFIR;metin — sifir bolumu bos birakildigi icin
-// degeri 0 olan hucre bos gorunur. Formul yerinde kalir, yalnizca gosterim
-// degisir; dagilim'da bir duzeltme yapilinca hucre yeniden dolar.
+// Sifir gizleme, ikisi birden:
+// 1) Formul IF ile bos metin dondurur — hangi programda acilirsa acilsin
+//    calisir (Numbers ve bazi telefon goruntuleyicileri ozel sayi bicimini
+//    yok sayiyor, tek basina bicime guvenilmiyor).
+// 2) Ayrica sayi bicimi de sifiri gizler (bicimi destekleyen programlarda
+//    elle 0 yazilirsa o da gorunmez).
+// Formul yerinde kaldigi icin dagilim'da bir duzeltme yapilinca hucre
+// yeniden dolar.
 const SIFIRI_GIZLE = "#,##0.###;-#,##0.###;;@";
 
 function sutunHarfi(no) {
@@ -689,9 +694,10 @@ async function excelIndir() {
         if (gecerli.length) {
           const sutun = sutunHarfi(si + 2);
           const toplam = gecerli.reduce((t, u) => t + ((matris[u] || {})[sube] || 0), 0);
+          const ifade = gecerli.map(u => `'dağılım'!${sutun}${urunSatiri[u]}`).join("+");
           h.value = {
-            formula: gecerli.map(u => `'dağılım'!${sutun}${urunSatiri[u]}`).join("+"),
-            result: toplam,
+            formula: `IF(${ifade}=0,"",${ifade})`,
+            result: toplam === 0 ? "" : toplam,
           };
         }
         h.font = { name: "Calibri", size: 42 };
