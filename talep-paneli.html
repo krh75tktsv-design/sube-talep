@@ -1525,8 +1525,6 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
 // üretim hücreleri sabit sayı yerine dağıtım hücrelerini toplayan formül olur.
 // Tatlı/Tuzlu Kurabiye tek sayfa olduğundan (üretim-dağıtım ayrımı yok) bu
 // mekanizmanın dışındadır.
-// pozitif;negatif;sıfır(boş);metin
-const SIFIRSIZ_BICIM = "#,##0.###;-#,##0.###;;@";
 const BAGLANTI = {};
 function bagUretim(sayfaAdi) {
   BAGLANTI[sayfaAdi] = BAGLANTI[sayfaAdi] || {};
@@ -1568,12 +1566,13 @@ function uretimiDagitimaBagla(sayfaAdi) {
     const kaynak = b.dagitim.hucreler[key];
     if (!kaynak || !kaynak.length) return;
     const { hucre, deger } = b.uretim.hucreler[key];
+    const toplam = `SUM(${kaynak.map(a => sayfaRef(b.dagitim.ad, a)).join(",")})`;
+    // Veri girilmemiş hücre 0 yerine boş görünsün. Bunu hücre biçimiyle yapmak
+    // Excel'in dil ayarına göre sayıların sonuna ayraç ekliyordu; formülle yapılıyor.
     hucre.value = {
-      formula: `SUM(${kaynak.map(a => sayfaRef(b.dagitim.ad, a)).join(",")})`,
-      result: typeof deger === "number" ? deger : 0,
+      formula: `IF(${toplam}=0,"",${toplam})`,
+      result: typeof deger === "number" && deger !== 0 ? deger : "",
     };
-    // Boş hücreler formüle dönünce 0 yazmasın: sıfır bölümü boş bırakılan biçim.
-    hucre.numFmt = SIFIRSIZ_BICIM;
   });
   // GENEL TOPLAM satırları kendi sayfasındaki ürün hücrelerini toplasın;
   // ürün hücreleri formül olduğu için değişiklik buraya da akar.
