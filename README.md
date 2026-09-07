@@ -6,6 +6,7 @@ gelir/gider, banka hesapları, cari takibi, ödeme-tahsilat ve şube karşılaş
 ## Dosya yapısı
 
 - `index.html` — Sayfa iskeleti, stiller ve başlangıç verisi (seed data)
+- `maliyet-paneli.html` — Ürün maliyet ve kârlılık analizi (aşağıda)
 - `app.js` — Tüm uygulama mantığı (render, filtreler, düzenleme, dışa aktarma vb.)
 - `sube-talep.html` / `talep-paneli.html` — Şube ürün talebi formu ve merkez paneli
 - `ekip-paneli.html` + `ekip-paneli.js` — Ekip iletişim paneli (aşağıda)
@@ -219,3 +220,53 @@ Veriler tarayıcının `localStorage`'ında saklanır.
 - Gelir: teal yeşili (`--income`), Gider: kiremit kırmızısı (`--expense`)
 - Vurgu rengi: pirinç/altın tonu (`--brass`)
 - Her şubenin sabit bir rengi var (`SUBE_RENK` dizisi, `app.js` içinde)
+
+## Maliyet Paneli (`maliyet-paneli.html`)
+
+Ürün maliyeti ve kârlılık analizi. Tek dosya, `localStorage` ile çalışır,
+kurulum gerektirmez. `maliyet fatura klasörü` altındaki Excel tablolarından
+aktarılan **34 reçete (7'si yarı mamul) ve 79 hammadde** ile birlikte gelir.
+
+### Maliyet nasıl hesaplanır
+
+```
+Parti maliyeti = Hammadde + İşçilik + Genel gider
+Birim maliyet  = Parti maliyeti / (Parti çıkan × (1 - üretim firesi))
+Atölye fiyatı  = Birim maliyet × (1 + hedef marj %)     ← marj maliyet ÜZERİNE eklenir
+Mağaza fiyatı  = Atölye fiyatı × 2                      ← sabit kural, ayarı yok
+```
+
+Mağaza çarpanı koddaki `MAGAZA_CARPANI` sabitinde durur; firmanın kuralı
+değişirse orası değişir, panelde ayarlanacak bir alan yoktur.
+
+- **Hammadde** — girdinin fireli tutarı. Hammadde fiyatı kg/lt/adet başına
+  KDV hariç girilir; reçetede gram/ml olarak kullanılır.
+- **İşçilik** — parti üretim süresi (dk) × saatlik işçilik maliyeti.
+- **Genel gider** — iki yöntem: aylık gideri aylık üretim dakikasına bölmek
+  (doğru olan) veya hammadde maliyetinin yüzdesi (kaba).
+
+### Yarı mamul zinciri
+
+Bir reçete başka bir reçeteyi girdi olarak alabilir: pastalar ganajı,
+pandispanyayı ve sosu yarı mamul olarak kullanır. Ganajın içindeki bir
+hammaddenin fiyatı değiştiğinde ganajı kullanan **bütün** pastaların maliyeti
+kendiliğinden güncellenir — Excel'de bu, sayfa sayfa elle kopyalanan bir
+sayıydı. Reçete kaydedilirken döngü (A → B → A) denetlenir ve engellenir.
+
+Yarı mamuller reçetede "yarı mamul" olarak işaretlenir; satılmadıkları için
+marj ortalamasına ve zarar sayacına girmezler.
+
+### Bilinmesi gerekenler
+
+- Veriler yalnızca açıldığı tarayıcıda saklanır. **Ayarlar > Tam Yedek (JSON)**
+  ile düzenli yedek alın; başka bilgisayara taşımanın da yolu budur.
+- Reçete, hammadde ve analiz tabloları ayrı ayrı CSV olarak indirilebilir
+  (noktalı virgül ayraçlı, Excel'de doğrudan açılır).
+- Hammaddeleri **Toplu Ekle** ile Excel'den kopyala-yapıştır girebilirsiniz:
+  `Ad · Birim · Fiyat · Fire % · Tedarikçi`. Aynı adlı hammadde varsa fiyatı
+  güncellenir, reçete bağları korunur.
+- İşçilik ve genel gider başlangıçta sıfırdır (Excel tablolarında da boştu).
+  Ayarlar sekmesinden doldurulana kadar maliyet = yalnızca hammadde.
+- Tablolar veriye göre sadeleşir: işçilik/genel gider girilmediyse maliyet
+  bileşeni sütunları, fire tanımlanmadıysa fire sütunları gizlenir. Veri
+  girilince kendiliğinden geri gelirler.

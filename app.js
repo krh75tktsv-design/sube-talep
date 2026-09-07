@@ -672,13 +672,20 @@ function renderIslemIcerik(tip){
   const bugununOdemesi = bekleyenGider.filter(g=>g.tarih===bugun).reduce((a,b)=>a+b.tutar,0);
   const bugununSayisi = bekleyenGider.filter(g=>g.tarih===bugun).length;
 
+  /* Bugünün verileri genelde ertesi gün girildiği için "bugün" henüz eksik
+     sayılıyor — bu yüzden "bu ay" toplamını ve geçen ayla karşılaştırmayı
+     her zaman DÜNE kadar hesaplıyoruz. Ay başındaysa (dün önceki aydaysa)
+     bu ayın henüz tamamlanmış günü yok demektir, 0 kabul ediyoruz. */
   const su = new Date();
-  const buYil = su.getFullYear(), buAy0 = su.getMonth(), buGun = su.getDate();
+  const dun = new Date(su.getFullYear(), su.getMonth(), su.getDate()-1);
+  const buYil = su.getFullYear(), buAy0 = su.getMonth();
+  const buGun = (dun.getFullYear()===buYil && dun.getMonth()===buAy0) ? dun.getDate() : 0;
+  const buAyBitTarih = `${buYil}-${String(buAy0+1).padStart(2,'0')}-${String(Math.max(buGun,1)).padStart(2,'0')}`;
   const oncekiAyRef = new Date(buYil, buAy0-1, 1);
   const oncekiYil = oncekiAyRef.getFullYear(), oncekiAy0 = oncekiAyRef.getMonth();
-  const buAyToplam = ayToplami(tip, buYil, buAy0, buGun);
-  const buAyKayitSayisi = f(liste).filter(x=>tarihAralikta(x.tarih, `${buYil}-${String(buAy0+1).padStart(2,'0')}-01`, todayStr()) && (!isGider || x.durum!=='Bekliyor')).length;
-  const gecenAyToplam = ayToplami(tip, oncekiYil, oncekiAy0, buGun);
+  const buAyToplam = buGun>0 ? ayToplami(tip, buYil, buAy0, buGun) : 0;
+  const buAyKayitSayisi = buGun>0 ? f(liste).filter(x=>tarihAralikta(x.tarih, `${buYil}-${String(buAy0+1).padStart(2,'0')}-01`, buAyBitTarih) && (!isGider || x.durum!=='Bekliyor')).length : 0;
+  const gecenAyToplam = buGun>0 ? ayToplami(tip, oncekiYil, oncekiAy0, buGun) : 0;
   const fark = buAyToplam - gecenAyToplam;
   const farkYuzde = gecenAyToplam !== 0 ? (fark/gecenAyToplam*100) : (buAyToplam>0 ? 100 : 0);
   const artisIyiMi = tip==='gelir' ? fark>=0 : fark<=0;
@@ -708,8 +715,8 @@ function renderIslemIcerik(tip){
   }
 
   document.getElementById(`kpi-${tip}`).innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">Bu Ay Toplam ${tip==='gelir'?'Gelir':'Gider'}</div><div class="kpi-value tabular" style="color:${renk}">${fmt(buAyToplam)}</div><div class="kpi-sub">${buAyKayitSayisi} kayıt · ${fmtTarih(`${buYil}-${String(buAy0+1).padStart(2,'0')}-01`)} – bugün</div></div>
-    <div class="kpi-card"><div class="kpi-label">Geçen Aya Göre (İlk ${buGun} gün)</div><div class="kpi-value tabular" style="color:${farkRenk}">${farkOk} %${Math.abs(farkYuzde).toFixed(1)}</div><div class="kpi-sub">${fmt(gecenAyToplam)} → ${fmt(buAyToplam)}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Bu Ay Toplam ${tip==='gelir'?'Gelir':'Gider'}</div><div class="kpi-value tabular" style="color:${renk}">${fmt(buAyToplam)}</div><div class="kpi-sub">${buAyKayitSayisi} kayıt · ${fmtTarih(`${buYil}-${String(buAy0+1).padStart(2,'0')}-01`)} – dün</div></div>
+    <div class="kpi-card"><div class="kpi-label">Geçen Aya Göre ${buGun>0 ? `(İlk ${buGun} gün)` : ''}</div><div class="kpi-value tabular" style="color:${farkRenk}">${buGun>0 ? `${farkOk} %${Math.abs(farkYuzde).toFixed(1)}` : '—'}</div><div class="kpi-sub">${buGun>0 ? `${fmt(gecenAyToplam)} → ${fmt(buAyToplam)}` : 'Bu ay için henüz tamamlanmış gün yok'}</div></div>
     ${secimOzetHTML}
     ${isGider ? `
     <div class="kpi-card"><div class="kpi-label">Seçili Toplam</div><div class="kpi-value tabular" style="color:${renk}">${fmt(seciliToplam)}</div><div class="kpi-sub">${seciliKayitlar.length} kayıt seçili${seciliKayitlar.length ? ' · <a href="#" id="btn-secim-temizle-gider" style="color:var(--text-3);text-decoration:underline;">temizle</a>' : ''}</div></div>
