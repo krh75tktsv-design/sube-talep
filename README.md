@@ -236,6 +236,11 @@ Atölye fiyatı  = Birim maliyet × (1 + hedef marj %)     ← marj maliyet ÜZE
 Mağaza fiyatı  = Atölye fiyatı × 2                      ← sabit kural, ayarı yok
 ```
 
+Atölye fiyatı iki yönden kurulabilir: marj girilirse fiyat hesaplanır, fiyat
+girilirse marj geri hesaplanır. İkincisinde maliyet arttıkça marj erir — fiyat
+listesi sabitken kârlılığın nasıl değiştiğini görmenin yolu budur. Mevcut 25
+ürün sabit fiyat modundadır (atölye fiyatı = raf fiyatı ÷ 2).
+
 Mağaza çarpanı koddaki `MAGAZA_CARPANI` sabitinde durur; firmanın kuralı
 değişirse orası değişir, panelde ayarlanacak bir alan yoktur.
 
@@ -265,8 +270,29 @@ marj ortalamasına ve zarar sayacına girmezler.
 - Hammaddeleri **Toplu Ekle** ile Excel'den kopyala-yapıştır girebilirsiniz:
   `Ad · Birim · Fiyat · Fire % · Tedarikçi`. Aynı adlı hammadde varsa fiyatı
   güncellenir, reçete bağları korunur.
-- İşçilik ve genel gider başlangıçta sıfırdır (Excel tablolarında da boştu).
-  Ayarlar sekmesinden doldurulana kadar maliyet = yalnızca hammadde.
+- Genel gider **yüzde yöntemiyle** yüklenir: aylık gider ÷ aylık hammadde alımı.
+  Mevcut oran **%124,4** (4.609.284 ₺ ÷ 3.704.575 ₺). Bu oran yalnızca gerçek
+  hammadde girdilerine bindirilir — yarı mamulden gelen tutar kendi payını zaten
+  taşır, toplam üzerinden hesaplamak zincirin her katında aynı gideri yeniden
+  yüklerdi.
+- Atölye personeli (40 kişi, 3.259.284 ₺) bu oranın içindedir; bu yüzden saatlik
+  işçilik **0** bırakılmıştır. İkisini birden kullanmak aynı maaşı iki kez yükler.
+- **Ayarlar > Atölye Kâr / Zarar**: aylık mağaza cirosu girilince atölyenin aylık
+  kâr/zararını ve başa baş noktasını verir (atölye geliri = ciro ÷ 2).
+- **Önerilen fiyat sütunu**: `oneriMarj` ayarındaki hedef marjla (varsayılan %20)
+  olması gereken atölye fiyatını ve mağaza karşılığını gösterir; mevcut fiyat
+  bunun altındaysa kırmızı.
+- **Reçeteler > Süreleri Gir**: bütün reçetelerin üretim süresi tek ekrandan
+  girilir. Süre **adam-dakika**dır — 3 kişi 20 dakika çalışıyorsa 60. Paralel
+  çalışılan bir atölyede duvar saati süresi işçiliği doğru ölçmez.
+
+### Dosya ile yayın arasındaki ilişki
+
+`maliyet-paneli.html` tam bir HTML dosyasıdır, çift tıklayınca açılır. Aynı panel
+claude.ai'de bir Artifact olarak da yayınlanır; oraya gönderilirken `<!DOCTYPE>`,
+`<html>`, `<head>`, `<body>` etiketleri ve `<meta>`'lar çıkarılır (Artifact kendi
+iskeletini ekler), `<title>` de kısa ada indirilir. İkisi **ayrı veri deposu**
+kullanır: birinde girilen fiyat diğerine yansımaz, taşımak için JSON yedeği alın.
 - Tablolar veriye göre sadeleşir: işçilik/genel gider girilmediyse maliyet
   bileşeni sütunları, fire tanımlanmadıysa fire sütunları gizlenir. Veri
   girilince kendiliğinden geri gelirler.
