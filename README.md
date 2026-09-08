@@ -279,9 +279,16 @@ marj ortalamasına ve zarar sayacına girmezler.
   işçilik **0** bırakılmıştır. İkisini birden kullanmak aynı maaşı iki kez yükler.
 - **Ayarlar > Atölye Kâr / Zarar**: aylık mağaza cirosu girilince atölyenin aylık
   kâr/zararını ve başa baş noktasını verir (atölye geliri = ciro ÷ 2).
-- **Önerilen fiyat sütunu**: `oneriMarj` ayarındaki hedef marjla (varsayılan %20)
-  olması gereken atölye fiyatını ve mağaza karşılığını gösterir; mevcut fiyat
-  bunun altındaysa kırmızı.
+- **Önerilen fiyat sütunları**: iki ayrı sütun, ikisi de Ayarlar'dan değişir —
+  `oneriMarj` (%20) maliyet üzerine eklenip **Önerilen Atölye**'yi,
+  `oneriMagazaMarj` (%35) onun üzerine eklenip **Önerilen Mağaza**'yı verir.
+  Raf fiyatı önerinin altındaysa kırmızı, kaç lira eksik olduğu da yazılır.
+  Bu zincir sabit ×2 kuralından bağımsızdır; ×2 mevcut durumu, öneri sütunları
+  hedeflenen durumu gösterir.
+- **Maliyet kırılımı zinciri kapsar**: yarı mamulden gelen tutar kendi içindeki
+  hammadde/işçilik/genel gider oranlarına ayrıştırılıp ilgili sütuna yazılır.
+  Aksi halde ganaj kullanan bir pastanın genel gideri "hammadde" sütununda
+  saklanır ve satırlar birbiriyle tutarsız görünürdü.
 - **Reçeteler > Süreleri Gir**: bütün reçetelerin üretim süresi tek ekrandan
   girilir. Süre **adam-dakika**dır — 3 kişi 20 dakika çalışıyorsa 60. Paralel
   çalışılan bir atölyede duvar saati süresi işçiliği doğru ölçmez.
