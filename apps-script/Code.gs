@@ -20,7 +20,7 @@
 
 const SHEET_ADI = "Talepler";
 const UYARI_EPOSTASI = "serkansalihoglu@lavita.com.tr";
-const SUBELER = ["Nişantaşı", "Fulya", "Maslak", "Kireçburnu", "Beykent", "Z.burnu", "S.beyli", "Sütiş"];
+const SUBELER = ["Nişantaşı", "Fulya", "Maslak", "Kireçburnu", "Beykent", "Z.burnu", "S.beyli", "SUTİŞ"];
 // Veri silme (panelden gönderim silme + toplu temizleme) bu anahtarı ister.
 // ÖNEMLİ: Bu dosya herkese açık bir GitHub deposunda duruyor. Anahtarı BURAYA
 // yazmayın; yalnızca Apps Script editöründeki kopyaya yazın. Depodaki değer
