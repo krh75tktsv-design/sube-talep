@@ -293,6 +293,22 @@ marj ortalamasına ve zarar sayacına girmezler.
   girilir. Süre **adam-dakika**dır — 3 kişi 20 dakika çalışıyorsa 60. Paralel
   çalışılan bir atölyede duvar saati süresi işçiliği doğru ölçmez.
 
+### Veri nerede durur
+
+Panel verisi claude.ai'de yayınlanan Artifact'te **bulut depolamada** tutulur
+(`db` capability, tek belge: `panel/veri`). Hangi cihazdan açılırsa açılsın
+aynı veri görünür; bir cihazdaki değişiklik diğerlerine canlı yansır
+(`onSnapshot`). Tarayıcı deposu çevrimdışı yedek olarak korunur.
+
+Bulut kullanılamadığında (yerel dosyadan açıldığında, erişim iptal
+edildiğinde) panel eskisi gibi yalnızca tarayıcı deposuyla çalışır; kenar
+çubuğu ve Ayarlar > Veri bölümü hangi modda olunduğunu gösterir. Bulut boşken
+ilk açılan cihazın verisi yukarı taşınır.
+
+**Not:** `db` bildiren bir Artifact herkese açık paylaşılamaz — yalnızca
+kuruluş içi, oturum açmış kullanıcılar erişebilir. Bu panel için istenen
+davranış budur.
+
 ### Dosya ile yayın arasındaki ilişki
 
 `maliyet-paneli.html` tam bir HTML dosyasıdır, çift tıklayınca açılır. Aynı panel
