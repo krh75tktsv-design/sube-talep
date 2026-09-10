@@ -2,3 +2,7 @@
 node_modules/
 *.log
 .claude/
+
+# Maliyet paneli: reçeteler, alış fiyatları ve tedarikçi bilgisi içerir.
+# Bu depo public ve GitHub Pages ile yayında — panel buraya girmemeli.
+maliyet-paneli.html
