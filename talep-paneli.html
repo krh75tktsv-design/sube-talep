@@ -393,7 +393,6 @@ const RAPOR_DUZENI = [
   ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Sebzeli"],
   ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Kornet Dereotlu"],
   ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Dereotlu Sufle"],
-  ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Patlıcanlı"],
   ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Mini Pizza"],
   ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Minik Simit"],
   ["Tuzlu Kurabiye", "Börekli Taş & Poğaça Grubu", "Düz Örgü"],
@@ -507,6 +506,8 @@ const KALDIRILAN_URUNLER = new Set([
   "Batonsale Susamlı", "Batonsale Anasonlu", "Galet Anasonlu",
   // Porsiyon Tatlılar'dan çıkarıldı.
   "Vişneli Tek", "Profiterol Tek", "Frambuaz Siyah Tek", "Frambuaz Beyaz Tek",
+  // Börekli Taş & Poğaça Grubu'ndan çıkarıldı (Patlıcanlı Sarma ile karıştırılmasın).
+  "Patlıcanlı",
 ]);
 
 // Boylu bir bölümde olsa da tek boy üretilen ürünler: raporda ve panelde
@@ -694,7 +695,6 @@ const URUN_BIRIM = {
   "Sebzeli": "tp",
   "Kornet Dereotlu": "kg",
   "Dereotlu Sufle": "kg",
-  "Patlıcanlı": "tp",
   "Mini Pizza": "tp",
   "Minik Simit": "tp",
   "Düz Örgü": "tp",
