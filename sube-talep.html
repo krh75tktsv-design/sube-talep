@@ -62,6 +62,7 @@
   .durum.hata{display:block;background:#FEF2F2;color:#991B1B;}
   .tarih-gun{margin-top:6px;font-size:14px;font-weight:600;color:var(--brass);}
   .tarih-gun.pazar{color:#991B1B;}
+  .sube-uyari{display:none;margin-top:8px;padding:10px 12px;border-radius:10px;background:#FEF2F2;color:#991B1B;font-size:13px;font-weight:500;line-height:1.4;}
   .tarih-uyari{display:none;margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#FEF2F2;color:#991B1B;font-size:13px;font-weight:500;line-height:1.4;}
   .ozet-bar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 16px;font-size:13px;color:var(--muted);text-align:center;}
 </style>
@@ -73,6 +74,7 @@
 
   <label for="sube">Şube</label>
   <select id="sube"></select>
+  <div class="sube-uyari" id="subeUyari"></div>
 
   <label for="tarih">Sipariş Tarihi</label>
   <input type="date" id="tarih">
@@ -1712,16 +1714,29 @@ const SUBE_GIZLI_URUNLER = {
 const params = new URLSearchParams(location.search);
 
 const subeSelect = document.getElementById("sube");
+const bosSecenek = document.createElement("option");
+bosSecenek.value = "";
+bosSecenek.textContent = "— şube seçin —";
+subeSelect.appendChild(bosSecenek);
 SUBELER.forEach(s => {
   const o = document.createElement("option");
   o.value = s;
   o.textContent = s;
   subeSelect.appendChild(o);
 });
+const subeUyariEl = document.getElementById("subeUyari");
 const subeParam = params.get("sube");
 if (subeParam && SUBELER.includes(subeParam)) {
   subeSelect.value = subeParam;
   subeSelect.disabled = true;
+} else if (subeParam) {
+  // Eski/yanlış bağlantı: listede olmayan bir şube adı geldiğinde seçim sessizce
+  // ilk şubeye düşüyordu ve talep yanlış şube adına kaydediliyordu.
+  subeSelect.value = "";
+  subeUyariEl.textContent =
+    `Bu bağlantıdaki şube ("${subeParam}") tanınmıyor — bağlantınız eski olabilir. ` +
+    `Merkezden güncel şube linkini isteyin; şimdilik yukarıdan şubenizi seçin.`;
+  subeUyariEl.style.display = "block";
 }
 
 const tarihInput = document.getElementById("tarih");
