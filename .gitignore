@@ -6,3 +6,8 @@ node_modules/
 # Maliyet paneli: reçeteler, alış fiyatları ve tedarikçi bilgisi içerir.
 # Bu depo public ve GitHub Pages ile yayında — panel buraya girmemeli.
 maliyet-paneli.html
+
+# Kasa+ paneli: gerçek gelir/gider kayıtları, banka bakiyeleri ve cari
+# adları gömülü başlangıç verisi olarak içeride — aynı sebeple girmemeli.
+index.html
+app.js
