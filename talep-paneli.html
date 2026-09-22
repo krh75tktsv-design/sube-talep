@@ -75,6 +75,8 @@
     .yazdir-sayfa th{background:#7F1D1D !important;color:#fff !important;font-weight:700;
       -webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .yazdir-sayfa th.toplam-bas{background:#1F2937 !important;}
+    /* 2. pastane bloğunu ana tablodan ayıran ince koyu sütun */
+    .yazdir-sayfa th.ayirac-sutun,.yazdir-sayfa td.ayirac-sutun{width:8px;background:#1F2937 !important;border-left:0;border-right:0;padding:0;}
     .yazdir-sayfa td.urun{text-align:left;}
     .yazdir-sayfa tr.kategori td{background:#FEF3C7 !important;font-weight:700;text-align:left;
       -webkit-print-color-adjust:exact;print-color-adjust:exact;}
@@ -1196,6 +1198,17 @@ const PASTA_KLASIK_SUBE_BOYLARI = {
   "SUTİŞ": [0, 1],
 };
 
+// Bu şubelerin boylu klasik pastaları 2. pastanede üretiliyor: ana üretim
+// toplamına girmez, "Pasta Klasik - Üretim" sayfasının sağındaki ayrı blokta
+// toplanır. Dağıtım sayfası değişmez, orada hepsi yine yan yanadır.
+const IKINCI_PASTANE_SAYFALARI = { "Pasta Klasik": true };
+const IKINCI_PASTANE_SUBELERI = ["Beykent", "Z.burnu", "S.beyli"];
+const IKINCI_PASTANE_BASLIK = "2 PAT";
+const IKINCI_PASTANE_BOYLARI = [0, 1];
+function ikinciPastaneMi(sayfaAdi, sube) {
+  return !!IKINCI_PASTANE_SAYFALARI[sayfaAdi] && IKINCI_PASTANE_SUBELERI.indexOf(sube) !== -1;
+}
+
 const BUTUN_CHEESECAKE_SUBE_BOYLARI = {
   "Nişantaşı": [0, 1, 2],
   "Fulya": [0, 1, 2],
@@ -1929,6 +1942,9 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const bag = bagUretim(sayfaAdi);
   const boyHucreleri = {};   // boy -> GENEL TOPLAM formülünün kaynak hücreleri
   const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
+  // 2. pastanede üretilen şubeler ana toplamdan ayrılır.
+  const ikinciSubeler = subeler.filter(sb => ikinciPastaneMi(sayfaAdi, sb));
+  const anaSubeler = subeler.filter(sb => ikinciSubeler.indexOf(sb) === -1);
   const subeBoylariKanonik = BOYLU_SUBE_BOYLARI[sayfaAdi] || {};
   const urunSirasi = BOYLU_URUN_SIRALARI[sayfaAdi] || [];
 
@@ -1944,7 +1960,7 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     const mevcut = kayitlar.filter(k => k.sube === sube).map(boyDeger);
     subeBoylari[sube] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
   });
-  const tumBoylar = [...new Set(subeler.flatMap(s => subeBoylari[s]))].sort((a, b) => a - b);
+  const tumBoylar = [...new Set(anaSubeler.flatMap(s => subeBoylari[s]))].sort((a, b) => a - b);
 
   const grid = {};
   kayitlar.forEach(k => {
@@ -1976,10 +1992,10 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     hucreStilVer(ad, { boyut: BP, hizalama: { vertical: "middle" } });
     tumBoylar.forEach((boy, i) => {
       let toplam = 0;
-      subeler.forEach(sube => { toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
+      anaSubeler.forEach(sube => { toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
       const c = ws.getCell(r, 2 + i);
       c.value = toplam || null;
-      bag.hucreler[urun + "|" + boy] = { hucre: c, deger: c.value };
+      bag.hucreler["ANA|" + urun + "|" + boy] = { hucre: c, deger: c.value };
       // GENEL TOPLAM'da istek satırları (Ekstra Sos) sayılmaz.
       if (!ISTEK_URUNLERI.has(urun)) {
         (boyHucreleri[boy] = boyHucreleri[boy] || []).push({ harf: ws.getColumn(2 + i).letter, satir: r });
@@ -1994,7 +2010,7 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   ws.getCell(r, 1).value = "GENEL TOPLAM";
   tumBoylar.forEach((boy, i) => {
     let toplam = 0;
-    subeler.forEach(sube => {
+    anaSubeler.forEach(sube => {
       urunlerVar.forEach(urun => { if (!ISTEK_URUNLERI.has(urun)) toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
     });
     const c = ws.getCell(r, 2 + i);
@@ -2005,6 +2021,72 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
 
   ws.getColumn(1).width = BC.urunGen;
   for (let i = 2; i <= toplamCol; i++) ws.getColumn(i).width = BC.veriGen;
+
+  // --- 2. pastane bloğu: ana tablonun sağında, arada bir boş sütun ---
+  if (ikinciSubeler.length) {
+    const yanBas = toplamCol + 2;
+    const boylar = IKINCI_PASTANE_BOYLARI;
+    const yanSon = yanBas + boylar.length;
+
+    // Blok başlığı, ana başlık satırının bir üstündeki satırda.
+    ws.getRow(headerRow - 1).height = BY;
+    if (yanSon > yanBas + 1) ws.mergeCells(headerRow - 1, yanBas + 1, headerRow - 1, yanSon);
+    const bb = ws.getCell(headerRow - 1, yanBas + 1);
+    bb.value = IKINCI_PASTANE_BASLIK;
+    hucreStilVer(bb, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+    const bbAd = ws.getCell(headerRow - 1, yanBas);
+    bbAd.value = ikinciSubeler.join(" · ");
+    hucreStilVer(bbAd, { fill: RENK_KATEGORI, bold: true, boyut: Math.max(10, Math.round(BP / 2)), hizalama: { vertical: "middle" } });
+
+    const yh = ws.getCell(headerRow, yanBas);
+    yh.value = "ÜRÜN";
+    hucreStilVer(yh, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { vertical: "middle" } });
+    boylar.forEach((boy, i) => {
+      const c = ws.getCell(headerRow, yanBas + 1 + i);
+      c.value = "NO " + boy;
+      hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+    });
+
+    const yanBoyHucreleri = {};
+    let yr = headerRow + 1;
+    urunlerVar.forEach(urun => {
+      ws.getRow(yr).height = BY;
+      const ad = ws.getCell(yr, yanBas);
+      ad.value = raporAdi(urun, null);
+      hucreStilVer(ad, { boyut: BP, hizalama: { vertical: "middle" } });
+      boylar.forEach((boy, i) => {
+        let toplam = 0;
+        ikinciSubeler.forEach(sube => { toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
+        const c = ws.getCell(yr, yanBas + 1 + i);
+        c.value = toplam || null;
+        bag.hucreler["2PAT|" + urun + "|" + boy] = { hucre: c, deger: c.value };
+        if (!ISTEK_URUNLERI.has(urun)) {
+          (yanBoyHucreleri[boy] = yanBoyHucreleri[boy] || []).push({ harf: ws.getColumn(yanBas + 1 + i).letter, satir: yr });
+        }
+        hucreStilVer(c, { bold: true, boyut: BP, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center", vertical: "middle" } });
+      });
+      yr++;
+    });
+
+    ws.getRow(yr).height = BY;
+    const yg = ws.getCell(yr, yanBas);
+    yg.value = "GENEL TOPLAM";
+    hucreStilVer(yg, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { vertical: "middle" } });
+    boylar.forEach((boy, i) => {
+      let toplam = 0;
+      ikinciSubeler.forEach(sube => {
+        urunlerVar.forEach(urun => { if (!ISTEK_URUNLERI.has(urun)) toplam += grid[urun + "|" + sube + "|" + boy] || 0; });
+      });
+      const c = ws.getCell(yr, yanBas + 1 + i);
+      c.value = toplam;
+      bag.genel.push({ hucre: c, kaynaklar: yanBoyHucreleri[boy] || [], deger: toplam });
+      hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+    });
+
+    ws.getColumn(yanBas).width = BC.urunGen;
+    for (let i = yanBas + 1; i <= yanSon; i++) ws.getColumn(i).width = BC.veriGen;
+  }
+
   yazdirmaOlcekAyarla(ws, 0);
   ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
@@ -2088,7 +2170,10 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
       subeBoylari[sube].forEach((boy, i) => {
         const c = ws.getCell(r, subeBaslangic[sube] + i);
         c.value = grid[urun + "|" + sube + "|" + boy] || null;
-        dagitimHucresi(bag, urun + "|" + boy, c,
+        // Üretim sayfası iki bloğa ayrıldığı için anahtar gruba göre verilir:
+        // ana blok yalnızca ANA|, 2 PAT bloğu yalnızca 2PAT| hücrelerini toplar.
+        const grup = ikinciPastaneMi(sayfaAdi, sube) ? "2PAT|" : "ANA|";
+        dagitimHucresi(bag, grup + urun + "|" + boy, c,
           ISTEK_URUNLERI.has(urun) ? undefined : "b" + (subeBaslangic[sube] + i));
         hucreStilVer(c, { boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
       });
@@ -2319,6 +2404,9 @@ function yazdirDuzDagitim(sayfaAdi, kayitlar, tarihBaslik) {
 
 function yazdirBoyluUretim(sayfaAdi, kayitlar, tarihBaslik) {
   const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
+  // Excel'deki gibi: 2. pastane şubeleri ana toplamdan ayrı, sağda kendi bloğunda.
+  const ikinciSubeler = subeler.filter(sb => ikinciPastaneMi(sayfaAdi, sb));
+  const anaSubeler = subeler.filter(sb => ikinciSubeler.indexOf(sb) === -1);
   const subeBoylariKanonik = BOYLU_SUBE_BOYLARI[sayfaAdi] || {};
   const urunSirasi = BOYLU_URUN_SIRALARI[sayfaAdi] || [];
   const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
@@ -2329,7 +2417,8 @@ function yazdirBoyluUretim(sayfaAdi, kayitlar, tarihBaslik) {
     const mevcut = kayitlar.filter(k => k.sube === sube).map(boyDeger);
     subeBoylari[sube] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
   });
-  const tumBoylar = [...new Set(subeler.flatMap(s => subeBoylari[s]))].sort((a, b) => a - b);
+  const tumBoylar = [...new Set(anaSubeler.flatMap(s => subeBoylari[s]))].sort((a, b) => a - b);
+  const yanBoylar = ikinciSubeler.length ? IKINCI_PASTANE_BOYLARI : [];
 
   const grid = {};
   kayitlar.forEach(k => {
@@ -2340,27 +2429,52 @@ function yazdirBoyluUretim(sayfaAdi, kayitlar, tarihBaslik) {
   const urunlerVar = urunSirasi.filter(urun => kayitlar.some(k => k.urun === urun));
   kayitlar.forEach(k => { if (!urunlerVar.includes(k.urun)) urunlerVar.push(k.urun); });
 
-  const sutunSayisi = 1 + tumBoylar.length;
-  let html = '<thead><tr><th style="width:46%">ÜRÜN</th>';
+  const topla = (grup, urun, boy) => {
+    let t = 0;
+    grup.forEach(sube => { t += grid[urun + "|" + sube + "|" + boy] || 0; });
+    return t;
+  };
+
+  const sutunSayisi = 1 + tumBoylar.length + (yanBoylar.length ? 1 + yanBoylar.length : 0);
+  let html = "<thead>";
+  if (yanBoylar.length) {
+    html += `<tr><th colspan="${1 + tumBoylar.length}"></th>` +
+      `<th class="ayirac-sutun"></th>` +
+      `<th class="toplam-bas" colspan="${yanBoylar.length}">${htmlKac(IKINCI_PASTANE_BASLIK)}</th></tr>`;
+  }
+  html += '<tr><th style="width:34%">ÜRÜN</th>';
   tumBoylar.forEach(boy => (html += `<th class="toplam-bas">no ${boy}</th>`));
+  if (yanBoylar.length) {
+    html += '<th class="ayirac-sutun"></th>';
+    yanBoylar.forEach(boy => (html += `<th class="toplam-bas">no ${boy}</th>`));
+  }
   html += "</tr></thead><tbody>";
 
   urunlerVar.forEach(urun => {
     html += `<tr><td class="urun">${htmlKac(raporAdi(urun, null))}</td>`;
     tumBoylar.forEach(boy => {
-      let t = 0;
-      subeler.forEach(sube => { t += grid[urun + "|" + sube + "|" + boy] || 0; });
-      html += `<td class="toplam-h">${t || ""}</td>`;
+      html += `<td class="toplam-h">${topla(anaSubeler, urun, boy) || ""}</td>`;
     });
+    if (yanBoylar.length) {
+      html += '<td class="ayirac-sutun"></td>';
+      yanBoylar.forEach(boy => {
+        html += `<td class="toplam-h">${topla(ikinciSubeler, urun, boy) || ""}</td>`;
+      });
+    }
     html += "</tr>";
   });
 
-  html += '<tr class="genel"><td class="urun">GENEL TOPLAM</td>';
-  tumBoylar.forEach(boy => {
+  const genelTopla = (grup, boy) => {
     let t = 0;
-    subeler.forEach(sube => { urunlerVar.forEach(urun => { if (!ISTEK_URUNLERI.has(urun)) t += grid[urun + "|" + sube + "|" + boy] || 0; }); });
-    html += `<td>${t}</td>`;
-  });
+    urunlerVar.forEach(urun => { if (!ISTEK_URUNLERI.has(urun)) t += topla(grup, urun, boy); });
+    return t;
+  };
+  html += '<tr class="genel"><td class="urun">GENEL TOPLAM</td>';
+  tumBoylar.forEach(boy => (html += `<td>${genelTopla(anaSubeler, boy)}</td>`));
+  if (yanBoylar.length) {
+    html += '<td class="ayirac-sutun"></td>';
+    yanBoylar.forEach(boy => (html += `<td>${genelTopla(ikinciSubeler, boy)}</td>`));
+  }
   html += "</tr></tbody>";
 
   return yazdirSayfasi(`${sayfaAdi} — Üretim — ${tarihBaslik}`, sutunSayisi, html);
