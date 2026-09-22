@@ -1205,6 +1205,12 @@ const IKINCI_PASTANE_SAYFALARI = { "Pasta Klasik": true };
 const IKINCI_PASTANE_SUBELERI = ["Beykent", "Z.burnu", "S.beyli"];
 const IKINCI_PASTANE_BASLIK = "2 PAT";
 const IKINCI_PASTANE_BOYLARI = [0, 1];
+function subeBoyListesi(sayfaAdi, sube, kanonik, mevcut) {
+  // 2. pastane şubelerinde boy sütunları sabittir (bu şubeler yalnızca NO 0 ve
+  // NO 1 sipariş ediyor); diğerlerinde gelen boylar listeye eklenir.
+  if (ikinciPastaneMi(sayfaAdi, sube)) return IKINCI_PASTANE_BOYLARI.slice();
+  return [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
+}
 function ikinciPastaneMi(sayfaAdi, sube) {
   return !!IKINCI_PASTANE_SAYFALARI[sayfaAdi] && IKINCI_PASTANE_SUBELERI.indexOf(sube) !== -1;
 }
@@ -2112,7 +2118,7 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   subeler.forEach(sube => {
     const kanonik = subeBoylariKanonik[sube] || [0];
     const mevcut = kayitlar.filter(k => k.sube === sube).map(boyDeger);
-    subeBoylari[sube] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
+    subeBoylari[sube] = subeBoyListesi(sayfaAdi, sube, kanonik, mevcut);
   });
 
   const r1 = 2, r2 = 3;
@@ -2490,7 +2496,7 @@ function yazdirBoyluDagitim(sayfaAdi, kayitlar, tarihBaslik) {
   subeler.forEach(sube => {
     const kanonik = subeBoylariKanonik[sube] || [0];
     const mevcut = kayitlar.filter(k => k.sube === sube).map(boyDeger);
-    subeBoylari[sube] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
+    subeBoylari[sube] = subeBoyListesi(sayfaAdi, sube, kanonik, mevcut);
   });
 
   const grid = {};
