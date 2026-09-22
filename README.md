@@ -271,12 +271,12 @@ marj ortalamasına ve zarar sayacına girmezler.
   `Ad · Birim · Fiyat · Fire % · Tedarikçi`. Aynı adlı hammadde varsa fiyatı
   güncellenir, reçete bağları korunur.
 - Genel gider **yüzde yöntemiyle** yüklenir: aylık gider ÷ aylık hammadde alımı.
-  Mevcut oran **%124,4** (4.609.284 ₺ ÷ 3.704.575 ₺). Bu oran yalnızca gerçek
-  hammadde girdilerine bindirilir — yarı mamulden gelen tutar kendi payını zaten
-  taşır, toplam üzerinden hesaplamak zincirin her katında aynı gideri yeniden
-  yüklerdi.
-- Atölye personeli (40 kişi, 3.259.284 ₺) bu oranın içindedir; bu yüzden saatlik
-  işçilik **0** bırakılmıştır. İkisini birden kullanmak aynı maaşı iki kez yükler.
+  Oran, Ayarlar'dan girilen aylık genel gider ve hammadde alım tutarına göre
+  otomatik hesaplanır. Bu oran yalnızca gerçek hammadde girdilerine bindirilir
+  — yarı mamulden gelen tutar kendi payını zaten taşır, toplam üzerinden
+  hesaplamak zincirin her katında aynı gideri yeniden yüklerdi.
+- Atölye personel maliyeti bu oranın içindedir; bu yüzden saatlik işçilik
+  **0** bırakılmıştır. İkisini birden kullanmak aynı maaşı iki kez yükler.
 - **Ayarlar > Atölye Kâr / Zarar**: aylık mağaza cirosu girilince atölyenin aylık
   kâr/zararını ve başa baş noktasını verir (atölye geliri = ciro ÷ 2).
 - **Önerilen fiyat sütunları**: iki ayrı sütun, ikisi de Ayarlar'dan değişir —
