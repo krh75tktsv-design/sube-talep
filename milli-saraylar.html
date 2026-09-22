@@ -138,9 +138,6 @@
 
   <div class="liste" id="urunListesi"></div>
 
-  <label for="not">Ek Not (opsiyonel)</label>
-  <textarea id="not" rows="2" placeholder="Listede olmayan bir istek varsa buraya yazın"></textarea>
-
   <button id="gonderBtn">Talep Gönder</button>
   <div class="durum" id="gonderDurum"></div>
 
@@ -414,7 +411,6 @@ gonderBtn.addEventListener("click", gonder);
 
 async function gonder() {
   const tarih = tarihInput.value;
-  const not = document.getElementById("not").value.trim();
 
   const kalemler = [];
   document.querySelectorAll(".miktar-input").forEach(inp => {
@@ -424,7 +420,7 @@ async function gonder() {
   });
 
   if (!tarih) { goster("hata", "Talep tarihi seçin.", gonderDurum); return; }
-  if (kalemler.length === 0 && !not) {
+  if (kalemler.length === 0) {
     goster("hata", "En az bir ürün için miktar girin.", gonderDurum);
     return;
   }
@@ -434,7 +430,7 @@ async function gonder() {
   gonderBtn.textContent = "Gönderiliyor…";
   try {
     const data = await istek({
-      islem: "kaydet", sube: oturum.sube, sifre: oturum.sifre, tarih, kalemler, not,
+      islem: "kaydet", sube: oturum.sube, sifre: oturum.sifre, tarih, kalemler,
     });
     if (!data.ok) { goster("hata", data.hata || "Gönderilemedi.", gonderDurum); return; }
     goster("basarili", `Talebiniz gönderildi (${kalemler.length} kalem). Teşekkürler!`, gonderDurum);
@@ -442,7 +438,6 @@ async function gonder() {
       inp.value = "";
       inp.closest(".urun-row").classList.remove("dolu");
     });
-    document.getElementById("not").value = "";
     ozetiTazele();
   } catch (err) {
     goster("hata", "Gönderilemedi, internet bağlantınızı kontrol edip tekrar deneyin.", gonderDurum);

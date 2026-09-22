@@ -68,8 +68,10 @@ KASKAT) 33 kalemlik ürün listesinden talep göndermesi için ayrı bir sistem.
 kendi Web App URL'si. Biri bozulursa diğeri etkilenmez.
 
 - `milli-saraylar.html` — şube personelinin doldurduğu form. Şube seçilir,
-  şifre girilir, ürünlerin karşısına miktar yazılır. Ek not alanı, ürün
-  arama, "gönderdiklerimi göster" ve şifre değiştirme var.
+  şifre girilir, ürünlerin karşısına miktar yazılır. Ürün arama,
+  "gönderdiklerimi göster" ve şifre değiştirme var. **Ek not alanı yok**
+  (2026-09-22'de kaldırıldı); panel ve form, eski not kayıtlarını
+  göstermeye devam eder.
 - `milli-saraylar-paneli.html` — merkezin gördüğü panel. Tarih aralığı
   seçilir; ürün × şube matrisi, şube ve genel toplamlar, talep göndermeyen
   şubeler, şube notları. Excel (.xlsx) ve CSV indirme, yatay yazdırma düzeni.
@@ -109,7 +111,8 @@ Bilinmesi gerekenler:
 - Örnek dosyadaki `İlk bölüm toplam` ve `TOPLAM USTA` sayfaları üretilmez;
   ikisi de `dağılım`'dan türeyen toplamlardı ve elde bakımsız kalmışlardı
   (eksik ürün, yanlış satıra bakan formül, silinmiş formüller).
-- Şube notları Excel'e girmez; panelde ve CSV'de kalır.
+- Şube notları Excel'e girmez; panelde ve CSV'de kalır. Form artık not
+  göndermiyor, ama eski kayıtlar panelde görünmeye devam ediyor.
 - Ürün adları Excel'de ve formda birebir aynıdır; ayrı bir görünen-ad
   eşlemesi yoktur. Adlardaki çift boşluk (`TİRAMİSU  (dilim)`,
   `UNSUZ  ÇİKOLATA PASTA`) bilerek korunur — elde kullanılan Excel
