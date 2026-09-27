@@ -2037,9 +2037,15 @@ function formuTemizle(zayiMi) {
 }
 
 // Şube+tarih için sistemdeki kayıt sayısı; okunamazsa null.
+function kayitAdresi(sube, tarih) {
+  // Sunucu tarafında süzülür: tüm tabloyu indirmek mobil bağlantıda çok yavaştı.
+  return `${APPS_SCRIPT_URL}?bas=${encodeURIComponent(tarih)}&bit=${encodeURIComponent(tarih)}` +
+         `&sube=${encodeURIComponent(sube)}`;
+}
+
 async function kayitSayisiniOku(sube, tarih) {
   try {
-    const res = await fetch(APPS_SCRIPT_URL, { method: "GET", cache: "no-store" });
+    const res = await fetch(kayitAdresi(sube, tarih), { method: "GET", cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
     return (data.kayitlar || []).filter(k => k.sube === sube && k.tarih === tarih).length;
@@ -2085,7 +2091,7 @@ async function gonderilenleriGoster() {
   durumGecmisEl.className = "durum";
   gecmisListesiEl.innerHTML = "";
   try {
-    const res = await fetch(APPS_SCRIPT_URL, { method: "GET" });
+    const res = await fetch(kayitAdresi(sube, tarih), { method: "GET" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
     const kayitlar = (data.kayitlar || []).filter(k => k.sube === sube && k.tarih === tarih);

@@ -181,8 +181,9 @@ yarin.setDate(yarin.getDate() + 1);
 baslangicInput.value = yerelTarih(yarin);
 bitisInput.value = yerelTarih(yarin);
 
-baslangicInput.addEventListener("change", ciz);
-bitisInput.addEventListener("change", ciz);
+// Veri tarih aralığına göre sunucudan geldiği için tarih değişince yeniden yüklenir.
+baslangicInput.addEventListener("change", yukleVeCiz);
+bitisInput.addEventListener("change", yukleVeCiz);
 yenileBtn.addEventListener("click", yukleVeCiz);
 indirBtn.addEventListener("click", csvIndir);
 indirOrijinalBtn.addEventListener("click", uretimRaporuIndir);
@@ -207,7 +208,14 @@ async function yukleVeCiz() {
   yenileBtn.textContent = "Yükleniyor...";
   gizle();
   try {
-    const res = await fetch(APPS_SCRIPT_URL, { method: "GET" });
+    // Yalnızca seçili tarih aralığı istenir; tüm tabloyu çekmek panelin
+    // açılışını veri büyüdükçe dakikalara çıkarıyordu.
+    const bas = baslangicInput.value;
+    const bit = bitisInput.value || bas;
+    const adres = bas
+      ? `${APPS_SCRIPT_URL}?bas=${encodeURIComponent(bas)}&bit=${encodeURIComponent(bit)}`
+      : APPS_SCRIPT_URL;
+    const res = await fetch(adres, { method: "GET" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
     // Adı değişen ürünlerin eski kayıtları yeni adla gösterilir; katalogdan

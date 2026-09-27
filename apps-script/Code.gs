@@ -27,26 +27,43 @@ const SUBELER = ["Nişantaşı", "Fulya", "Maslak", "Kireçburnu", "Beykent", "Z
 // her zaman aşağıdaki gibi boş kalmalı.
 const TEMIZLEME_ANAHTARI = "BURAYA_KENDI_ANAHTARINI_YAZ";
 
+// Kayıtları döndürür.
+//   ?bas=2026-09-28&bit=2026-09-28  -> yalnızca bu tarih aralığı
+//   ?sube=Fulya                     -> yalnızca bu şube
+// Parametre verilmezse tüm tablo döner (eski davranış).
+//
+// Tarih süzmesi ÖNEMLİ: tablo büyüdükçe tümünü döndürmek panelin açılışını
+// dakikalara çıkarıyordu. Pahalı olan kısım her satır için tarih biçimlendirmek
+// ve hepsini JSON'a koymak; bu yüzden önce süzülür, sonra biçimlendirilir.
 function doGet(e) {
+  const p = (e && e.parameter) || {};
+  const bas = p.bas || "";
+  const bit = p.bit || bas;
+  const subeFiltre = p.sube || "";
+
   const sayfa = sayfayiGetirYaOlustur();
   const veriler = sayfa.getDataRange().getValues();
   veriler.shift(); // başlık satırı
 
   const tz = Session.getScriptTimeZone();
-  const kayitlar = veriler
-    .filter(function (satir) { return satir[2]; })
-    .map(function (satir) {
-      return {
-        zaman: bicimle(satir[0], tz, "yyyy-MM-dd HH:mm"),
-        tarih: bicimle(satir[1], tz, "yyyy-MM-dd"),
-        sube: satir[2],
-        kategori: satir[3],
-        urun: satir[4],
-        boy: satir[5],
-        miktar: satir[6],
-        birim: satir[7],
-      };
+  const kayitlar = [];
+  for (var i = 0; i < veriler.length; i++) {
+    const satir = veriler[i];
+    if (!satir[2]) continue;
+    if (subeFiltre && String(satir[2]) !== subeFiltre) continue;
+    const tarih = bicimle(satir[1], tz, "yyyy-MM-dd");
+    if (bas && (tarih < bas || tarih > bit)) continue;
+    kayitlar.push({
+      zaman: bicimle(satir[0], tz, "yyyy-MM-dd HH:mm"),
+      tarih: tarih,
+      sube: satir[2],
+      kategori: satir[3],
+      urun: satir[4],
+      boy: satir[5],
+      miktar: satir[6],
+      birim: satir[7],
     });
+  }
 
   return ContentService
     .createTextOutput(JSON.stringify({ ok: true, kayitlar: kayitlar }))
