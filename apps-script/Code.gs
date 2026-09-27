@@ -19,6 +19,10 @@
 //    zamanlayıcıyı silip yenisini kurar, tekrarlanan mail oluşturmaz).
 
 const SHEET_ADI = "Talepler";
+const ARSIV_SHEET_ADI = "Talepler Arşiv";
+// Bu kadar aydan eski talepler arşiv sayfasına taşınır (veri silinmez).
+const ARSIV_AY = 3;
+const BASLIKLAR = ["Gönderim Zamanı", "Talep Tarihi", "Şube", "Kategori", "Ürün", "Boy", "Miktar", "Birim"];
 const UYARI_EPOSTASI = "serkansalihoglu@lavita.com.tr";
 const SUBELER = ["Nişantaşı", "Fulya", "Maslak", "Kireçburnu", "Beykent", "Z.burnu", "S.beyli", "SUTİŞ"];
 // Veri silme (panelden gönderim silme + toplu temizleme) bu anahtarı ister.
@@ -41,19 +45,37 @@ function doGet(e) {
   const bit = p.bit || bas;
   const subeFiltre = p.sube || "";
 
-  const sayfa = sayfayiGetirYaOlustur();
+  const tz = Session.getScriptTimeZone();
+  const kayitlar = sayfadanSuz(sayfayiGetirYaOlustur(), tz, bas, bit, subeFiltre);
+
+  // Arşivdeki bir tarih isteniyorsa arşiv sayfası da taranır.
+  const arsivSon = PropertiesService.getScriptProperties().getProperty("ARSIV_SON_TARIH") || "";
+  const arsivGerek = p.arsiv === "1" || (bas && arsivSon && bas <= arsivSon);
+  if (arsivGerek) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const arsiv = ss.getSheetByName(ARSIV_SHEET_ADI);
+    if (arsiv) {
+      sayfadanSuz(arsiv, tz, bas, bit, subeFiltre).forEach(function (k) { kayitlar.push(k); });
+    }
+  }
+
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: true, kayitlar: kayitlar }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function sayfadanSuz(sayfa, tz, bas, bit, subeFiltre) {
   const veriler = sayfa.getDataRange().getValues();
   veriler.shift(); // başlık satırı
-
-  const tz = Session.getScriptTimeZone();
-  const kayitlar = [];
+  const cikti = [];
   for (var i = 0; i < veriler.length; i++) {
     const satir = veriler[i];
     if (!satir[2]) continue;
     if (subeFiltre && String(satir[2]) !== subeFiltre) continue;
+    // Tarih biçimlendirmek pahalı; önce süz, sonra biçimlendir.
     const tarih = bicimle(satir[1], tz, "yyyy-MM-dd");
     if (bas && (tarih < bas || tarih > bit)) continue;
-    kayitlar.push({
+    cikti.push({
       zaman: bicimle(satir[0], tz, "yyyy-MM-dd HH:mm"),
       tarih: tarih,
       sube: satir[2],
@@ -64,10 +86,7 @@ function doGet(e) {
       birim: satir[7],
     });
   }
-
-  return ContentService
-    .createTextOutput(JSON.stringify({ ok: true, kayitlar: kayitlar }))
-    .setMimeType(ContentService.MimeType.JSON);
+  return cikti;
 }
 
 function bicimle(deger, tz, format) {
@@ -187,11 +206,113 @@ function eksikSubeleriUyar() {
 }
 
 function sayfayiGetirYaOlustur() {
+  return sayfaGetir(SHEET_ADI);
+}
+
+function sayfaGetir(ad) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sayfa = ss.getSheetByName(SHEET_ADI);
+  let sayfa = ss.getSheetByName(ad);
   if (!sayfa) {
-    sayfa = ss.insertSheet(SHEET_ADI);
-    sayfa.appendRow(["Gönderim Zamanı", "Talep Tarihi", "Şube", "Kategori", "Ürün", "Boy", "Miktar", "Birim"]);
+    sayfa = ss.insertSheet(ad);
+    sayfa.appendRow(BASLIKLAR);
   }
   return sayfa;
+}
+
+// ---------------------------------------------------------------------------
+// ARŞİV
+//
+// Talepler sayfası büyüdükçe doGet her isteği yavaşlatıyor. ARSIV_AY aydan
+// eski satırlar "Talepler Arşiv" sayfasına taşınır. Veri SİLİNMEZ, yer
+// değiştirir; panel eski bir tarih aralığı istediğinde arşiv de taranır.
+//
+// Kullanım:
+//   arsivOnizleme()  -> hiçbir şey değiştirmez, kaç satır taşınacağını söyler
+//   arsivle()        -> taşımayı yapar
+// ---------------------------------------------------------------------------
+
+function arsivSiniriHesapla(tz) {
+  const d = new Date();
+  d.setMonth(d.getMonth() - ARSIV_AY);
+  return Utilities.formatDate(d, tz, "yyyy-MM-dd");
+}
+
+function arsivOnizleme() {
+  const tz = Session.getScriptTimeZone();
+  const sinir = arsivSiniriHesapla(tz);
+  const sayfa = sayfayiGetirYaOlustur();
+  const veriler = sayfa.getDataRange().getValues();
+  veriler.shift();
+  let tasinacak = 0, kalacak = 0, enEski = "", enYeni = "";
+  veriler.forEach(function (satir) {
+    if (!satir[2]) return;
+    const tarih = bicimle(satir[1], tz, "yyyy-MM-dd");
+    if (!enEski || tarih < enEski) enEski = tarih;
+    if (!enYeni || tarih > enYeni) enYeni = tarih;
+    if (tarih < sinir) tasinacak++; else kalacak++;
+  });
+  const mesaj = "Sınır: " + sinir + " (bu tarihten ÖNCEKİLER arşive gider)\n" +
+    "Talepler sayfası: " + enEski + " – " + enYeni + "\n" +
+    "Taşınacak: " + tasinacak + " satır\n" +
+    "Kalacak:   " + kalacak + " satır";
+  Logger.log(mesaj);
+  return mesaj;
+}
+
+function arsivle() {
+  const kilit = LockService.getScriptLock();
+  if (!kilit.tryLock(30000)) throw new Error("Başka bir işlem sürüyor, sonra deneyin.");
+  try {
+    const tz = Session.getScriptTimeZone();
+    const sinir = arsivSiniriHesapla(tz);
+    const sayfa = sayfayiGetirYaOlustur();
+    const tumu = sayfa.getDataRange().getValues();
+    const baslik = tumu.shift();
+
+    const kalan = [], tasinan = [];
+    let arsivEnYeni = "";
+    tumu.forEach(function (satir) {
+      if (!satir[2]) return;
+      const tarih = bicimle(satir[1], tz, "yyyy-MM-dd");
+      if (tarih < sinir) {
+        tasinan.push(satir);
+        if (tarih > arsivEnYeni) arsivEnYeni = tarih;
+      } else {
+        kalan.push(satir);
+      }
+    });
+
+    if (tasinan.length === 0) {
+      Logger.log("Taşınacak satır yok.");
+      return "Taşınacak satır yok.";
+    }
+
+    // 1) Önce arşive yaz ve diske indiğini doğrula.
+    const arsiv = sayfaGetir(ARSIV_SHEET_ADI);
+    const oncekiArsivSatir = arsiv.getLastRow();
+    arsiv.getRange(oncekiArsivSatir + 1, 1, tasinan.length, baslik.length).setValues(tasinan);
+    SpreadsheetApp.flush();
+    const sonrakiArsivSatir = arsiv.getLastRow();
+    if (sonrakiArsivSatir - oncekiArsivSatir !== tasinan.length) {
+      throw new Error("Arşive yazma doğrulanamadı; Talepler sayfasına dokunulmadı.");
+    }
+
+    // 2) Ancak doğrulandıktan sonra Talepler sayfası yeniden yazılır.
+    sayfa.getRange(2, 1, sayfa.getMaxRows() - 1, baslik.length).clearContent();
+    if (kalan.length) {
+      sayfa.getRange(2, 1, kalan.length, baslik.length).setValues(kalan);
+    }
+    SpreadsheetApp.flush();
+
+    // 3) Panel eski tarih isterse arşivi de tarasın diye sınır kaydedilir.
+    const ozellik = PropertiesService.getScriptProperties();
+    const eskiSinir = ozellik.getProperty("ARSIV_SON_TARIH") || "";
+    if (arsivEnYeni > eskiSinir) ozellik.setProperty("ARSIV_SON_TARIH", arsivEnYeni);
+
+    const mesaj = tasinan.length + " satır arşive taşındı, " + kalan.length + " satır kaldı.";
+    Logger.log(mesaj);
+    return mesaj;
+  } finally {
+    kilit.releaseLock();
+  }
 }
