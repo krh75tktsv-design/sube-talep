@@ -11,3 +11,6 @@ maliyet-paneli.html
 # adları gömülü başlangıç verisi olarak içeride — aynı sebeple girmemeli.
 index.html
 app.js
+
+# Mutfak paneli: reçete ve alış fiyatları — aynı sebeple girmemeli.
+mutfak-paneli.html
