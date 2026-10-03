@@ -24,7 +24,7 @@ const ARSIV_SHEET_ADI = "Talepler Arşiv";
 const ARSIV_AY = 3;
 const BASLIKLAR = ["Gönderim Zamanı", "Talep Tarihi", "Şube", "Kategori", "Ürün", "Boy", "Miktar", "Birim"];
 const UYARI_EPOSTASI = "serkansalihoglu@lavita.com.tr";
-const SUBELER = ["Nişantaşı", "Fulya", "Maslak", "Kireçburnu", "Beykent", "Z.burnu", "S.beyli", "SUTİŞ"];
+const SUBELER = ["Nişantaşı", "Fulya", "Maslak", "Kireçburnu", "Beykent", "Z.burnu", "S.beyli"];
 // Veri silme (panelden gönderim silme + toplu temizleme) bu anahtarı ister.
 // ÖNEMLİ: Bu dosya herkese açık bir GitHub deposunda duruyor. Anahtarı BURAYA
 // yazmayın; yalnızca Apps Script editöründeki kopyaya yazın. Depodaki değer
