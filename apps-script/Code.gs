@@ -45,13 +45,23 @@ function doGet(e) {
   const bit = p.bit || bas;
   const subeFiltre = p.sube || "";
 
+  // Ölçüm ucu: e-tabloya hiç dokunmaz. Apps Script'in saf çağrı maliyetini
+  // e-tablo açma maliyetinden ayırmak için var. Veri döndürmez.
+  if (p.ping) {
+    return json(JSON.stringify({ ok: true, surum: veriSurumu() }));
+  }
+
   // Gönderim kimliği sorgusu: şube formu "kaydım girdi mi?" diye sorarken
   // tüm tabloyu indirmesin diye yalnızca son satırların kimlik sütununa bakar.
   if (p.gidKontrol) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ ok: true, girdi: gidVarMi(p.gidKontrol) }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return json(JSON.stringify({ ok: true, girdi: gidVarMi(p.gidKontrol) }));
   }
+
+  // Önbellek: aynı aralık son yazmadan beri istenmişse e-tablo hiç açılmaz.
+  const onbellek = CacheService.getScriptCache();
+  const onbellekAnahtar = ["g", veriSurumu(), bas, bit, subeFiltre, p.arsiv || ""].join("|");
+  const hazir = onbellek.get(onbellekAnahtar);
+  if (hazir) return json(hazir);
 
   const tz = Session.getScriptTimeZone();
   const kayitlar = sayfadanSuz(sayfayiGetirYaOlustur(), tz, bas, bit, subeFiltre);
@@ -67,9 +77,11 @@ function doGet(e) {
     }
   }
 
-  return ContentService
-    .createTextOutput(JSON.stringify({ ok: true, kayitlar: kayitlar }))
-    .setMimeType(ContentService.MimeType.JSON);
+  const cevap = JSON.stringify({ ok: true, kayitlar: kayitlar });
+  if (cevap.length <= ONBELLEK_BAYT_SINIR) {
+    try { onbellek.put(onbellekAnahtar, cevap, ONBELLEK_SANIYE); } catch (e) {}
+  }
+  return json(cevap);
 }
 
 function sayfadanSuz(sayfa, tz, bas, bit, subeFiltre) {
@@ -105,6 +117,48 @@ function sayfadanSuz(sayfa, tz, bas, bit, subeFiltre) {
     });
   }
   return cikti;
+}
+
+// ---------------------------------------------------------------------------
+// SUNUCU ÖNBELLEĞİ
+//
+// Ölçüm (2026-10-07): tarih süzmesi dağıtıldıktan sonra yanıt 2,2 MB'tan
+// 14-53 KB'a indi, ama süre 4-26 saniye arasında gezmeye devam etti. Tabloya
+// hiç dokunmayan 25 baytlık bir uç bile aynı dalgalanmayı gösterdi; yani kalan
+// maliyet okunan veri miktarından değil, her çağrıda e-tablonun açılmasından
+// ve Apps Script'in kendi çağrı maliyetinden geliyor.
+//
+// Çözüm: yanıt CacheService'e konur. Bayatlama riski yok — her yazma işlemi
+// sürüm damgasını artırır, önbellek anahtarları damgayı içerir, dolayısıyla
+// bir talep girildiği anda eski anahtarlar kendiliğinden geçersizleşir.
+// ---------------------------------------------------------------------------
+
+const ONBELLEK_SANIYE = 21600;     // 6 saat (sürüm damgası zaten geçersiz kılar)
+const ONBELLEK_BAYT_SINIR = 95000; // CacheService anahtar başına ~100 KB kabul eder
+
+function veriSurumu() {
+  const c = CacheService.getScriptCache();
+  let s = c.get("veriSurum");
+  if (!s) {
+    s = String(PropertiesService.getScriptProperties().getProperty("VERI_SURUM") || "1");
+    c.put("veriSurum", s, ONBELLEK_SANIYE);
+  }
+  return s;
+}
+
+// Her yazmadan sonra çağrılır: önceki tüm önbellek anahtarları geçersizleşir.
+function veriSurumunuArtir() {
+  try {
+    const p = PropertiesService.getScriptProperties();
+    const yeni = String(Number(p.getProperty("VERI_SURUM") || "1") + 1);
+    p.setProperty("VERI_SURUM", yeni);
+    CacheService.getScriptCache().put("veriSurum", yeni, ONBELLEK_SANIYE);
+  } catch (e) { /* önbellek yazılamazsa veri yine doğru, sadece yavaş kalır */ }
+}
+
+function json(govde) {
+  return ContentService.createTextOutput(govde)
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 // Son GID_TARAMA satırın kimlik sütununda bu gönderim var mı?
