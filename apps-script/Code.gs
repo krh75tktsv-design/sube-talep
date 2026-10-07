@@ -22,7 +22,7 @@ const SHEET_ADI = "Talepler";
 const ARSIV_SHEET_ADI = "Talepler Arşiv";
 // Bu kadar aydan eski talepler arşiv sayfasına taşınır (veri silinmez).
 const ARSIV_AY = 3;
-const BASLIKLAR = ["Gönderim Zamanı", "Talep Tarihi", "Şube", "Kategori", "Ürün", "Boy", "Miktar", "Birim"];
+const BASLIKLAR = ["Gönderim Zamanı", "Talep Tarihi", "Şube", "Kategori", "Ürün", "Boy", "Miktar", "Birim", "Gönderim No"];
 const UYARI_EPOSTASI = "serkansalihoglu@lavita.com.tr";
 const SUBELER = ["Nişantaşı", "Fulya", "Maslak", "Kireçburnu", "Beykent", "Z.burnu", "S.beyli"];
 // Veri silme (panelden gönderim silme + toplu temizleme) bu anahtarı ister.
@@ -44,6 +44,14 @@ function doGet(e) {
   const bas = p.bas || "";
   const bit = p.bit || bas;
   const subeFiltre = p.sube || "";
+
+  // Gönderim kimliği sorgusu: şube formu "kaydım girdi mi?" diye sorarken
+  // tüm tabloyu indirmesin diye yalnızca son satırların kimlik sütununa bakar.
+  if (p.gidKontrol) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: true, girdi: gidVarMi(p.gidKontrol) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 
   const tz = Session.getScriptTimeZone();
   const kayitlar = sayfadanSuz(sayfayiGetirYaOlustur(), tz, bas, bit, subeFiltre);
@@ -68,12 +76,21 @@ function sayfadanSuz(sayfa, tz, bas, bit, subeFiltre) {
   const veriler = sayfa.getDataRange().getValues();
   veriler.shift(); // başlık satırı
   const cikti = [];
+  // Utilities.formatDate pahalı ve on binlerce satırda tarih sütunu yalnızca
+  // birkaç düzine farklı değer taşıyor; aynı günü tekrar biçimlendirmeyelim.
+  const tarihOnbellek = {};
   for (var i = 0; i < veriler.length; i++) {
     const satir = veriler[i];
     if (!satir[2]) continue;
     if (subeFiltre && String(satir[2]) !== subeFiltre) continue;
-    // Tarih biçimlendirmek pahalı; önce süz, sonra biçimlendir.
-    const tarih = bicimle(satir[1], tz, "yyyy-MM-dd");
+    const ham = satir[1];
+    const anahtar = Object.prototype.toString.call(ham) === "[object Date]"
+      ? "d" + ham.getTime() : "s" + ham;
+    let tarih = tarihOnbellek[anahtar];
+    if (tarih === undefined) {
+      tarih = bicimle(ham, tz, "yyyy-MM-dd");
+      tarihOnbellek[anahtar] = tarih;
+    }
     if (bas && (tarih < bas || tarih > bit)) continue;
     cikti.push({
       zaman: bicimle(satir[0], tz, "yyyy-MM-dd HH:mm"),
@@ -84,9 +101,28 @@ function sayfadanSuz(sayfa, tz, bas, bit, subeFiltre) {
       boy: satir[5],
       miktar: satir[6],
       birim: satir[7],
+      gid: satir[8] || "",
     });
   }
   return cikti;
+}
+
+// Son GID_TARAMA satırın kimlik sütununda bu gönderim var mı?
+// Tüm tabloyu okumaz; tek sütun ve sınırlı satır okur.
+const GID_TARAMA = 800;
+function gidVarMi(gid) {
+  if (!gid) return false;
+  const sayfa = sayfayiGetirYaOlustur();
+  // 9. sütun hiç yoksa (sayfa daraltılmışsa) okumak hata verir.
+  if (sayfa.getMaxColumns() < 9) return false;
+  const sonSatir = sayfa.getLastRow();
+  if (sonSatir < 2) return false;
+  const bas = Math.max(2, sonSatir - GID_TARAMA + 1);
+  const sutun = sayfa.getRange(bas, 9, sonSatir - bas + 1, 1).getValues();
+  for (var i = 0; i < sutun.length; i++) {
+    if (String(sutun[i][0]) === String(gid)) return true;
+  }
+  return false;
 }
 
 function bicimle(deger, tz, format) {
@@ -143,23 +179,38 @@ function doPost(e) {
 
   const sayfa = sayfayiGetirYaOlustur();
   const zaman = new Date();
+  const gid = veri.gid || "";
+
+  // Şube "gönderilemedi" sanıp tekrar bastığında aynı kimlik gelir; ikinci
+  // kez yazılmaz. Yinelenen kayıt sorununun asıl çözümü budur.
+  if (gid && gidVarMi(gid)) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: true, yinelenen: true }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 
   const satirlar = (veri.kalemler || []).map(function (kalem) {
     return [
       zaman, veri.tarih, veri.sube,
       kalem.kategori || "", kalem.urun,
       kalem.boy !== undefined ? kalem.boy : "",
-      kalem.miktar, kalem.birim,
+      kalem.miktar, kalem.birim, gid,
     ];
   });
 
   if (veri.not) {
-    satirlar.push([zaman, veri.tarih, veri.sube, "", "NOT", "", veri.not, ""]);
+    satirlar.push([zaman, veri.tarih, veri.sube, "", "NOT", "", veri.not, "", gid]);
   }
 
   if (satirlar.length > 0) {
     const ilkSatir = sayfa.getLastRow() + 1;
+    if (sayfa.getMaxColumns() < satirlar[0].length) {
+      sayfa.insertColumnsAfter(sayfa.getMaxColumns(),
+        satirlar[0].length - sayfa.getMaxColumns());
+    }
     sayfa.getRange(ilkSatir, 1, satirlar.length, satirlar[0].length).setValues(satirlar);
+    // Eski tabloda 9. sütunun başlığı yok; bir kez yazılır.
+    if (!sayfa.getRange(1, 9).getValue()) sayfa.getRange(1, 9).setValue(BASLIKLAR[8]);
   }
 
   return ContentService

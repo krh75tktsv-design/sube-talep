@@ -38,6 +38,7 @@
   .durum{margin:14px 0;padding:12px;border-radius:10px;font-size:14px;display:none;}
   .durum.hata{display:block;background:#FEF2F2;color:#991B1B;}
   .durum.bos{display:block;background:#fff;border:1px solid var(--line);color:var(--muted);}
+  .durum.bilgi{display:block;background:#EFF6FF;color:#1E40AF;}
   .kart{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:20px;}
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
   th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;}
@@ -204,39 +205,107 @@ async function yukleVeCiz() {
     goster("hata", "Kurulum tamamlanmadı: APPS_SCRIPT_URL henüz ayarlanmamış.");
     return;
   }
+  const bas = baslangicInput.value;
+  const bit = bitisInput.value || bas;
+
+  // Önbellek: aynı tarih aralığı daha önce çekilmişse panel beklemeden
+  // çizilir, güncel veri arkadan gelince tabloyu tazeler. Apps Script'in
+  // yanıt süresi (soğuk başlatma) kullanıcıya boş ekran olarak yansımasın.
+  let onbellekCizildi = false;
+  const onbellek = onbellegiOku(bas, bit);
+  if (onbellek) {
+    kayitlariIsle(onbellek.kayitlar);
+    onbellekCizildi = true;
+    goster("bilgi", `Son kaydedilen görünüm (${onbellek.zaman}). Güncel veri yükleniyor...`);
+  }
+
   yenileBtn.disabled = true;
   yenileBtn.textContent = "Yükleniyor...";
-  gizle();
+  if (!onbellekCizildi) gizle();
   try {
     // Yalnızca seçili tarih aralığı istenir; tüm tabloyu çekmek panelin
     // açılışını veri büyüdükçe dakikalara çıkarıyordu.
-    const bas = baslangicInput.value;
-    const bit = bitisInput.value || bas;
     const adres = bas
       ? `${APPS_SCRIPT_URL}?bas=${encodeURIComponent(bas)}&bit=${encodeURIComponent(bit)}`
       : APPS_SCRIPT_URL;
     const res = await fetch(adres, { method: "GET" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
-    // Adı değişen ürünlerin eski kayıtları yeni adla gösterilir; katalogdan
-    // kaldırılan ürünler hiç gösterilmez.
-    HAM_KAYITLAR = data.kayitlar || [];
-    const hepsi = (data.kayitlar || [])
-      .map(k => (URUN_ADI_ESKI_YENI[k.urun] ? { ...k, urun: URUN_ADI_ESKI_YENI[k.urun] } : k))
-      .map(k => (BOYSUZ_URUNLER.has(k.urun) && k.boy !== "" ? { ...k, boy: "" } : k))
-      .filter(k => !KALDIRILAN_URUNLER.has(k.urun));
-    // Zayi kayıtları üretim/dağıtım raporundan tamamen ayrı tutulur.
-    TUM_KAYITLAR = hepsi.filter(k => !zayiMi(k));
-    ZAYI_KAYITLARI = hepsi.filter(zayiMi)
-      .map(k => ({ ...k, kategori: String(k.kategori).slice(ZAYI_ONEK.length), boy: "" }));
-    ciz();
-    if (gonderimKutusuEl.style.display !== "none") gonderimleriCiz();
+    kayitlariIsle(data.kayitlar || []);
+    if (onbellekCizildi) gizle();
+    onbellegeYaz(bas, bit, data.kayitlar || []);
   } catch (err) {
-    goster("hata", "Veriler yüklenemedi, internet bağlantınızı kontrol edip tekrar deneyin.");
+    goster("hata", onbellekCizildi
+      ? "Güncel veri alınamadı; ekranda son kaydedilen görünüm duruyor. Yenile'ye basıp tekrar deneyin."
+      : "Veriler yüklenemedi, internet bağlantınızı kontrol edip tekrar deneyin.");
   } finally {
     yenileBtn.disabled = false;
     yenileBtn.textContent = "Yenile";
   }
+}
+
+// Sunucudan ya da önbellekten gelen kayıtları tablolara dönüştürür.
+function kayitlariIsle(kayitlar) {
+  // Adı değişen ürünlerin eski kayıtları yeni adla gösterilir; katalogdan
+  // kaldırılan ürünler hiç gösterilmez.
+  HAM_KAYITLAR = kayitlar;
+  const hepsi = kayitlar
+    .map(k => (URUN_ADI_ESKI_YENI[k.urun] ? { ...k, urun: URUN_ADI_ESKI_YENI[k.urun] } : k))
+    .map(k => (BOYSUZ_URUNLER.has(k.urun) && k.boy !== "" ? { ...k, boy: "" } : k))
+    .filter(k => !KALDIRILAN_URUNLER.has(k.urun));
+  // Zayi kayıtları üretim/dağıtım raporundan tamamen ayrı tutulur.
+  TUM_KAYITLAR = hepsi.filter(k => !zayiMi(k));
+  ZAYI_KAYITLARI = hepsi.filter(zayiMi)
+    .map(k => ({ ...k, kategori: String(k.kategori).slice(ZAYI_ONEK.length), boy: "" }));
+  ciz();
+  if (gonderimKutusuEl.style.display !== "none") gonderimleriCiz();
+}
+
+// --- Önbellek -------------------------------------------------------------
+// Tarayıcıda saklanır, yalnızca hız içindir; veri kaynağı her zaman sunucudur.
+const ONBELLEK_ONEK = "lavita.talep.";
+const ONBELLEK_SINIR = 1200000;   // ~1,2 MB üstünü saklamayız (kota taşmasın)
+const ONBELLEK_OMUR = 7 * 24 * 60 * 60 * 1000;
+
+function onbellekAnahtari(bas, bit) { return `${ONBELLEK_ONEK}${bas}_${bit}`; }
+
+function onbellegiOku(bas, bit) {
+  try {
+    const ham = localStorage.getItem(onbellekAnahtari(bas, bit));
+    if (!ham) return null;
+    const p = JSON.parse(ham);
+    if (!p || !Array.isArray(p.kayitlar)) return null;
+    if (!p.ts || Date.now() - p.ts > ONBELLEK_OMUR) return null;
+    return p;
+  } catch (e) { return null; }
+}
+
+function onbellegeYaz(bas, bit, kayitlar) {
+  try {
+    const d = new Date();
+    const paket = JSON.stringify({
+      ts: d.getTime(),
+      zaman: `${yerelTarih(d)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+      kayitlar: kayitlar,
+    });
+    if (paket.length > ONBELLEK_SINIR) return;
+    localStorage.setItem(onbellekAnahtari(bas, bit), paket);
+    eskiOnbellekleriTemizle();
+  } catch (e) { /* kota dolu ya da kapalı: önbellek olmadan devam */ }
+}
+
+function eskiOnbellekleriTemizle() {
+  try {
+    const silinecek = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const a = localStorage.key(i);
+      if (!a || a.indexOf(ONBELLEK_ONEK) !== 0) continue;
+      let ts = 0;
+      try { ts = (JSON.parse(localStorage.getItem(a)) || {}).ts || 0; } catch (e) {}
+      if (!ts || Date.now() - ts > ONBELLEK_OMUR) silinecek.push(a);
+    }
+    silinecek.forEach(a => localStorage.removeItem(a));
+  } catch (e) {}
 }
 
 

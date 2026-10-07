@@ -1870,21 +1870,28 @@ async function gonder(tip) {
   btn.disabled = true;
   btn.textContent = "Gönderiliyor...";
 
-  // Gönderim öncesi kayıt sayısı: bağlantı koparsa verinin sisteme girip
-  // girmediğini buradan anlarız (bkz. gonderimDogrula).
-  const oncekiSayi = await kayitSayisiniOku(sube, tarih);
   const beklenen = kalemler.length + (not ? 1 : 0);
+  // Gönderim kimliği. Eskiden gönderim öncesi bir kez daha sunucuya sorup
+  // kayıt sayısını okuyorduk; o istek tablonun tamamını indirdiği için her
+  // gönderime 15-20 saniye bindiriyordu. Artık kimlikle gidiyoruz: sunucu
+  // aynı kimliği ikinci kez yazmıyor, biz de "girdi mi?" sorusunu tek
+  // satırlık bir sorguyla sorabiliyoruz.
+  const gid = gidAl(JSON.stringify({ sube, tarih, kalemler, not }));
 
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ sube, tarih, kalemler, not }),
+      body: JSON.stringify({ sube, tarih, kalemler, not, gid }),
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
+    let yinelenen = false;
+    try { yinelenen = !!(await res.json()).yinelenen; } catch (e) {}
 
-    goster("basarili",
-      `${zayiMi ? "Zayi bildiriminiz" : "Talebiniz"} gönderildi (${kalemler.length} kalem). Teşekkürler!`,
+    AKTIF_GID = "";
+    goster("basarili", yinelenen
+      ? `Bu ${zayiMi ? "zayi bildirimi" : "talep"} zaten kaydedilmiş (${beklenen} kalem); ikinci kez yazılmadı.`
+      : `${zayiMi ? "Zayi bildiriminiz" : "Talebiniz"} gönderildi (${kalemler.length} kalem). Teşekkürler!`,
       durum);
     formuTemizle(zayiMi);
   } catch (err) {
@@ -1892,8 +1899,9 @@ async function gonder(tip) {
     // deyip şubeye tekrar göndertmek verileri ikiye katlıyordu. Önce gerçekten
     // girip girmediğine bakılır.
     btn.textContent = "Kontrol ediliyor...";
-    const sonuc = await gonderimDogrula(sube, tarih, oncekiSayi, beklenen);
+    const sonuc = await gonderimDogrula(gid);
     if (sonuc === "girdi") {
+      AKTIF_GID = "";
       goster("basarili",
         `Bağlantı koptu ama ${zayiMi ? "zayi bildiriminiz" : "talebiniz"} sisteme kaydedilmiş ` +
         `(${beklenen} kalem). TEKRAR GÖNDERMEYİN.`, durum);
@@ -1902,13 +1910,29 @@ async function gonder(tip) {
       goster("hata", "Gönderilemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.", durum);
     } else {
       goster("hata",
-        "Gönderim sonucu doğrulanamadı. TEKRAR GÖNDERMEDEN ÖNCE aşağıdaki " +
-        "\"Gönderdiklerimi Göster\" ile kayıtlarınızı kontrol edin.", durum);
+        "Gönderim sonucu doğrulanamadı. Tekrar Gönder'e basabilirsiniz; aynı " +
+        "talep iki kez kaydedilmez.", durum);
     }
   } finally {
     btn.disabled = false;
     btn.textContent = etiket;
   }
+}
+
+// Gönderim kimliği: aynı form içeriği için sabit kalır, kaydedildiği
+// kesinleşince sıfırlanır. Böylece şube "gönderilemedi" görüp tekrar bastığında
+// sunucu bunu yinelenen sayıp ikinci kez yazmaz.
+// İçerik değişirse yeni kimlik verilir: düzeltilmiş bir talebin "yinelenen"
+// sayılıp sessizce yazılmaması için.
+let AKTIF_GID = "";
+let AKTIF_IMZA = "";
+function gidAl(imza) {
+  if (!AKTIF_GID || imza !== AKTIF_IMZA) {
+    AKTIF_GID = Date.now().toString(36) + "-" +
+      Math.random().toString(36).slice(2, 8);
+    AKTIF_IMZA = imza;
+  }
+  return AKTIF_GID;
 }
 
 function formuTemizle(zayiMi) {
@@ -1921,36 +1945,30 @@ function formuTemizle(zayiMi) {
   document.getElementById("not").value = "";
 }
 
-// Şube+tarih için sistemdeki kayıt sayısı; okunamazsa null.
+// "Gönderdiklerimi Göster" için şube+tarih adresi.
 function kayitAdresi(sube, tarih) {
   // Sunucu tarafında süzülür: tüm tabloyu indirmek mobil bağlantıda çok yavaştı.
   return `${APPS_SCRIPT_URL}?bas=${encodeURIComponent(tarih)}&bit=${encodeURIComponent(tarih)}` +
          `&sube=${encodeURIComponent(sube)}`;
 }
 
-async function kayitSayisiniOku(sube, tarih) {
-  try {
-    const res = await fetch(kayitAdresi(sube, tarih), { method: "GET", cache: "no-store" });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return (data.kayitlar || []).filter(k => k.sube === sube && k.tarih === tarih).length;
-  } catch (e) {
-    return null;
-  }
-}
-
 // "girdi" | "girmedi" | "bilinmiyor"
-async function gonderimDogrula(sube, tarih, oncekiSayi, beklenen) {
-  if (oncekiSayi === null) return "bilinmiyor";
+async function gonderimDogrula(gid) {
   // Apps Script yazma işlemi bitmemiş olabilir; birkaç kez dene.
+  let okunabildi = false;
   for (let deneme = 0; deneme < 3; deneme++) {
     await new Promise(r => setTimeout(r, 1500));
-    const sonraki = await kayitSayisiniOku(sube, tarih);
-    if (sonraki === null) continue;
-    if (sonraki >= oncekiSayi + beklenen) return "girdi";
-    if (deneme === 2) return "girmedi";
+    try {
+      const res = await fetch(
+        `${APPS_SCRIPT_URL}?gidKontrol=${encodeURIComponent(gid)}`,
+        { method: "GET", cache: "no-store" });
+      if (!res.ok) continue;
+      const data = await res.json();
+      okunabildi = true;
+      if (data.girdi) return "girdi";
+    } catch (e) { /* sonraki denemeye */ }
   }
-  return "bilinmiyor";
+  return okunabildi ? "girmedi" : "bilinmiyor";
 }
 
 const gonderilenBtn = document.getElementById("gonderilenleriGoster");
