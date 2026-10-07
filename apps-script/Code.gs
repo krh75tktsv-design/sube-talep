@@ -199,6 +199,7 @@ function doPost(e) {
     const sonSatir = sayfa.getLastRow();
     if (sonSatir > 1) {
       sayfa.deleteRows(2, sonSatir - 1);
+      veriSurumunuArtir();
     }
     return ContentService
       .createTextOutput(JSON.stringify({ ok: true, silinen: Math.max(0, sonSatir - 1) }))
@@ -226,6 +227,7 @@ function doPost(e) {
       sayfa2.deleteRow(i + 1);
       silinen++;
     }
+    if (silinen) veriSurumunuArtir();
     return ContentService
       .createTextOutput(JSON.stringify({ ok: true, silinen: silinen }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -265,6 +267,8 @@ function doPost(e) {
     sayfa.getRange(ilkSatir, 1, satirlar.length, satirlar[0].length).setValues(satirlar);
     // Eski tabloda 9. sütunun başlığı yok; bir kez yazılır.
     if (!sayfa.getRange(1, 9).getValue()) sayfa.getRange(1, 9).setValue(BASLIKLAR[8]);
+    // Önbellek bu andan sonra geçersiz: panel yeni talebi hemen görmeli.
+    veriSurumunuArtir();
   }
 
   return ContentService
@@ -413,6 +417,8 @@ function arsivle() {
     const ozellik = PropertiesService.getScriptProperties();
     const eskiSinir = ozellik.getProperty("ARSIV_SON_TARIH") || "";
     if (arsivEnYeni > eskiSinir) ozellik.setProperty("ARSIV_SON_TARIH", arsivEnYeni);
+
+    veriSurumunuArtir();
 
     const mesaj = tasinan.length + " satır arşive taşındı, " + kalan.length + " satır kaldı.";
     Logger.log(mesaj);
