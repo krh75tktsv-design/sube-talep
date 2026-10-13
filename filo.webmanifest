@@ -1,0 +1,16 @@
+{
+  "name": "LA VİTA Filo",
+  "short_name": "Filo+",
+  "description": "Sevkiyat araçları: km, yakıt, arıza, güzergâh ve teslimat",
+  "start_url": "./filo.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EDF0F3",
+  "theme_color": "#1C232C",
+  "icons": [
+    { "src": "ikon/filo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "ikon/filo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "ikon/filo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -14,6 +14,7 @@ gelir/gider, banka hesapları, cari takibi, ödeme-tahsilat ve şube karşılaş
 - `apps-script/Code.gs` — Şube talepleri Web App'i
 - `apps-script/EkipPaneli.gs` — Ekip paneli Web App'i (ayrı e-tablo, ayrı URL)
 - `apps-script/MilliSaraylar.gs` — Milli Saraylar Web App'i (ayrı e-tablo, ayrı URL)
+- `filo.html` + `apps-script/FiloPaneli.gs` — Sevkiyat araçları paneli (aşağıda; ayrı e-tablo, ayrı URL)
 
 ## Ekip Paneli
 
@@ -190,6 +191,45 @@ Sürüm: Yeni sürüm > Dağıt** demeyi unutma; yoksa değişiklik canlıya
 - `kurulumTetikleyiciOlustur` fonksiyonunu bir kez çalıştırırsan her
   akşam 22:00'de ertesi gün için talep göndermemiş şubeleri mail atar
   (opsiyonel).
+
+## Filo Paneli (`filo.html`)
+
+Şubelere sevkiyat yapan kendi araçlarımızın km, yakıt, bakım, belge ve gider
+takibi. Tek adres, iki ekran: giriş yapanın rolüne göre açılır.
+
+- **Şoför** — yalnızca kendisine verilen araçları görür. Büyük düğmelerle km,
+  yakıt, arıza bildirimi ve HGS girer; kendi kaydını 24 saat içinde düzeltir.
+  Gider toplamlarını ve diğer araçları göremez.
+- **Yönetici (lojistik)** — Özet (açık arızalar, yaklaşan bakım, muayene,
+  trafik sigortası ve kasko bitişleri), Araçlar, Kayıtlar (CSV), Giderler
+  (aylık, araç bazında ₺/km ve lt/100 km) ve Kişiler (şoför ekleme, PIN, araç atama).
+
+**Güzergâh** sekmesi: yönetici durakları (atölye, şubeler) adresleriyle bir kez
+tanımlar, sık kullanılan sıraları "hazır güzergâh" olarak kaydeder ve her gün
+araç başına durak sırası planlar ("önceki günün planını kopyala" ile). Plan km'si
+Google Haritalar'dan hesaplanır; durak arası mesafe bir kez bulunup `Mesafeler`
+sekmesinde saklanır (yanlışsa oradan düzeltilir). Yapılan yol = günün en yüksek
+km okuması − önceki okuma; fark %10 / 8 km içinde yeşil, %25'e kadar sarı,
+üstü kırmızı. Dünkü sapmalar Özet'e düşer. Şoför o günün planını görür,
+"Haritada aç" ile Google Haritalar'da durak sırasıyla açar.
+
+Plana **adrese teslimat** da eklenebilir (özel tasarım pasta vb.): müşteri,
+adres, telefon, teslim saati ve şoföre not. Tek seferlik durak olarak
+`Duraklar` sekmesine `Tur = teslimat` ile yazılır, km hesabına girer. Şoför yalnızca
+kendi planındaki teslimatların adres ve telefonunu görür, "Teslim edildi" ile
+işaretler (saat ve kişi kaydedilir).
+
+Giriş: listeden isim + PIN (şoför 4–8, yönetici 6–8 rakam). Üst üste 5 yanlış
+PIN o ismi 15 dakika kilitler. Veri `Filo Paneli` e-tablosunda (Kisiler,
+Araclar, Kayitlar); sayfa koduna veri gömülü değil. Silinen kayıt e-tabloda
+kalır, `Silindi` sütunu işaretlenir.
+
+Telefona uygulama olarak kurulur (`filo.webmanifest`, `ikon/filo-*.png`; service
+worker yok, her açılışta güncel sürüm gelir).
+
+Kurulum adımları `apps-script/FiloPaneli.gs` dosyasının başında. Kod
+değiştiğinde **Dağıt › Dağıtımları yönet › kalem › Sürüm: Yeni sürüm › Dağıt**
+(“Yeni dağıtım” URL'yi değiştirir, şoförlerin bağlantısı kırılır).
 
 ## Yerelde çalıştırma
 

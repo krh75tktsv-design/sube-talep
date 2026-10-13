@@ -14,3 +14,9 @@ app.js
 
 # Mutfak paneli: reçete ve alış fiyatları — aynı sebeple girmemeli.
 mutfak-paneli.html
+
+# Gerçek veri içeren yedekler — depoya girmemeli
+kasa-plus-yedek-*.json
+
+# Filo paneli: Artifact kaynağı, depoya girmemeli.
+filo-paneli.html
