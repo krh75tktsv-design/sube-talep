@@ -1275,9 +1275,10 @@ function guzergahCiz(ic){
     const plan2 = once && sonTarih ? Object.values(P).filter(p => p.aracId === a.id && p.tarih > once.tarih && p.tarih <= sonTarih).reduce((s, p) => s + (sayi(p.planKm) || 0), 0) : 0;
     return { a, gun:planlar.length, plan, plan2, gercek };
   });
-  const yonetim = `<div class="iki-sutun">
+  const sabitDurak = Object.values(D).filter(d => d.tur !== "teslimat").length;
+  const yonetim = `<div class="iki-sutun" id="duraklar">
     <section class="bolum">
-      <div class="bolum-bas"><h2>Duraklar</h2><button class="btn btn-bos btn-kucuk" data-islem="durak-yeni">+ Durak</button></div>
+      <div class="bolum-bas"><h2>Duraklar <span class="soluk kucuk">· ${sabitDurak}</span></h2><button class="btn btn-bos btn-kucuk" data-islem="durak-yeni">+ Durak</button></div>
       <div class="liste">${Object.values(D).filter(d => d.tur !== "teslimat").sort((x, y) => (y.aktif !== false) - (x.aktif !== false) || x.ad.localeCompare(y.ad, "tr")).map(d => `<div class="yonetim-satir"${d.aktif === false ? ' style="opacity:.55"' : ""}>
         <b>${e(d.ad)}</b><button class="btn btn-bos btn-kucuk" data-islem="durak-duzenle" data-id="${e(d.id)}">Düzenle</button>
         <span class="alt">${d.adres ? e(d.adres) : '<span style="color:var(--orta)">Adres yok, mesafe hesaplanamaz</span>'}</span></div>`).join("")
@@ -1292,6 +1293,13 @@ function guzergahCiz(ic){
     </section>
   </div>`;
 
+  // Araç yokken plan yapılamaz; önce durakları göster, plan bölümü kısa bir notla kalsın.
+  if(!araclar.length){
+    ic.innerHTML = `${yonetim}
+    <div class="bos"><h2>Plan için araç gerekli</h2><p>Duraklar hazır olduğunda Araçlar sekmesinden araçları ekleyin; günlük güzergâh planı burada, her araç için bir satır olarak açılır.</p>
+      <button class="btn" data-islem="arac-yeni">+ Araç ekle</button></div>`;
+    return;
+  }
   ic.innerHTML = `<section class="bolum">
     <div class="bolum-bas"><h2>Güzergâh planı <span class="soluk kucuk">· ${e(gunAdi(t))}</span></h2>
       <div class="tarih-nav">
@@ -1299,9 +1307,10 @@ function guzergahCiz(ic){
         <input type="date" id="r-tarih" value="${t}" aria-label="Tarih">
         <button class="btn btn-bos btn-kucuk" data-islem="rota-kaydir" data-n="1" aria-label="Sonraki gün">›</button>
         ${t !== bugun() ? `<button class="btn btn-bos btn-kucuk" data-islem="rota-bugun">Bugün</button>` : ""}
+        <button class="btn btn-bos btn-kucuk" data-islem="duraklara-in">Duraklar (${sabitDurak})</button>
         ${kaynak && bugunPlan < araclar.length ? `<button class="btn btn-kucuk" data-islem="plan-kopyala" data-kaynak="${kaynak}">${e(gunAdi(kaynak))} planını kopyala</button>` : ""}
       </div></div>
-    ${araclar.length ? `<div class="liste">${araclar.map(satir).join("")}</div>` : bosFilo()}
+    <div class="liste">${araclar.map(satir).join("")}</div>
     <p class="soluk kucuk" style="margin:0">Yapılan yol = o günün en yüksek km okuması − önceki okuma. Fark, plan km'sinin %${TOL.yuzde}'u ya da ${TOL.km} km içindeyse yeşil, %25'e kadar sarı, üstü kırmızı. Gün sonu km'si girilmeyen günler, sonraki okumada birlikte karşılaştırılır.</p>
   </section>
   <section class="bolum">
@@ -1538,6 +1547,7 @@ document.addEventListener("click", ev => {
     case "rota-gun": rotaTarih = b.dataset.tarih; sekme = "guzergah"; depoYaz(DEPO_SEKME, sekme); ciz(); window.scrollTo(0, 0); break;
     case "rota-kaydir": rotaTarih = gunKaydir(rotaTarih, +b.dataset.n); ciz(); break;
     case "rota-bugun": rotaTarih = bugun(); ciz(); break;
+    case "duraklara-in": { const h = $("duraklar"); if(h) h.scrollIntoView({ behavior:"smooth", block:"start" }); break; }
     case "plan-yeni": planFormu(null, { aracId:id, tarih:rotaTarih }); break;
     case "plan-duzenle": if(P[b.dataset.id]) planFormu(P[b.dataset.id]); break;
     case "plan-kopyala": planKopyala(b); break;
