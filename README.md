@@ -214,6 +214,11 @@ adını yazın. Birden fazla şube virgülle ayrılır: `SAAT, HAREM`.
   (ad + şifre) çifti üzerinden yapıldığından bu bir sorun değildir, form
   hesabı ve izleyici hesabı birbirine karışmaz.
 - Kapsam, hesabın adıyla birebir aynıysa panel başlığında tekrar yazılmaz.
+- `Rol`, `Aktif` ve `Kapsam` hücrelerinde **büyük/küçük harf önemli değil**:
+  `izleyici`, `İzleyici`, `İZLEYİCİ` hepsi aynı; `Hayır` da `hayir` gibi
+  kapatır. (JavaScript'in `toLowerCase()`'i Türkçe `İ`'yi düz `i`'ye
+  çevirmiyor; `anahtar()` yardımcısı bu yüzden var. Bu olmadan `İzleyici`
+  yazılan satır hiçbir yerde görünmüyordu.)
 
 ### Kurulum
 

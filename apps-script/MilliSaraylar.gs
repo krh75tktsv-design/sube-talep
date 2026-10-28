@@ -104,6 +104,24 @@ function sekme(ad) {
 // ————————————————————————————————————————————— giriş / yetki
 
 // Subeler sekmesini okur. Şifreler buradan çıkmaz; sadece dogrula() kullanır.
+// E-tabloya elle yazilan degerleri karsilastirilabilir hale getirir.
+// JavaScript'in toLowerCase()'i Turkce'de bozuk calisiyor: "İ".toLowerCase()
+// duz "i" degil, noktali birlesik bir karakter uretiyor. Bu yuzden "İzleyici"
+// yazilan bir rol hucresi tanInmiyordu ve satir hicbir yerde gorunmuyordu.
+// I/İ/ı/i hepsi "i"ye, Ş/ş "s"ye, Ü/ü "u"ya indirgenir; sonuc yalnizca
+// karsilastirma icin kullanilir, ekrana basilmaz.
+function anahtar(deger) {
+  return String(deger === undefined || deger === null ? "" : deger)
+    .trim()
+    .replace(/[İIıi]/g, "i")
+    .replace(/[Şş]/g, "s")
+    .replace(/[Üü]/g, "u")
+    .replace(/[Ğğ]/g, "g")
+    .replace(/[Öö]/g, "o")
+    .replace(/[Çç]/g, "c")
+    .toLowerCase();
+}
+
 function subeleriOku() {
   const sy = sekme("Subeler");
   if (sy.getLastRow() < 2) return [];
@@ -117,8 +135,9 @@ function subeleriOku() {
         satir: i + 2,
         ad: String(r[0]).trim(),
         sifre: String(r[1]).trim(),
-        rol: String(r[2] || "sube").trim().toLowerCase(),
-        aktif: String(r[3] || "").trim().toLowerCase() !== "hayir",
+        rol: anahtar(r[2]) || "sube",
+        // "Hayır", "HAYIR", "hayir" — hepsi kapali sayilir.
+        aktif: anahtar(r[3]) !== "hayir",
         kapsam: kapsamiAyikla(r[4]),
       };
     });
@@ -242,17 +261,21 @@ function kayitlar(kisi, v) {
     .filter(function (s) { return s.rol === "sube"; })
     .map(function (s) { return s.ad; });
 
+  const kapsamAnahtarlari = kapsam.map(anahtar);
   let liste = talepleriOku();
   if (kapsam.length > 0) {
-    liste = liste.filter(function (k) { return kapsam.indexOf(k.sube) !== -1; });
+    liste = liste.filter(function (k) {
+      return kapsamAnahtarlari.indexOf(anahtar(k.sube)) !== -1;
+    });
   }
   if (v.baslangic) liste = liste.filter(function (k) { return k.tarih >= v.baslangic; });
   if (v.bitis)     liste = liste.filter(function (k) { return k.tarih <= v.bitis; });
 
   // Kapsama yazilan ad hicbir subeyle eslesmiyorsa panel bos kalirdi ve
   // sebebi anlasilmazdi; uyari olarak geri bildirilir.
+  const bilinenAnahtarlar = tumSubeler.concat(SUBELER).map(anahtar);
   const bilinmeyen = kapsam.filter(function (s) {
-    return tumSubeler.indexOf(s) === -1 && SUBELER.indexOf(s) === -1;
+    return bilinenAnahtarlar.indexOf(anahtar(s)) === -1;
   });
 
   return json({
