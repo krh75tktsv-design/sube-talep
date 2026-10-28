@@ -52,7 +52,7 @@ const UYARI_EPOSTASI = "serkansalihoglu@lavita.com.tr";
 
 const SEKMELER = {
   Talepler: ["Gönderim Zamanı", "Talep Tarihi", "Şube", "Ürün", "Miktar"],
-  Subeler: ["Şube", "Şifre", "Rol", "Aktif"],
+  Subeler: ["Şube", "Şifre", "Rol", "Aktif", "Kapsam"],
 };
 
 // Notlar ayrı bir sütun yerine, ürün adı "NOT" olan tek bir satır olarak
@@ -107,7 +107,10 @@ function sekme(ad) {
 function subeleriOku() {
   const sy = sekme("Subeler");
   if (sy.getLastRow() < 2) return [];
-  return sy.getRange(2, 1, sy.getLastRow() - 1, 4).getValues()
+  // 5. sutun (Kapsam) eski e-tablolarda bos olabilir; sayfa daraltildiysa
+  // 5 sutun istemek hata verirdi, o yuzden mevcut genislikle sinirlandi.
+  const sutun = Math.min(5, sy.getMaxColumns());
+  return sy.getRange(2, 1, sy.getLastRow() - 1, sutun).getValues()
     .filter(function (r) { return r[0]; })
     .map(function (r, i) {
       return {
@@ -116,8 +119,18 @@ function subeleriOku() {
         sifre: String(r[1]).trim(),
         rol: String(r[2] || "sube").trim().toLowerCase(),
         aktif: String(r[3] || "").trim().toLowerCase() !== "hayir",
+        kapsam: kapsamiAyikla(r[4]),
       };
     });
+}
+
+// "SAAT, HAREM" / "SAAT; HAREM" / alt alta yazim — hepsi listeye cevrilir.
+// Bos birakilirsa kapsam yok demektir: kisi butun subeleri gorur.
+function kapsamiAyikla(deger) {
+  if (deger === undefined || deger === null) return [];
+  return String(deger).split(/[,;\n]/)
+    .map(function (s) { return s.trim(); })
+    .filter(function (s) { return s.length > 0; });
 }
 
 function dogrula(ad, sifre) {
@@ -221,10 +234,36 @@ function gecmis(kisi, v) {
 // Panel için: tüm şubelerin kayıtları. Yalnızca merkez rolü çağırabilir.
 function kayitlar(kisi, v) {
   if (!panelRolu(kisi.rol)) return json({ ok: false, hata: "Bu işlem için yetkiniz yok." });
+
+  // Kapsam doluysa kisi yalnizca o subelerin kayitlarini gorur. Suzme burada,
+  // sunucuda yapilir: kapsam disindaki veri tarayiciya hic gonderilmez.
+  const kapsam = kisi.kapsam || [];
+  const tumSubeler = subeleriOku()
+    .filter(function (s) { return s.rol === "sube"; })
+    .map(function (s) { return s.ad; });
+
   let liste = talepleriOku();
+  if (kapsam.length > 0) {
+    liste = liste.filter(function (k) { return kapsam.indexOf(k.sube) !== -1; });
+  }
   if (v.baslangic) liste = liste.filter(function (k) { return k.tarih >= v.baslangic; });
   if (v.bitis)     liste = liste.filter(function (k) { return k.tarih <= v.bitis; });
-  return json({ ok: true, kayitlar: liste, subeler: SUBELER });
+
+  // Kapsama yazilan ad hicbir subeyle eslesmiyorsa panel bos kalirdi ve
+  // sebebi anlasilmazdi; uyari olarak geri bildirilir.
+  const bilinmeyen = kapsam.filter(function (s) {
+    return tumSubeler.indexOf(s) === -1 && SUBELER.indexOf(s) === -1;
+  });
+
+  return json({
+    ok: true,
+    kayitlar: liste,
+    subeler: kapsam.length > 0 ? kapsam : SUBELER,
+    kapsamli: kapsam.length > 0,
+    uyari: bilinmeyen.length > 0
+      ? "Kapsamdaki şu ad hiçbir şubeyle eşleşmiyor: " + bilinmeyen.join(", ")
+      : "",
+  });
 }
 
 // Panelin "E-Tablo" dugmesi icin. YALNIZCA merkez: bu e-tabloda Subeler

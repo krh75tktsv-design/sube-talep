@@ -165,15 +165,20 @@ her açılışta şifre sormaz. "Çıkış" düğmesi hatırlananı siler.
 |---|---|
 | `sube` | Kendi formunu doldurur, yalnızca kendi gönderdiklerini görür. Giriş ekranındaki şube listesinde görünen tek rol budur. |
 | `merkez` | Paneli tam yetkiyle açar: tüm kayıtlar, Excel/CSV, yazdırma ve **▦ E-Tablo** düğmesi. Talep gönderemez. |
-| `izleyici` | Paneli **salt okunur** açar: tüm kayıtlar, Excel/CSV, yazdırma. E-Tablo düğmesi gizlidir ve sunucu da adresi vermez. Talep gönderemez. |
+| `izleyici` | Paneli **salt okunur** açar: Excel/CSV, yazdırma. E-Tablo düğmesi gizlidir ve sunucu da adresi vermez. Talep gönderemez. `Kapsam` sütunu doluysa yalnızca oradaki şubeleri görür. |
 
 #### Panele yeni kişi ekleme
 
 `Subeler` sekmesine bir satır yazmak yeterli, kod değişmez:
 
-| Şube | Şifre | Rol | Aktif |
-|---|---|---|---|
-| AYŞE | 445566 | izleyici | evet |
+| Şube | Şifre | Rol | Aktif | Kapsam |
+|---|---|---|---|---|
+| Bir Kişi | (6 haneli) | izleyici | evet | |
+| Başka Kişi | (6 haneli) | izleyici | evet | SAAT |
+| Çok şubeli kişi | (6 haneli) | izleyici | evet | SAAT, HAREM |
+
+> Gerçek şifreler yalnızca e-tabloda durur; bu depo herkese açık olduğu
+> için buraya örnek olarak bile yazılmaz.
 
 - İlk sütun şube adı yerine kişi adı olabilir; kod sütunları konuma göre
   okur, başlığı değiştirmek de güvenlidir.
@@ -185,6 +190,23 @@ her açılışta şifre sormaz. "Çıkış" düğmesi hatırlananı siler.
 - **İzleyiciye E-Tablo adresi verilmez**, çünkü o e-tabloda `Subeler`
   sekmesi — yani tüm şifreler — duruyor. Düğmeyi gizlemek yalnızca arayüz
   nezaketi; asıl engel `etabloUrl` işleminin `merkez` şartıdır.
+
+#### Kapsam sütunu (5. sütun)
+
+Bir kişinin yalnızca belirli şubeleri görmesi için `Kapsam` sütununa şube
+adını yazın. Birden fazla şube virgülle ayrılır: `SAAT, HAREM`.
+
+- **Boş bırakılırsa kapsam yok** demektir; kişi bütün şubeleri görür.
+  Mevcut `merkez` satırı boş kalmalı.
+- Kapsam hem panelde hem **Excel ve CSV'de** geçerlidir: `dağılım` sayfası
+  16 değil yalnızca izin verilen şube kadar sütun çıkarır.
+- Süzme **sunucuda** yapılır; kapsam dışındaki veri tarayıcıya hiç
+  gönderilmez. Panelde sütunu gizlemek tek başına yeterli olmazdı.
+- Şube adını `Subeler` sekmesindeki yazımla **birebir aynı** yazın
+  (`SAAT`, `HAREM`, `LİMON` gibi). Eşleşmeyen bir ad yazılırsa panel boş
+  kalmaz, "Kapsamdaki şu ad hiçbir şubeyle eşleşmiyor" uyarısı verir.
+- Kapsam yetkiyi **genişletmez**: kapsamlı bir izleyici yine talep
+  gönderemez ve e-tablo adresini alamaz.
 
 ### Kurulum
 

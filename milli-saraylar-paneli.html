@@ -236,6 +236,9 @@ try {
 } catch (e) { oturum = null; }
 
 let sonKayitlar = [];
+// Sunucunun bu kullanıcıya izin verdiği şubeler. Kapsam tanımlıysa tablo,
+// Excel ve CSV yalnızca bunları gösterir.
+let izinliSubeler = null;
 
 const girisEkran = document.getElementById("girisEkran");
 const anaEkran = document.getElementById("anaEkran");
@@ -306,6 +309,8 @@ async function girisYap() {
 document.getElementById("cikisBtn").addEventListener("click", () => {
   if (!confirm("Çıkış yapılsın mı?")) return;
   oturum = null;
+  izinliSubeler = null;
+  kapsamUyarisi = "";
   try { localStorage.removeItem(OTURUM_ANAHTARI); } catch (e) {}
   anaEkran.classList.add("gizle");
   girisEkran.classList.remove("gizle");
@@ -326,6 +331,8 @@ function oturumRolu() {
 // Izleyici salt okunur: E-Tablo dugmesi gizlenir. Dugme e-tablonun adresini
 // aciyor, o e-tabloda da tum sifreler duruyor — izleyiciye gosterilmez.
 // Gizlemek yalnizca arayuz nezaketi; asil engel sunucuda (etabloUrl merkez ister).
+let kapsamUyarisi = "";
+
 function yetkiyiUygula() {
   const merkezMi = oturumRolu() === "merkez";
   const etabloBtn = document.getElementById("etabloAc");
@@ -333,9 +340,9 @@ function yetkiyiUygula() {
 
   const kim = document.getElementById("kimBilgisi");
   if (kim && oturum) {
-    kim.textContent = merkezMi
-      ? `${oturum.sube} · tüm yetkiler`
-      : `${oturum.sube} · salt okunur`;
+    const parcalar = [oturum.sube, merkezMi ? "tüm yetkiler" : "salt okunur"];
+    if (izinliSubeler && izinliSubeler.length) parcalar.push(izinliSubeler.join(", "));
+    kim.textContent = parcalar.join(" · ");
   }
 }
 
@@ -364,6 +371,9 @@ async function veriGetir() {
     });
     if (!data.ok) { goster("hata", data.hata || "Kayıtlar alınamadı."); return; }
     sonKayitlar = data.kayitlar || [];
+    izinliSubeler = data.kapsamli ? (data.subeler || []) : null;
+    kapsamUyarisi = data.uyari || "";
+    yetkiyiUygula();
     ciz(sonKayitlar);
   } catch (err) {
     goster("hata", "Kayıtlar alınamadı, internet bağlantınızı kontrol edip tekrar deneyin.");
@@ -374,7 +384,14 @@ async function veriGetir() {
 function subeSirasi(kayitlar) {
   const gorulen = new Set(kayitlar.map(k => k.sube));
   const ekstra = [...gorulen].filter(s => !SUBE_SIRA.includes(s)).sort();
-  return SUBE_SIRA.concat(ekstra);
+  const tumu = SUBE_SIRA.concat(ekstra);
+  // Kapsam tanımlıysa sabit sıra korunur, izin verilmeyen şube hiç çizilmez.
+  if (!izinliSubeler) return tumu;
+  const izin = new Set(izinliSubeler);
+  const sirali = tumu.filter(s => izin.has(s));
+  // Kapsamda yazılıp sabit listede olmayan ad varsa o da sona eklenir.
+  izinliSubeler.forEach(s => { if (!sirali.includes(s)) sirali.push(s); });
+  return sirali;
 }
 
 function urunSirasi(kayitlar) {
@@ -385,7 +402,9 @@ function urunSirasi(kayitlar) {
 
 function ciz(kayitlar) {
   if (kayitlar.length === 0) {
-    goster("bos", "Seçili tarih aralığında kayıt yok.");
+    goster("bos", kapsamUyarisi
+      ? kapsamUyarisi + " — Subeler sekmesindeki Kapsam sütununu kontrol edin."
+      : "Seçili tarih aralığında kayıt yok.");
     return;
   }
 
@@ -418,6 +437,12 @@ function ciz(kayitlar) {
   const eksikler = subeler.filter(s => !subeToplam[s]);
 
   let html = "";
+
+  if (kapsamUyarisi) {
+    html += '<div class="not-kart" style="background:#FEF2F2;border-color:#FECACA;">' +
+      '<div class="kim">Kapsam Hatası</div>' + htmlKac(kapsamUyarisi) +
+      ' — Subeler sekmesindeki Kapsam sütununu şube adıyla birebir aynı yazın.</div>';
+  }
 
   // Özet kutuları
   html += '<div class="ozet-grid">' +
