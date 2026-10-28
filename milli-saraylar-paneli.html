@@ -101,9 +101,9 @@
   <div class="marka">
     <div class="rozet">MS</div>
     <h1>Milli Saraylar Paneli</h1>
-    <div class="sub">Merkez şifresiyle giriş yapın.</div>
+    <div class="sub">Size verilen şifreyle giriş yapın.</div>
   </div>
-  <label for="girisSifre">Merkez Şifresi</label>
+  <label for="girisSifre">Şifre</label>
   <input type="password" id="girisSifre" inputmode="numeric" autocomplete="current-password"
          placeholder="••••••">
   <button id="girisBtn">Giriş Yap</button>
@@ -115,7 +115,7 @@
   <div class="ustbar">
     <div>
       <h1>Milli Saraylar Talep Paneli</h1>
-      <div class="sub" style="margin:2px 0 0;">Şubelerin gönderdiği ürün talepleri</div>
+      <div class="sub" style="margin:2px 0 0;" id="kimBilgisi">Şubelerin gönderdiği ürün talepleri</div>
     </div>
     <button id="cikisBtn">Çıkış</button>
   </div>
@@ -282,18 +282,15 @@ async function girisYap() {
     goster("hata", "Kurulum tamamlanmadı: APPS_SCRIPT_URL henüz ayarlanmamış.", girisDurum);
     return;
   }
-  if (!sifre) { goster("hata", "Merkez şifresini girin.", girisDurum); return; }
+  if (!sifre) { goster("hata", "Şifrenizi girin.", girisDurum); return; }
 
   girisBtn.disabled = true;
   girisBtn.textContent = "Kontrol ediliyor…";
   try {
-    const data = await istek({ islem: "giris", sube: MERKEZ, sifre });
+    // Ad sorulmuyor; sunucu sifreden kimin oldugunu bulup rolunu donuyor.
+    const data = await istek({ islem: "panelGiris", sifre });
     if (!data.ok) { goster("hata", data.hata || "Giriş yapılamadı.", girisDurum); return; }
-    if (data.rol !== "merkez") {
-      goster("hata", "Bu şifre panel için yetkili değil.", girisDurum);
-      return;
-    }
-    oturum = { sube: MERKEZ, sifre };
+    oturum = { sube: data.ad, sifre, rol: data.rol };
     try { localStorage.setItem(OTURUM_ANAHTARI, JSON.stringify(oturum)); } catch (e) {}
     girisSifreEl.value = "";
     girisDurum.className = "durum";
@@ -317,7 +314,29 @@ document.getElementById("cikisBtn").addEventListener("click", () => {
 function paneliAc() {
   girisEkran.classList.add("gizle");
   anaEkran.classList.remove("gizle");
+  yetkiyiUygula();
   veriGetir();
+}
+
+// Eski oturumlarda rol yok; o donemde panele yalnizca merkez girebiliyordu.
+function oturumRolu() {
+  return (oturum && oturum.rol) || "merkez";
+}
+
+// Izleyici salt okunur: E-Tablo dugmesi gizlenir. Dugme e-tablonun adresini
+// aciyor, o e-tabloda da tum sifreler duruyor — izleyiciye gosterilmez.
+// Gizlemek yalnizca arayuz nezaketi; asil engel sunucuda (etabloUrl merkez ister).
+function yetkiyiUygula() {
+  const merkezMi = oturumRolu() === "merkez";
+  const etabloBtn = document.getElementById("etabloAc");
+  if (etabloBtn) etabloBtn.classList.toggle("gizle", !merkezMi);
+
+  const kim = document.getElementById("kimBilgisi");
+  if (kim && oturum) {
+    kim.textContent = merkezMi
+      ? `${oturum.sube} · tüm yetkiler`
+      : `${oturum.sube} · salt okunur`;
+  }
 }
 
 // ————————————————————————————————————————————— veri

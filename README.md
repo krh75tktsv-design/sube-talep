@@ -150,15 +150,41 @@ E-Tablo'nun `Subeler` sekmesinde** tutulur:
   yalnızca Apps Script tarafında yapılır.
 - Şube ekleme/çıkarma, şifre değiştirme, bir şubeyi kapatma (`Aktif`
   sütununa `hayir`) e-tablodan yapılır; kod değişmez.
-- `Subeler` sekmesindeki **MERKEZ** satırı panelin şifresidir, şubelere
-  verilmez. Yalnızca `rol` sütunu `merkez` olan hesap tüm şubelerin
-  kayıtlarını görebilir; bir şube yalnızca kendi gönderdiklerine erişir.
 - 4 haneli şifre iç ekip için yeterli bir ayrımdır, gerçek bir güvenlik
   katmanı değildir: Web App URL'sini bilen biri şube listesini görebilir
   ve şifre deneyebilir.
 
 Giriş bir kez yapılır, tarayıcı hatırlar; telefona PWA olarak kurulunca
 her açılışta şifre sormaz. "Çıkış" düğmesi hatırlananı siler.
+
+### Roller
+
+`Subeler` sekmesindeki `Rol` sütunu üç değer alır:
+
+| Rol | Ne yapabilir |
+|---|---|
+| `sube` | Kendi formunu doldurur, yalnızca kendi gönderdiklerini görür. Giriş ekranındaki şube listesinde görünen tek rol budur. |
+| `merkez` | Paneli tam yetkiyle açar: tüm kayıtlar, Excel/CSV, yazdırma ve **▦ E-Tablo** düğmesi. Talep gönderemez. |
+| `izleyici` | Paneli **salt okunur** açar: tüm kayıtlar, Excel/CSV, yazdırma. E-Tablo düğmesi gizlidir ve sunucu da adresi vermez. Talep gönderemez. |
+
+#### Panele yeni kişi ekleme
+
+`Subeler` sekmesine bir satır yazmak yeterli, kod değişmez:
+
+| Şube | Şifre | Rol | Aktif |
+|---|---|---|---|
+| AYŞE | 445566 | izleyici | evet |
+
+- İlk sütun şube adı yerine kişi adı olabilir; kod sütunları konuma göre
+  okur, başlığı değiştirmek de güvenlidir.
+- Şifreyi **6 haneli ve kimseyle aynı olmayacak** şekilde verin. Panel girişi
+  tek kutudur (ad sorulmaz), kişiyi şifreden bulur; aynı şifre iki kişideyse
+  giriş bilerek reddedilir ve uyarı verir.
+- Birinin erişimini kesmek için `Aktif` sütununa `hayir` yazın; satırı
+  silmeniz gerekmez.
+- **İzleyiciye E-Tablo adresi verilmez**, çünkü o e-tabloda `Subeler`
+  sekmesi — yani tüm şifreler — duruyor. Düğmeyi gizlemek yalnızca arayüz
+  nezaketi; asıl engel `etabloUrl` işleminin `merkez` şartıdır.
 
 ### Kurulum
 

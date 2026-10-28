@@ -38,6 +38,15 @@ const SUBELER = [
 // Panele giren merkez kullanıcısının "şube" adı. Şube listesinde görünmez.
 const MERKEZ = "MERKEZ";
 
+// Talep panelini açabilen roller. "izleyici" salt okunur: kayıtları görür,
+// ama talep gönderemez ve e-tablo adresini alamaz (o e-tabloda tüm
+// şifreler duruyor — izleyiciye verilmez).
+const PANEL_ROLLERI = ["merkez", "izleyici"];
+
+function panelRolu(rol) {
+  return PANEL_ROLLERI.indexOf(rol) !== -1;
+}
+
 // Eksik şube uyarı maili bu adrese gider (opsiyonel, aşağıya bak).
 const UYARI_EPOSTASI = "serkansalihoglu@lavita.com.tr";
 
@@ -121,6 +130,25 @@ function dogrula(ad, sifre) {
   return bulunan.length === 1 ? bulunan[0] : null;
 }
 
+// Panel girisi: tek kutu, sadece sifre. Ad sorulmaz cunku panel
+// kullanicilari (merkez + izleyiciler) sube listesinde gorunmuyor.
+// Ayni sifre iki kisideyse kimin oldugu belirsiz kalir; o yuzden
+// bilerek reddedilir, sessizce birini secmek yanlis olurdu.
+function panelGiris(sifre) {
+  const hedef = String(sifre || "").trim();
+  if (!hedef) return json({ ok: false, hata: "Şifre girin." });
+
+  const bulunan = subeleriOku().filter(function (s) {
+    return s.aktif && panelRolu(s.rol) && s.sifre === hedef;
+  });
+  if (bulunan.length === 0) return json({ ok: false, hata: "Şifre hatalı." });
+  if (bulunan.length > 1) {
+    return json({ ok: false, hata: "Bu şifre birden fazla kişide tanımlı. " +
+      "Subeler sekmesinde şifreleri farklılaştırın." });
+  }
+  return json({ ok: true, ad: bulunan[0].ad, rol: bulunan[0].rol });
+}
+
 // ————————————————————————————————————————————— istekler
 
 // Giriş ekranının şube açılır listesi için: sadece adlar, şifresiz.
@@ -138,6 +166,9 @@ function doPost(e) {
   } catch (hata) {
     return json({ ok: false, hata: "Geçersiz istek." });
   }
+
+  // Panel girisi ad bilmeden yapilir; dogrula()'dan once ele alinir.
+  if (v.islem === "panelGiris") return panelGiris(v.sifre);
 
   const kisi = dogrula(v.sube, v.sifre);
   if (!kisi) return json({ ok: false, hata: "Şube veya şifre hatalı." });
@@ -189,7 +220,7 @@ function gecmis(kisi, v) {
 
 // Panel için: tüm şubelerin kayıtları. Yalnızca merkez rolü çağırabilir.
 function kayitlar(kisi, v) {
-  if (kisi.rol !== "merkez") return json({ ok: false, hata: "Bu işlem için yetkiniz yok." });
+  if (!panelRolu(kisi.rol)) return json({ ok: false, hata: "Bu işlem için yetkiniz yok." });
   let liste = talepleriOku();
   if (v.baslangic) liste = liste.filter(function (k) { return k.tarih >= v.baslangic; });
   if (v.bitis)     liste = liste.filter(function (k) { return k.tarih <= v.bitis; });
