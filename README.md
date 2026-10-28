@@ -207,6 +207,13 @@ adını yazın. Birden fazla şube virgülle ayrılır: `SAAT, HAREM`.
   kalmaz, "Kapsamdaki şu ad hiçbir şubeyle eşleşmiyor" uyarısı verir.
 - Kapsam yetkiyi **genişletmez**: kapsamlı bir izleyici yine talep
   gönderemez ve e-tablo adresini alamaz.
+- **Şube başına tek hesap** kurmak için ilk sütuna da şube adını yazın
+  (`HAREM | … | izleyici | evet | HAREM`). O şubedeki herkes aynı şifreyi
+  kullanır, kişi kişi satır açmaya gerek kalmaz. Aynı ad `sube` rolüyle
+  zaten listede olduğu için `Subeler` sekmesinde iki kez görünür; doğrulama
+  (ad + şifre) çifti üzerinden yapıldığından bu bir sorun değildir, form
+  hesabı ve izleyici hesabı birbirine karışmaz.
+- Kapsam, hesabın adıyla birebir aynıysa panel başlığında tekrar yazılmaz.
 
 ### Kurulum
 

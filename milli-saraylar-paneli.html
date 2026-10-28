@@ -341,7 +341,12 @@ function yetkiyiUygula() {
   const kim = document.getElementById("kimBilgisi");
   if (kim && oturum) {
     const parcalar = [oturum.sube, merkezMi ? "tüm yetkiler" : "salt okunur"];
-    if (izinliSubeler && izinliSubeler.length) parcalar.push(izinliSubeler.join(", "));
+    // Şube başına açılan hesaplarda ad ile kapsam aynı oluyor; aynıysa
+    // ikinci kez yazmaya gerek yok ("HAREM · salt okunur · HAREM" olurdu).
+    if (izinliSubeler && izinliSubeler.length) {
+      const kapsam = izinliSubeler.join(", ");
+      if (kapsam !== oturum.sube) parcalar.push(kapsam);
+    }
     kim.textContent = parcalar.join(" · ");
   }
 }
