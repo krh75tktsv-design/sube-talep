@@ -218,7 +218,9 @@ function doPost(e) {
 }
 
 function kaydet(kisi, v) {
-  if (kisi.rol !== "sube") return json({ ok: false, hata: "Merkez hesabıyla talep gönderilmez." });
+  if (kisi.rol !== "sube") {
+    return json({ ok: false, hata: "Bu hesapla talep gönderilmez; yalnızca şube hesapları gönderebilir." });
+  }
   if (!v.tarih) return json({ ok: false, hata: "Talep tarihi eksik." });
 
   const kalemler = (v.kalemler || []).filter(function (k) {
