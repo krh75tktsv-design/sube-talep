@@ -175,7 +175,7 @@ async function veriYukle(){
   });
   $("kanallar").innerHTML = html;
   KANAL.forEach(k => { $("k-"+k.alan).addEventListener("input", toplamGuncelle); $("k-"+k.alan).addEventListener("focus", e => e.target.select()); });
-  if(!$("c-tarih").value) $("c-tarih").value = gunEkle(c.bugun || bugunStr(), -1);
+  if(!$("c-tarih").value) $("c-tarih").value = c.bugun || bugunStr();
   $("c-tarih").max = c.bugun || bugunStr();
   if(ben.rol !== "yonetici") $("c-tarih").min = gunEkle(c.bugun || bugunStr(), -(c.duzeltmeGun || 7));
   formuDoldur();
