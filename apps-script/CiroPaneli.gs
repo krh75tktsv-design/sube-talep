@@ -356,7 +356,7 @@ function hedefKaydet(kisi, ay, sube, hedef) {
 
 function kalemKaydet(kisi, v) {
   if (kisi.rol !== "yonetici") return json({ ok: false, hata: "Kasa ödemesi adlarını yalnızca yönetici düzenler." });
-  const ad = String(v.ad || "").trim();
+  const ad = String(v.kalemAd || "").trim();   // not: v.ad giriş yapan kişinin adıdır, kalem adı kalemAd'dır
   if (!ad || ad.length > 60) return json({ ok: false, hata: "Ad 1-60 karakter olmalı." });
   const subeler = (Array.isArray(v.subeler) ? v.subeler : []).filter(function (x) { return SUBELER.indexOf(x) >= 0; });
   const tum = tumSatirlar("KasaKalemleri");
