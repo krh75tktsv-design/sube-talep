@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ciro Girişi · LA VİTA</title>
+<meta name="robots" content="noindex">
+<style>
+:root{
+  --bg:#f6f5f2; --card:#ffffff; --text:#1f2328; --text-2:#5b626b; --line:#e3e0d9;
+  --accent:#c2410c; --accent-soft:#fdf0e8; --ok:#15803d; --ok-soft:#e4f4ea; --err:#b42318; --err-soft:#fdecea;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#16181b; --card:#1f2327; --text:#eceff2; --text-2:#9aa3ad; --line:#323840;
+    --accent:#f08a4b; --accent-soft:#2c2118; --ok:#4ade80; --ok-soft:#14281b; --err:#f87171; --err-soft:#2d1716; }
+}
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--text); font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:0 16px 40px; }
+.kap{ max-width:560px; margin:0 auto; }
+header{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:16px 0 10px; }
+h1{ font-size:19px; margin:0; }
+.kart{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+label{ display:block; font-size:12.5px; color:var(--text-2); margin:0 0 4px; font-weight:600; }
+input,select,button{ font:inherit; }
+input[type=text],input[type=password],input[type=date],select{
+  width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text); }
+input:focus,select:focus{ outline:2px solid var(--accent); outline-offset:0; }
+.tutar{ text-align:right; font-variant-numeric:tabular-nums; font-size:17px; }
+.satir{ margin-bottom:12px; }
+.iki{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+button{ border:0; border-radius:10px; padding:12px 16px; cursor:pointer; background:var(--accent); color:#fff; font-weight:700; }
+button.ikincil{ background:transparent; color:var(--text-2); border:1px solid var(--line); font-weight:600; padding:8px 12px; font-size:13px; }
+button.kucuk{ padding:7px 11px; font-size:13px; }
+button:disabled{ opacity:.55; cursor:default; }
+.toplam{ display:flex; justify-content:space-between; align-items:baseline; padding:12px 14px; border-radius:10px; background:var(--accent-soft); margin:4px 0 12px; }
+.toplam b{ font-size:22px; font-variant-numeric:tabular-nums; }
+.bildirim{ padding:10px 12px; border-radius:10px; margin-bottom:12px; font-size:14px; }
+.bildirim.ok{ background:var(--ok-soft); color:var(--ok); }
+.bildirim.hata{ background:var(--err-soft); color:var(--err); }
+.ipucu{ font-size:12.5px; color:var(--text-2); margin-top:6px; }
+.liste{ list-style:none; margin:0; padding:0; }
+.liste li{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--line); }
+.liste li:first-child{ border-top:0; }
+.liste .t{ font-variant-numeric:tabular-nums; font-weight:700; }
+.liste small{ color:var(--text-2); display:block; }
+.gizli{ display:none !important; }
+.bolum{ border-top:1px solid var(--line); padding-top:12px; margin-top:4px; margin-bottom:12px; }
+.baslik{ font-size:13px; font-weight:700; margin:14px 0 8px; color:var(--text); display:flex; justify-content:space-between; }
+.baslik span{ font-weight:600; color:var(--text-2); font-variant-numeric:tabular-nums; }
+.kasa-satir{ display:grid; grid-template-columns:1fr 120px 34px; gap:8px; margin-bottom:8px; align-items:center; }
+.kasa-satir button{ padding:8px 0; }
+@media (max-width:420px){ .iki{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="kap">
+  <header>
+    <h1>Ciro Girişi</h1>
+    <div id="ust" class="gizli">
+      <span id="kim" style="font-size:13px;color:var(--text-2);"></span>
+      <button class="ikincil kucuk" id="btn-pin" title="PIN'i değiştir">PIN</button>
+      <button class="ikincil kucuk" id="btn-cikis">Çıkış</button>
+    </div>
+  </header>
+
+  <div id="bildirim"></div>
+
+  <!-- Giriş -->
+  <div class="kart" id="giris-kart">
+    <div class="satir"><label for="g-ad">Adınız</label><select id="g-ad"><option value="">Yükleniyor…</option></select></div>
+    <div class="satir"><label for="g-pin">PIN</label><input type="password" id="g-pin" inputmode="numeric" autocomplete="current-password" placeholder="••••"></div>
+    <button id="btn-giris" style="width:100%;">Giriş yap</button>
+  </div>
+
+  <!-- Ciro girişi -->
+  <div id="ana" class="gizli">
+    <div class="kart">
+      <div class="iki">
+        <div class="satir"><label for="c-sube">Şube</label><select id="c-sube"></select></div>
+        <div class="satir"><label for="c-tarih">Tarih</label><input type="date" id="c-tarih"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin:-4px 0 12px;">
+        <button class="ikincil kucuk" id="btn-dun">Dün</button>
+        <button class="ikincil kucuk" id="btn-bugun">Bugün</button>
+      </div>
+      <div id="kanallar"></div>
+      <div class="bolum"><label>Kasa ödemeleri</label><div id="kasa-satirlar"></div>
+        <button class="ikincil kucuk" id="btn-kasa-ekle" type="button">+ Kasa ödemesi ekle</button>
+        <div class="ipucu" id="kasa-not"></div></div>
+      <div class="toplam"><span>Günlük toplam ciro</span><b id="c-toplam">0</b></div>
+      <div class="satir"><label for="c-not">Not (isteğe bağlı)</label><input type="text" id="c-not" maxlength="200" placeholder="Örn. yağmur vardı, etkinlik"></div>
+      <button id="btn-kaydet" style="width:100%;">Kaydet</button>
+      <div class="ipucu" id="c-ipucu"></div>
+    </div>
+
+    <div class="kart">
+      <label>Son girişler</label>
+      <ul class="liste" id="son"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Ciro Paneli'nin Web App adresi (apps-script/CiroPaneli.gs dağıtılınca verilir). Veri bu dosyada tutulmaz. */
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz4UDhGbxTLL6gtLVaYiw2z6K6NJAQBZa3aiL6bU8TVvH4sSaT2sCO1SYDnLhSdMzD-/exec";
+
+const $ = id => document.getElementById(id);
+const OTURUM_ANAHTAR = "ciro-oturum";
+let oturum = null, ben = null, VERI = null, KANAL = [];
+
+const tr = n => (Number(n)||0).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+const oku = v => { const t = String(v == null ? "" : v).trim().replace(/\s/g,""); if(!t) return 0; const n = parseFloat(t.replace(/\./g,"").replace(",",".")); return isNaN(n) ? 0 : n; };
+const bugunStr = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const gunEkle = (str, n) => { const d = new Date(str+"T12:00:00"); d.setDate(d.getDate()+n); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const tarihYaz = s => new Date(s+"T12:00:00").toLocaleDateString("tr-TR", { day:"numeric", month:"long", weekday:"short" });
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+
+function bildir(mesaj, hata){
+  $("bildirim").innerHTML = mesaj ? `<div class="bildirim ${hata ? "hata" : "ok"}">${esc(mesaj)}</div>` : "";
+  if(mesaj && !hata) setTimeout(() => { if($("bildirim").textContent.trim() === mesaj) $("bildirim").innerHTML = ""; }, 5000);
+}
+
+async function api(islem, ek){
+  if(APPS_SCRIPT_URL.indexOf("BURAYA_") === 0) return { ok:false, hata:"Kurulum tamamlanmadı: ciro.html içindeki APPS_SCRIPT_URL boş." };
+  try{
+    const res = await fetch(APPS_SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, redirect:"follow",
+      body: JSON.stringify(Object.assign({ islem }, oturum || {}, ek || {})) });
+    const c = await res.json();
+    if(c && c.yenidenGiris && islem !== "giris") cikis(c.hata);
+    return c;
+  }catch(_){ return { ok:false, hata:"Bağlantı kurulamadı. İnterneti kontrol edip tekrar deneyin." }; }
+}
+
+function cikis(mesaj){
+  try{ localStorage.removeItem(OTURUM_ANAHTAR); }catch(_){}
+  oturum = null; ben = null; VERI = null;
+  $("ana").classList.add("gizli"); $("ust").classList.add("gizli"); $("giris-kart").classList.remove("gizli");
+  $("g-pin").value = "";
+  bildir(mesaj || "", !!mesaj);
+}
+
+async function kisileriYukle(){
+  const c = await api("kisiListesi");
+  const sel = $("g-ad");
+  if(!c || !c.ok){ sel.innerHTML = '<option value="">Liste alınamadı</option>'; if(c && c.hata) bildir(c.hata, true); return; }
+  sel.innerHTML = '<option value="">Adınızı seçin…</option>' + c.kisiler.map(k => `<option>${esc(k.ad)}</option>`).join("");
+}
+
+async function girisYap(ad, pin){
+  oturum = { ad, pin };
+  const c = await api("giris");
+  if(!c || !c.ok){ oturum = null; bildir((c && c.hata) || "Giriş yapılamadı.", true); return false; }
+  ben = c.kisi;
+  try{ localStorage.setItem(OTURUM_ANAHTAR, JSON.stringify(oturum)); }catch(_){}
+  $("giris-kart").classList.add("gizli"); $("ust").classList.remove("gizli"); $("ana").classList.remove("gizli");
+  $("kim").textContent = ben.ad;
+  bildir("");
+  await veriYukle();
+  return true;
+}
+
+async function veriYukle(){
+  const c = await api("veri");
+  if(!c || !c.ok){ if(c && !c.yenidenGiris) bildir(c.hata || "Veri alınamadı", true); return; }
+  VERI = c; KANAL = c.kanallar || [];
+  const sel = $("c-sube"), onceki = sel.value;
+  sel.innerHTML = (c.subeler || []).map(s => `<option>${esc(s)}</option>`).join("");
+  if(onceki && c.subeler.indexOf(onceki) >= 0) sel.value = onceki;
+  const grupAd = { satis:"Satışlar", yemek:"Yemek kartları" };
+  let html = "", oncekiGrup = null;
+  KANAL.forEach(k => {
+    if(k.grup !== oncekiGrup){ html += `<div class="baslik">${esc(grupAd[k.grup] || "")}<span id="alt-${k.grup}"></span></div>`; oncekiGrup = k.grup; }
+    html += `<div class="satir"><label for="k-${k.alan}">${esc(k.ad)}</label>
+    <input type="text" inputmode="decimal" class="tutar" id="k-${k.alan}" placeholder="0" autocomplete="off"></div>`;
+  });
+  $("kanallar").innerHTML = html;
+  KANAL.forEach(k => { $("k-"+k.alan).addEventListener("input", toplamGuncelle); $("k-"+k.alan).addEventListener("focus", e => e.target.select()); });
+  if(!$("c-tarih").value) $("c-tarih").value = gunEkle(c.bugun || bugunStr(), -1);
+  $("c-tarih").max = c.bugun || bugunStr();
+  if(ben.rol !== "yonetici") $("c-tarih").min = gunEkle(c.bugun || bugunStr(), -(c.duzeltmeGun || 7));
+  formuDoldur();
+  sonlariCiz();
+}
+
+function kasaKalemleriSube(){
+  const sube = $("c-sube").value;
+  return ((VERI && VERI.kasaKalemleri) || []).filter(k => !k.subeler.length || k.subeler.indexOf(sube) >= 0);
+}
+function personelleriSube(){
+  const sube = $("c-sube").value;
+  return ((VERI && VERI.personeller) || []).filter(p => p.sube === sube).map(p => p.ad).sort((a,b) => a.localeCompare(b, "tr"));
+}
+function kasaListesi(){
+  return [...document.querySelectorAll(".kasa-satir")].map(r => ({ ad: r.querySelector(".ks-ad").value, kisi: r.querySelector(".ks-kisi").value, alt: r.querySelector(".ks-alt").value, tutar: oku(r.querySelector("input").value) }));
+}
+function kasaSatirEkle(ad, tutar, kisi, alt){
+  const kalemler = kasaKalemleriSube(), kisiler = personelleriSube();
+  const d = document.createElement("div"); d.className = "kasa-satir";
+  d.innerHTML = `<select class="ks-ad">${'<option value="">Ad seçin…</option>' + kalemler.map(x => `<option ${x.ad === ad ? "selected" : ""}>${esc(x.ad)}</option>`).join("")}</select>
+    <input type="text" inputmode="decimal" class="tutar" placeholder="0" value="${tutar ? tr(tutar) : ""}" autocomplete="off">
+    <button class="ikincil" type="button" title="Satırı sil">×</button>
+    <select class="ks-alt gizli" style="grid-column:1 / span 3;"></select>
+    <select class="ks-kisi gizli" style="grid-column:1 / span 3;">${'<option value="">Personel seçin…</option>' + kisiler.map(x => `<option ${x === kisi ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>`;
+  const ayarla = () => {
+    const kalem = kalemler.find(x => x.ad === d.querySelector(".ks-ad").value);
+    d.querySelector(".ks-kisi").classList.toggle("gizli", !(kalem && kalem.tur === "personel"));
+    const altSel = d.querySelector(".ks-alt"), onceki = altSel.value || alt || "";
+    altSel.innerHTML = kalem && kalem.alt && kalem.alt.length ? '<option value="">Alt kalem seçin…</option>' + kalem.alt.map(x => `<option ${x === onceki ? "selected" : ""}>${esc(x)}</option>`).join("") : "";
+    altSel.classList.toggle("gizli", !(kalem && kalem.alt && kalem.alt.length));
+  };
+  d.querySelector(".ks-ad").addEventListener("change", ayarla);
+  d.querySelector("input").addEventListener("input", toplamGuncelle);
+  d.querySelector("input").addEventListener("focus", e => e.target.select());
+  d.querySelector("button").addEventListener("click", () => { d.remove(); toplamGuncelle(); });
+  $("kasa-satirlar").appendChild(d); ayarla();
+}
+function toplamGuncelle(){
+  const grup = {};
+  KANAL.forEach(k => { grup[k.grup] = (grup[k.grup] || 0) + oku($("k-"+k.alan).value); });
+  Object.keys(grup).forEach(g => { const el = $("alt-"+g); if(el) el.textContent = "₺" + tr(grup[g]); });
+  const kasa = kasaListesi().reduce((a,x) => a + x.tutar, 0);
+  $("kasa-not").textContent = kasa > 0 ? `Kasa ödemeleri toplamı: ₺${tr(kasa)} (ciroya dahil)` : "";
+  $("c-toplam").textContent = tr(Object.values(grup).reduce((a,x) => a + x, 0) + kasa);
+}
+
+function kayitBul(sube, tarih){ return ((VERI && VERI.kayitlar) || []).find(k => k.sube === sube && k.tarih === tarih); }
+
+function formuDoldur(){
+  const k = kayitBul($("c-sube").value, $("c-tarih").value);
+  KANAL.forEach(x => { $("k-"+x.alan).value = k && k[x.alan] ? tr(k[x.alan]) : ""; });
+  $("c-not").value = k ? (k.not || "") : "";
+  $("kasa-satirlar").innerHTML = "";
+  ((k && k.kasaDetay) || []).forEach(x => kasaSatirEkle(x.ad, x.tutar, x.kisi, x.alt));
+  toplamGuncelle();
+  $("c-ipucu").textContent = k ? `Bu gün için ${k.giren || "biri"} tarafından ${k.zaman || ""} girilmiş kayıt var; kaydederseniz üzerine yazılır.` : "Bu gün için henüz kayıt yok.";
+  $("btn-kaydet").textContent = k ? "Güncelle" : "Kaydet";
+}
+
+function sonlariCiz(){
+  const sube = $("c-sube").value;
+  const liste = ((VERI && VERI.kayitlar) || []).filter(k => k.sube === sube).sort((a,b) => b.tarih.localeCompare(a.tarih)).slice(0, 14);
+  $("son").innerHTML = liste.length ? liste.map(k => `<li><div><b>${esc(tarihYaz(k.tarih))}</b><small>${esc(k.giren || "")}${k.not ? " · " + esc(k.not) : ""}</small></div>
+    <div style="text-align:right;"><span class="t">₺${tr(k.toplam)}</span><br><button class="ikincil kucuk" data-duzenle="${k.tarih}">Aç</button></div></li>`).join("")
+    : '<li><span class="ipucu">Bu şube için henüz giriş yok.</span></li>';
+  $("son").querySelectorAll("[data-duzenle]").forEach(b => b.addEventListener("click", () => {
+    $("c-tarih").value = b.dataset.duzenle; formuDoldur(); window.scrollTo({ top:0, behavior:"smooth" });
+  }));
+}
+
+$("btn-giris").addEventListener("click", async () => {
+  const ad = $("g-ad").value, pin = $("g-pin").value.trim();
+  if(!ad || !pin){ bildir("Adınızı seçip PIN'inizi yazın.", true); return; }
+  $("btn-giris").disabled = true;
+  await girisYap(ad, pin);
+  $("btn-giris").disabled = false;
+});
+$("g-pin").addEventListener("keydown", e => { if(e.key === "Enter") $("btn-giris").click(); });
+$("btn-cikis").addEventListener("click", () => cikis(""));
+$("c-sube").addEventListener("change", () => { formuDoldur(); sonlariCiz(); });
+$("c-tarih").addEventListener("change", formuDoldur);
+$("btn-kasa-ekle").addEventListener("click", () => {
+  if(!kasaKalemleriSube().length){ bildir("Bu şube için kasa ödemesi adı tanımlı değil. Yöneticiye başvurun.", true); return; }
+  kasaSatirEkle("", 0, "", "");
+});
+$("btn-dun").addEventListener("click", () => { $("c-tarih").value = gunEkle((VERI && VERI.bugun) || bugunStr(), -1); formuDoldur(); });
+$("btn-bugun").addEventListener("click", () => { $("c-tarih").value = (VERI && VERI.bugun) || bugunStr(); formuDoldur(); });
+
+$("btn-kaydet").addEventListener("click", async () => {
+  const sube = $("c-sube").value, tarih = $("c-tarih").value;
+  if(!sube || !tarih){ bildir("Şube ve tarih seçin.", true); return; }
+  const ciro = { sube, tarih, not: $("c-not").value.trim() };
+  let toplam = 0;
+  KANAL.forEach(k => { ciro[k.alan] = oku($("k-"+k.alan).value); toplam += ciro[k.alan]; });
+  const kasa = kasaListesi().filter(x => x.ad || x.tutar > 0);
+  if(kasa.some(x => !x.ad)){ bildir("Kasa ödemesi satırında ad seçilmemiş.", true); return; }
+  const kalemTur = ad => (kasaKalemleriSube().find(x => x.ad === ad) || {}).tur;
+  if(kasa.some(x => kalemTur(x.ad) === "personel" && !x.kisi)){ bildir("Personel ürün satırında personel seçin.", true); return; }
+  const kalemAlt = ad => (kasaKalemleriSube().find(x => x.ad === ad) || {}).alt || [];
+  if(kasa.some(x => kalemAlt(x.ad).length && !x.alt)){ bildir("Alt kalem seçilmemiş satır var.", true); return; }
+  kasa.forEach(x => { if(kalemTur(x.ad) !== "personel") delete x.kisi; if(!kalemAlt(x.ad).length) delete x.alt; });
+  ciro.kasa = kasa; toplam += kasa.reduce((a,x) => a + x.tutar, 0);
+  if(toplam <= 0 && !confirm("Toplam 0 görünüyor. Yine de kaydedilsin mi?")) return;
+  const eski = kayitBul(sube, tarih);
+  if(eski && Math.abs((eski.toplam||0) - toplam) > 0 && !confirm(`Bu gün için ₺${tr(eski.toplam)} girilmişti, ₺${tr(toplam)} olarak değiştirilecek. Devam edilsin mi?`)) return;
+  $("btn-kaydet").disabled = true;
+  const c = await api("ciroKaydet", { ciro });
+  $("btn-kaydet").disabled = false;
+  if(!c || !c.ok){ bildir((c && c.hata) || "Kaydedilemedi.", true); return; }
+  bildir(`${sube} · ${tarihYaz(tarih)}: ₺${tr(c.toplam)} ${c.guncellendi ? "güncellendi" : "kaydedildi"} ✓`);
+  await veriYukle();
+  /* Kayıttan sonra bir önceki güne geçmek isteyen (geriye doğru giren) için tarih korunur. */
+});
+
+$("btn-pin").addEventListener("click", async () => {
+  const yeni = prompt("Yeni PIN (" + (ben && ben.rol === "yonetici" ? "6" : "4") + "-8 rakam):");
+  if(!yeni) return;
+  const c = await api("pinDegistir", { yeniPin: yeni.trim() });
+  if(c && c.ok){ oturum.pin = yeni.trim(); try{ localStorage.setItem(OTURUM_ANAHTAR, JSON.stringify(oturum)); }catch(_){} bildir("PIN değiştirildi ✓"); }
+  else bildir((c && c.hata) || "PIN değiştirilemedi.", true);
+});
+
+(async function baslat(){
+  let kayitli = null;
+  try{ kayitli = JSON.parse(localStorage.getItem(OTURUM_ANAHTAR) || "null"); }catch(_){}
+  await kisileriYukle();
+  if(kayitli && kayitli.ad && kayitli.pin){
+    const ok = await girisYap(kayitli.ad, kayitli.pin);
+    if(!ok) cikis("Oturum süresi doldu, yeniden giriş yapın.");
+  }
+})();
+</script>
+</body>
+</html>
