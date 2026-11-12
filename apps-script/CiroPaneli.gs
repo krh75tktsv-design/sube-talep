@@ -35,6 +35,7 @@ const SUBELER = ["Nişantaşı", "Fulya", "Maslak"];
 const KANALLAR = [
   { alan: "nakit", ad: "Nakit", grup: "satis" },
   { alan: "kart", ad: "Kredi Kartı", grup: "satis" },
+  { alan: "havale", ad: "Banka Havale", grup: "satis" },
   { alan: "edenred", ad: "Edenred", grup: "yemek" },
   { alan: "pluxee", ad: "Pluxee", grup: "yemek" },
   { alan: "multinet", ad: "Multinet", grup: "yemek" },
@@ -75,6 +76,7 @@ const SEKMELER = {
     ["Nakit", "nakit", "s"], ["Kart", "kart", "s"], ["Edenred", "edenred", "s"], ["Pluxee", "pluxee", "s"],
     ["Multinet", "multinet", "s"], ["Setcard", "setcard", "s"], ["Metropol", "metropol", "s"], ["Token", "token", "s"],
     ["KasaOdemeleri", "kasa", "s"], ["KasaDetay", "kasaDetay", "m"], ["Toplam", "toplam", "s"], ["Not", "not", "m"],
+    ["Havale", "havale", "s"],   // sonradan eklendi: e-tablodaki mevcut sütun sırası bozulmasın diye en sonda
   ],
   KasaKalemleri: [["Ad", "ad", "m"], ["Subeler", "subeler", "m"], ["Tur", "tur", "m"], ["Alt", "alt", "m"], ["Aktif", "aktif", "b"]],
   Personeller: [["Ad", "ad", "m"], ["Sube", "sube", "m"]],
@@ -119,6 +121,10 @@ function sekme(ad) {
   let s = kitap.getSheetByName(ad);
   if (!s) s = kitap.insertSheet(ad);
   const basliklar = SEKMELER[ad].map(function (x) { return x[0]; });
+  // Sona yeni sütun eklendiyse (ör. Havale) başlığı kendiliğinden yazılır.
+  if (s.getLastRow() > 0 && s.getRange(1, basliklar.length).getValue() !== basliklar[basliklar.length - 1]) {
+    s.getRange(1, 1, 1, basliklar.length).setValues([basliklar]).setFontWeight("bold").setBackground("#f3f4f6");
+  }
   if (s.getLastRow() === 0 || s.getRange(1, 1).getValue() !== basliklar[0]) {
     s.getRange(1, 1, 1, basliklar.length).setValues([basliklar]).setFontWeight("bold").setBackground("#f3f4f6");
     s.setFrozenRows(1);
