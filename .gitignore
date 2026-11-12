@@ -20,3 +20,13 @@ kasa-plus-yedek-*.json
 
 # Filo paneli: Artifact kaynağı, depoya girmemeli.
 filo-paneli.html
+
+# Her türlü yedek dosyası (gerçek veri içerir) — depoya girmemeli
+*yedek*.json
+
+# Özel proje rehberi ve notlar
+CLAUDE.md
+docs-ozel/
+
+# Excel dosyaları: şablonlar, reçete/maliyet/satış rakamları içerir — depoya girmemeli
+*.xlsx
