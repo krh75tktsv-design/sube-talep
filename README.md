@@ -64,7 +64,7 @@ sürüm > Dağıt** demeyi unutmayın; yoksa değişiklik canlıya çıkmaz
 
 16 Milli Saraylar şubesinin (HAREM, KAFE, SAAT, KÜÇÜKSU, IHLAMUR, ŞEKER,
 MASLAK, ÇEŞMİ, ABRAH, LİMON, BEYLER, ÇAMLICA, MECİDİYE, YILDIZ, AYNALI,
-KASKAT) 33 kalemlik ürün listesinden talep göndermesi için ayrı bir sistem.
+KASKAT) 34 kalemlik ürün listesinden talep göndermesi için ayrı bir sistem.
 Şube Talepleri ve Ekip Paneli'nden **tamamen bağımsız**: kendi e-tablosu,
 kendi Web App URL'si. Biri bozulursa diğeri etkilenmez.
 
@@ -88,7 +88,7 @@ internet gerekir):
   bırakılır (0 yazılmaz), yatay A4, ilk sütun dondurulmuş. Listeden
   çıkarılmış ama eski kayıtlarda geçen bir ürün kaybolmaz — tablonun
   sonuna eklenir ve `muhasebe`'de kendi satırını alır.
-- **`muhasebe`** — aynı veri, muhasebe için gruplanmış 27 satır. Hücreler
+- **`muhasebe`** — aynı veri, muhasebe için gruplanmış 28 satır. Hücreler
   `dağılım`'a **canlı formülle** bağlıdır: `dağılım`'da elle bir düzeltme
   yaparsanız `muhasebe` kendiliğinden güncellenir. Değeri sıfır olan hücrede
   `0` yazmaz, boş görünür: formül `IF(...=0,"",...)` biçimindedir. Bunun için
