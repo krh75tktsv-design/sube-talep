@@ -166,11 +166,11 @@ async function veriYukle(){
   const sel = $("c-sube"), onceki = sel.value;
   sel.innerHTML = (c.subeler || []).map(s => `<option>${esc(s)}</option>`).join("");
   if(onceki && c.subeler.indexOf(onceki) >= 0) sel.value = onceki;
-  const grupAd = { satis:"Satışlar", yemek:"Yemek kartları" };
+  const grupAd = { satis:"Satışlar", yemek:"Yemek kartları", online:"Online" };
   let html = "", oncekiGrup = null;
   KANAL.forEach(k => {
-    if(k.grup !== oncekiGrup){ html += `<div class="baslik">${esc(grupAd[k.grup] || "")}<span id="alt-${k.grup}"></span></div>`; oncekiGrup = k.grup; }
-    html += `<div class="satir"><label for="k-${k.alan}">${esc(k.ad)}</label>
+    if(k.grup !== oncekiGrup){ html += `<div class="baslik" id="bas-${k.grup}">${esc(grupAd[k.grup] || "")}<span id="alt-${k.grup}"></span></div>`; oncekiGrup = k.grup; }
+    html += `<div class="satir" data-grup="${k.grup}" data-alan="${k.alan}" data-subeler="${esc((k.subeler || []).join(","))}"><label for="k-${k.alan}">${esc(k.ad)}</label>
     <input type="text" inputmode="decimal" class="tutar" id="k-${k.alan}" placeholder="0" autocomplete="off"></div>`;
   });
   $("kanallar").innerHTML = html;
@@ -214,9 +214,15 @@ function kasaSatirEkle(ad, tutar, kisi, alt){
   d.querySelector("button").addEventListener("click", () => { d.remove(); toplamGuncelle(); });
   $("kasa-satirlar").appendChild(d); ayarla();
 }
+/* Yalnızca belirli şubelere tanımlı kanallar (ör. Yemeksepeti/Trendyol → Maslak) diğer şubelerde gizlenir. */
+function kanalGorunur(k){ const s = $("c-sube").value; return !k.subeler || !k.subeler.length || k.subeler.indexOf(s) >= 0; }
+function kanalGorunumunuAyarla(){
+  KANAL.forEach(k => { const el = document.querySelector(`.satir[data-alan="${k.alan}"]`); if(el) el.classList.toggle("gizli", !kanalGorunur(k)); });
+  [...new Set(KANAL.map(k => k.grup))].forEach(g => { const b = $("bas-"+g); if(b) b.classList.toggle("gizli", !KANAL.some(k => k.grup === g && kanalGorunur(k))); });
+}
 function toplamGuncelle(){
   const grup = {};
-  KANAL.forEach(k => { grup[k.grup] = (grup[k.grup] || 0) + oku($("k-"+k.alan).value); });
+  KANAL.filter(kanalGorunur).forEach(k => { grup[k.grup] = (grup[k.grup] || 0) + oku($("k-"+k.alan).value); });
   Object.keys(grup).forEach(g => { const el = $("alt-"+g); if(el) el.textContent = "₺" + tr(grup[g]); });
   const kasa = kasaListesi().reduce((a,x) => a + x.tutar, 0);
   $("kasa-not").textContent = kasa > 0 ? `Kasa ödemeleri toplamı: ₺${tr(kasa)} (ciroya dahil)` : "";
@@ -226,6 +232,7 @@ function toplamGuncelle(){
 function kayitBul(sube, tarih){ return ((VERI && VERI.kayitlar) || []).find(k => k.sube === sube && k.tarih === tarih); }
 
 function formuDoldur(){
+  kanalGorunumunuAyarla();
   const k = kayitBul($("c-sube").value, $("c-tarih").value);
   KANAL.forEach(x => { $("k-"+x.alan).value = k && k[x.alan] ? tr(k[x.alan]) : ""; });
   $("c-not").value = k ? (k.not || "") : "";
@@ -270,7 +277,7 @@ $("btn-kaydet").addEventListener("click", async () => {
   if(!sube || !tarih){ bildir("Şube ve tarih seçin.", true); return; }
   const ciro = { sube, tarih, not: $("c-not").value.trim() };
   let toplam = 0;
-  KANAL.forEach(k => { ciro[k.alan] = oku($("k-"+k.alan).value); toplam += ciro[k.alan]; });
+  KANAL.filter(kanalGorunur).forEach(k => { ciro[k.alan] = oku($("k-"+k.alan).value); toplam += ciro[k.alan]; });
   const kasa = kasaListesi().filter(x => x.ad || x.tutar > 0);
   if(kasa.some(x => !x.ad)){ bildir("Kasa ödemesi satırında ad seçilmemiş.", true); return; }
   const kalemTur = ad => (kasaKalemleriSube().find(x => x.ad === ad) || {}).tur;
@@ -281,7 +288,8 @@ $("btn-kaydet").addEventListener("click", async () => {
   ciro.kasa = kasa; toplam += kasa.reduce((a,x) => a + x.tutar, 0);
   if(toplam <= 0 && !confirm("Toplam 0 görünüyor. Yine de kaydedilsin mi?")) return;
   const eski = kayitBul(sube, tarih);
-  if(eski && Math.abs((eski.toplam||0) - toplam) > 0 && !confirm(`Bu gün için ₺${tr(eski.toplam)} girilmişti, ₺${tr(toplam)} olarak değiştirilecek. Devam edilsin mi?`)) return;
+  const eskiToplam = eski ? KANAL.filter(kanalGorunur).reduce((a,k) => a + (eski[k.alan]||0), 0) + (eski.kasa||0) : 0;
+  if(eski && Math.abs(eskiToplam - toplam) > 0 && !confirm(`Bu gün için ₺${tr(eskiToplam)} girilmişti, ₺${tr(toplam)} olarak değiştirilecek. Devam edilsin mi?`)) return;
   $("btn-kaydet").disabled = true;
   const c = await api("ciroKaydet", { ciro });
   $("btn-kaydet").disabled = false;

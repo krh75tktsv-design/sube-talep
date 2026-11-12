@@ -42,6 +42,9 @@ const KANALLAR = [
   { alan: "setcard", ad: "Setcard", grup: "yemek" },
   { alan: "metropol", ad: "Metropol", grup: "yemek" },
   { alan: "token", ad: "Token", grup: "yemek" },
+  // Online platformlar: "subeler" varsa alanı yalnızca o şubenin sorumluları girer/görür (yönetici her şubede girebilir).
+  { alan: "yemeksepeti", ad: "Yemeksepeti", grup: "online", subeler: ["Maslak"] },
+  { alan: "trendyol", ad: "Trendyol", grup: "online", subeler: ["Maslak"] },
 ];
 
 // Kasa ödemeleri: şube sorumlusu her gün listedeki adlardan seçip tutar girer (serbest isim yazılamaz).
@@ -77,6 +80,7 @@ const SEKMELER = {
     ["Multinet", "multinet", "s"], ["Setcard", "setcard", "s"], ["Metropol", "metropol", "s"], ["Token", "token", "s"],
     ["KasaOdemeleri", "kasa", "s"], ["KasaDetay", "kasaDetay", "m"], ["Toplam", "toplam", "s"], ["Not", "not", "m"],
     ["Havale", "havale", "s"],   // sonradan eklendi: e-tablodaki mevcut sütun sırası bozulmasın diye en sonda
+    ["Yemeksepeti", "yemeksepeti", "s"], ["Trendyol", "trendyol", "s"],
   ],
   KasaKalemleri: [["Ad", "ad", "m"], ["Subeler", "subeler", "m"], ["Tur", "tur", "m"], ["Alt", "alt", "m"], ["Aktif", "aktif", "b"]],
   Personeller: [["Ad", "ad", "m"], ["Sube", "sube", "m"]],
@@ -306,18 +310,26 @@ function ciroKaydet(kisi, g) {
   if (kisi.rol !== "yonetici" && tarih < gunOnce(CIRO_DUZELTME_GUN)) {
     return json({ ok: false, hata: "En fazla " + CIRO_DUZELTME_GUN + " gün öncesine kadar giriş yapılabilir. Daha eski için yöneticiye başvurun." });
   }
-  const o = { zaman: Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd HH:mm"), giren: kisi.ad, sube: sube, tarih: tarih, not: String(g.not || "").trim() };
+  const mevcut = tumSatirlar("Ciro").filter(function (c) { return c.sube === sube && c.tarih === tarih; })[0];
+  // Gönderilmeyen (undefined) alanlar mevcut kayıttaki değerini korur; yeni kayıtta 0 olur. Şube sorumlusu, kendi şubesine
+  // tanımlı olmayan kanalları (ör. Nişantaşı/Fulya için Yemeksepeti, Trendyol) değiştiremez; mevcut değer korunur.
+  const o = { zaman: Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd HH:mm"), giren: kisi.ad, sube: sube, tarih: tarih,
+              not: g.not === undefined ? (mevcut ? mevcut.not || "" : "") : String(g.not || "").trim() };
   let toplam = 0;
   for (var i = 0; i < KANALLAR.length; i++) {
-    const a = KANALLAR[i].alan, n = sayi(g[a]);
-    if (isNaN(n) || n < 0 || n > 100000000) return json({ ok: false, hata: KANALLAR[i].ad + " tutarı geçersiz." });
+    const k = KANALLAR[i], a = k.alan;
+    const izinli = kisi.rol === "yonetici" || !k.subeler || k.subeler.indexOf(sube) >= 0;
+    if (!izinli || g[a] === undefined) { o[a] = mevcut ? (mevcut[a] || 0) : 0; toplam += o[a]; continue; }
+    const n = sayi(g[a]);
+    if (isNaN(n) || n < 0 || n > 100000000) return json({ ok: false, hata: k.ad + " tutarı geçersiz." });
     o[a] = n; toplam += n;
   }
   // Kasa ödemeleri: [{ad, tutar, kisi?}] — ad şubede geçerli bir kalem olmalı; "personel" türünde kisi şubenin personeli olmalı.
   // Aynı ad (ve kişi) birden fazla satırsa toplanır.
   const kalemler = kasaKalemleri(), kisiler_ = personeller([sube]).map(function (p) { return p.ad; });
   const birlesik = {}, kasaSirasi = [];
-  const satirlar = Array.isArray(g.kasa) ? g.kasa : [];
+  const kasaVerildi = Array.isArray(g.kasa);   // verilmediyse mevcut kasa ödemeleri korunur
+  const satirlar = kasaVerildi ? g.kasa : [];
   for (var j = 0; j < satirlar.length; j++) {
     const ad = String((satirlar[j] && satirlar[j].ad) || "").trim(), t = sayi(satirlar[j] && satirlar[j].tutar);
     const kisi_ = String((satirlar[j] && satirlar[j].kisi) || "").trim();
@@ -333,11 +345,14 @@ function ciroKaydet(kisi, g) {
     birlesik[anahtar].tutar += t;
   }
   const detay = kasaSirasi.map(function (a) { const d = birlesik[a]; d.tutar = Math.round(d.tutar * 100) / 100; if (!d.kisi) delete d.kisi; if (!d.alt) delete d.alt; return d; }).filter(function (d) { return d.tutar > 0; });
-  o.kasa = Math.round(detay.reduce(function (a, d) { return a + d.tutar; }, 0) * 100) / 100;
-  o.kasaDetay = detay.length ? JSON.stringify(detay) : "";
+  if (!kasaVerildi && mevcut) {
+    o.kasa = mevcut.kasa || 0; o.kasaDetay = mevcut.kasaDetay || "";
+  } else {
+    o.kasa = Math.round(detay.reduce(function (a, d) { return a + d.tutar; }, 0) * 100) / 100;
+    o.kasaDetay = detay.length ? JSON.stringify(detay) : "";
+  }
   toplam += o.kasa;
   o.toplam = Math.round(toplam * 100) / 100;
-  const mevcut = tumSatirlar("Ciro").filter(function (c) { return c.sube === sube && c.tarih === tarih; })[0];
   satirYaz("Ciro", mevcut ? mevcut._satir : 0, o);
   return json({ ok: true, guncellendi: !!mevcut, toplam: o.toplam });
 }
