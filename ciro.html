@@ -49,6 +49,16 @@ button:disabled{ opacity:.55; cursor:default; }
 .baslik span{ font-weight:600; color:var(--text-2); font-variant-numeric:tabular-nums; }
 .kasa-satir{ display:grid; grid-template-columns:1fr 120px 34px; gap:8px; margin-bottom:8px; align-items:center; }
 .kasa-satir button{ padding:8px 0; }
+.ozet-ust{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.ozet-ust b{ font-size:24px; font-variant-numeric:tabular-nums; }
+.ozet-ust span{ font-size:12.5px; color:var(--text-2); font-weight:600; }
+.cubuk{ height:8px; border-radius:4px; background:var(--line); margin:8px 0 4px; overflow:hidden; }
+.cubuk div{ height:8px; border-radius:4px; background:var(--accent); }
+.cubuk.tam div{ background:var(--ok); }
+.ozet-izgara{ display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; margin-top:12px; }
+.ozet-izgara small{ display:block; font-size:12px; color:var(--text-2); }
+.ozet-izgara b{ font-variant-numeric:tabular-nums; font-size:15px; }
+.art{ color:var(--ok); } .eksi{ color:var(--err); }
 @media (max-width:420px){ .iki{ grid-template-columns:1fr; } }
 </style>
 </head>
@@ -74,6 +84,7 @@ button:disabled{ opacity:.55; cursor:default; }
 
   <!-- Ciro girişi -->
   <div id="ana" class="gizli">
+    <div class="kart" id="ozet-kart"></div>
     <div class="kart">
       <div class="iki">
         <div class="satir"><label for="c-sube">Şube</label><select id="c-sube"></select></div>
@@ -243,7 +254,49 @@ function formuDoldur(){
   $("btn-kaydet").textContent = k ? "Güncelle" : "Kaydet";
 }
 
+
+const AYLAR = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+const ayEkle = (ay, n) => { const d = new Date(Number(ay.slice(0,4)), Number(ay.slice(5,7)) - 1 + n, 1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); };
+const farkYaz = n => (n >= 0 ? "+" : "−") + "₺" + tr(Math.abs(n));
+function ozetCiz(){
+  const kart = $("ozet-kart"); if(!kart) return;
+  const sube = $("c-sube").value, bugun = (VERI && VERI.bugun) || bugunStr();
+  if(!VERI || !sube){ kart.classList.add("gizli"); return; }
+  kart.classList.remove("gizli");
+  const ay = bugun.slice(0,7), onceki = ayEkle(ay, -1), gun = Number(bugun.slice(8,10));
+  const kayit = (VERI.kayitlar || []).filter(k => k.sube === sube);
+  const topla = l => l.reduce((a,k) => a + (Number(k.toplam)||0), 0);
+  const buAy = kayit.filter(k => k.tarih.slice(0,7) === ay && k.tarih <= bugun);
+  const oncekiAy = kayit.filter(k => k.tarih.slice(0,7) === onceki);
+  const oncekiAyniDonem = oncekiAy.filter(k => Number(k.tarih.slice(8,10)) <= gun);
+  const bu = topla(buAy), ayniDonem = topla(oncekiAyniDonem), oncekiToplam = topla(oncekiAy);
+  const girilenGun = new Set(buAy.map(k => k.tarih)).size;
+  const ayGun = new Date(Number(ay.slice(0,4)), Number(ay.slice(5,7)), 0).getDate();
+  const ort = girilenGun ? bu / girilenGun : 0, tahmin = ort * ayGun;
+  const hedef = Number(((VERI.hedefler || []).find(h => h.ay === ay && h.sube === sube) || {}).hedef) || 0;
+  const yuzde = hedef ? bu / hedef * 100 : 0;
+  const fark = bu - ayniDonem, farkYuzde = ayniDonem ? fark / ayniDonem * 100 : null;
+  const ayAd = AYLAR[Number(ay.slice(5,7)) - 1], oncekiAd = AYLAR[Number(onceki.slice(5,7)) - 1];
+  let h = `<div class="ozet-ust"><span>${esc(sube)} · ${ayAd} ayı ciro (bugüne kadar)</span><b>₺${tr(bu)}</b></div>`;
+  if(hedef){
+    h += `<div class="cubuk ${yuzde >= 100 ? "tam" : ""}"><div style="width:${Math.min(100, yuzde).toFixed(0)}%"></div></div>
+      <div class="ipucu" style="margin-top:0;">Hedef ₺${tr(hedef)} · <b>%${yuzde.toFixed(1)}</b> tamamlandı · ${bu >= hedef ? "hedef aşıldı ✓" : "kalan ₺" + tr(hedef - bu)}</div>`;
+  }else{
+    h += `<div class="ipucu">Bu şube için ${ayAd} hedefi henüz belirlenmemiş.</div>`;
+  }
+  h += `<div class="ozet-izgara">
+    <div><small>${oncekiAd} (aynı güne kadar)</small><b>${ayniDonem ? "₺" + tr(ayniDonem) : "—"}</b></div>
+    <div><small>Fark</small><b class="${!ayniDonem ? "" : fark >= 0 ? "art" : "eksi"}">${ayniDonem ? farkYaz(fark) + (farkYuzde === null ? "" : " (%" + (farkYuzde >= 0 ? "+" : "−") + Math.abs(farkYuzde).toFixed(1) + ")") : "—"}</b></div>
+    <div><small>Günlük ortalama (${girilenGun} gün)</small><b>${girilenGun ? "₺" + tr(ort) : "—"}</b></div>
+    <div><small>Ay sonu tahmini</small><b>${girilenGun ? "₺" + tr(tahmin) : "—"}</b></div>
+    <div><small>${oncekiAd} ayı toplamı</small><b>${oncekiToplam ? "₺" + tr(oncekiToplam) : "—"}</b></div>
+    <div><small>Tahmin / hedef</small><b>${hedef && girilenGun ? "%" + (tahmin / hedef * 100).toFixed(0) : "—"}</b></div>
+  </div>`;
+  kart.innerHTML = h;
+}
+
 function sonlariCiz(){
+  ozetCiz();
   const sube = $("c-sube").value;
   const liste = ((VERI && VERI.kayitlar) || []).filter(k => k.sube === sube).sort((a,b) => b.tarih.localeCompare(a.tarih)).slice(0, 14);
   $("son").innerHTML = liste.length ? liste.map(k => `<li><div><b>${esc(tarihYaz(k.tarih))}</b><small>${esc(k.giren || "")}${k.not ? " · " + esc(k.not) : ""}</small></div>
