@@ -148,13 +148,21 @@ function cikis(mesaj){
   $("ana").classList.add("gizli"); $("ust").classList.add("gizli"); $("giris-kart").classList.remove("gizli");
   $("g-pin").value = "";
   bildir(mesaj || "", !!mesaj);
+  kisileriYukle();   /* giriş ekranındaki ad listesi (kayıtlı oturumla açılışta yüklenmez) */
 }
 
-async function kisileriYukle(){
+let KISILER_YUKLU = false, KISILER_ISTEK = null;
+function kisileriYukle(){
+  if(KISILER_YUKLU) return Promise.resolve();
+  if(!KISILER_ISTEK) KISILER_ISTEK = kisileriGetir().finally(()=>{ KISILER_ISTEK = null; });
+  return KISILER_ISTEK;
+}
+async function kisileriGetir(){
   const c = await api("kisiListesi");
   const sel = $("g-ad");
   if(!c || !c.ok){ sel.innerHTML = '<option value="">Liste alınamadı</option>'; if(c && c.hata) bildir(c.hata, true); return; }
   sel.innerHTML = '<option value="">Adınızı seçin…</option>' + c.kisiler.map(k => `<option>${esc(k.ad)}</option>`).join("");
+  KISILER_YUKLU = true;
 }
 
 async function girisYap(ad, pin){
@@ -170,8 +178,21 @@ async function girisYap(ad, pin){
   return true;
 }
 
-async function veriYukle(){
+/* Kayıtlı oturumla açılışta tek istek: "veri" kimliği kendisi doğrular ve kişiyi de döndürür (önceden giris + veri = 2 ayrı bekleme). */
+async function oturumuSurdur(ad, pin){
+  oturum = { ad, pin };
   const c = await api("veri");
+  if(!c || !c.ok || !c.kisi){ oturum = null; return false; }
+  ben = c.kisi;
+  $("giris-kart").classList.add("gizli"); $("ust").classList.remove("gizli"); $("ana").classList.remove("gizli");
+  $("kim").textContent = ben.ad;
+  bildir("");
+  await veriYukle(c);
+  return true;
+}
+
+async function veriYukle(hazir){
+  const c = hazir || await api("veri");
   if(!c || !c.ok){ if(c && !c.yenidenGiris) bildir(c.hata || "Veri alınamadı", true); return; }
   VERI = c; KANAL = c.kanallar || [];
   const sel = $("c-sube"), onceki = sel.value;
@@ -360,15 +381,17 @@ $("btn-pin").addEventListener("click", async () => {
   else bildir((c && c.hata) || "PIN değiştirilemedi.", true);
 });
 
-(async function baslat(){
+async function baslat(){
   let kayitli = null;
   try{ kayitli = JSON.parse(localStorage.getItem(OTURUM_ANAHTAR) || "null"); }catch(_){}
-  await kisileriYukle();
   if(kayitli && kayitli.ad && kayitli.pin){
-    const ok = await girisYap(kayitli.ad, kayitli.pin);
+    const ok = await oturumuSurdur(kayitli.ad, kayitli.pin);
     if(!ok) cikis("Oturum süresi doldu, yeniden giriş yapın.");
+  } else {
+    await kisileriYukle();
   }
-})();
+}
+baslat();
 </script>
 </body>
 </html>

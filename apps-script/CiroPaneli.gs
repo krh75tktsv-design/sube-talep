@@ -210,12 +210,21 @@ function hucreYaz(deger, tur) {
   return String(deger).slice(0, 2000);
 }
 
+// Hedefler'deki "Ay" sütunu e-tabloda tarihe dönüşmüş olabilir ("2026-11" → 1 Kas 2026); her durumda "yyyy-MM" olarak okunur.
+function ayNormal(deger) {
+  if (Object.prototype.toString.call(deger) === "[object Date]") return Utilities.formatDate(deger, TZ, "yyyy-MM");
+  const t = String(deger === null || deger === undefined ? "" : deger).trim();
+  const m = t.match(/^(\d{4})-(\d{2})/);
+  return m ? m[1] + "-" + m[2] : t;
+}
+
 function tumSatirlar(ad) {
   const s = sekme(ad), alanlar = SEKMELER[ad];
   if (s.getLastRow() < 2) return [];
   return s.getRange(2, 1, s.getLastRow() - 1, alanlar.length).getValues().map(function (r, i) {
     const o = { _satir: i + 2 };
     alanlar.forEach(function (a, j) { o[a[1]] = hucreOku(r[j], a[2]); });
+    if (ad === "Hedefler") o.ay = ayNormal(r[0]);
     return o;
   });
 }
@@ -371,6 +380,7 @@ function hedefKaydet(kisi, ay, sube, hedef) {
   const n = sayi(hedef);
   if (isNaN(n) || n < 0) return json({ ok: false, hata: "Hedef geçersiz." });
   const mevcut = tumSatirlar("Hedefler").filter(function (h) { return h.ay === ay && h.sube === sube; })[0];
+  const hs = sekme("Hedefler"); hs.getRange(2, 1, 2000, 1).setNumberFormat("@");   // Ay sütunu metin kalsın
   satirYaz("Hedefler", mevcut ? mevcut._satir : 0, { ay: ay, sube: sube, hedef: n });
   return json({ ok: true });
 }
