@@ -1321,6 +1321,14 @@ const BOYLU_SUBE_BOYLARI = {
   "Bütün Cheesecake": BUTUN_CHEESECAKE_SUBE_BOYLARI,
 };
 
+// Her gün açık duracak boy sütunları (hem üretim hem dağıtım). Şubelerin
+// kanonik listesi [0,1,2] ama NO 2 çok nadir sipariş ediliyor; her gün boş bir
+// sütun açmamak için yalnızca NO 0 ve NO 1 sabit. NO 2 (ya da başka bir boy)
+// o gün sipariş edilmişse sütunu kendiliğinden eklenir.
+const SABIT_BOY_SUTUNLARI = {
+  "Bütün Cheesecake": [0, 1],
+};
+
 const RENK_SUBE_BASLIK = "FF7F1D1D";
 const RENK_KATEGORI = "FFFEF3C7";
 const RENK_TOPLAM_SATIR = "FF1F2937";
@@ -1344,24 +1352,55 @@ const BUYUK_PUNTO = 42;
 // kullanıcının düzenleyip gönderdiği örnek rapor dosyasından alındı.
 // urunGen: ÜRÜN sütunu, veriGen: sayı sütunları, ayirac: şube grupları
 // arasına konan ince boş sütunun genişliği (0 = ayraç yok).
+// Yön kuralı (kullanıcının 2026-11-25 kararı): yalnızca Pasta Klasik - Dağıtım
+// yatay. O sayfa 7 şube × 2-4 boy = 16 sütuna çıktığı için dik sayfaya sığmıyor;
+// diğer sayfaların hepsi dik basılır.
+//
+// subeSutun: 2 olan sayfalarda her şube iki sütun kaplar. Değer ilk sütuna
+// yazılır, ikincisi boş bırakılır: dağıtımı yapan çalışan fiilen gönderdiği
+// miktarı oraya kalemle yazıyor. Boylu bloklara (Pasta Klasik - Dağıtım,
+// Bütün Cheesecake) eklenmedi; sütun sayısını ikiye katlayıp tabloyu üç sayfaya
+// taşırıyordu.
 const SAYFA_BICIMI = {
   "Pasta Fransız - Üretim":     { punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 110.5, veriGen: 32,
-                                yanBlok: ["Dilim Cheesecake", "Bütün Cheesecake"], yanUrunGen: 102.5 },
+                                yanBlok: ["Dilim Cheesecake", "Bütün Cheesecake"], yanUrunGen: 102.5,
+                                yanVeriGen: 37.5, yanBlokAra: 2,
+                                // Ana listede (sol sütun) GENEL TOPLAM yok; adet pasta ile
+                                // ekler toplamını birlikte vermek anlamlı değil.
+                                anaGenelToplam: false },
   "Pasta Fransız - Dağıtım":    { punto: 55, yukseklik: 95, yon: "portrait",  urunGen: 187.5, veriGen: 66,
                                 urunPunto: 90, urunYuk: 169.5,
-                                boyluBlok: "alt", genelToplam: false, yanVeriGen: 31.7 },
+                                boyluBlok: "alt", genelToplam: false, yanVeriGen: 31.7,
+                                // Ayraç YOK: boylu blok alta yazıldığı için sütunları ana
+                                // tabloyla paylaşıyor; ince ayraç sütunu NO değerlerinin
+                                // üstüne düşüp sayıyı okunmaz yapıyordu.
+                                subeSutun: 2, veriGen2: 46, ayirac: 0 },
   "Pasta Klasik - Üretim":      { punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 90,    veriGen: 26.5 },
-  "Pasta Klasik - Dağıtım":     { punto: 42, yukseklik: 90, yon: "landscape", urunGen: 116.8, veriGen: 24, ayirac: 1.7 },
-  "Tatlı Kurabiye":             { punto: 15, yukseklik: 35, yon: "landscape", urunGen: 75.8,  veriGen: 22.5,
-                                urunPunto: 30, urunYuk: 55, subeSutun: 2, veriGen2: 18 },
-  "Tuzlu Kurabiye":             { punto: 18, yukseklik: 35, yon: "landscape", urunGen: 68.5,  veriGen: 19.5,
-                                urunPunto: 30, urunYuk: 48, subeSutun: 2, veriGen2: 18 },
+  "Pasta Klasik - Dağıtım":     { punto: 42, yukseklik: 90, yon: "landscape", urunGen: 116.8, veriGen: 32.8, ayirac: 1.7,
+                                // Ürün adları ve rakamlar iri ve kalın; şube adları da iri.
+                                // ÜRÜN başlığı, Boy etiketleri ve GENEL TOPLAM 42'de kalır.
+                                urunPunto: 55, urunBold: true, subePunto: 55 },
+  "Tatlı Kurabiye":             { punto: 15, yukseklik: 35, yon: "portrait",  urunGen: 75.8,  veriGen: 22.5,
+                                urunPunto: 30, urunYuk: 55, subeSutun: 2, veriGen2: 18, ayirac: 1.7,
+                                subePunto: 28, toplamSutunu: false,
+                                // Uzun sayfa ikinci baskı sayfasına taştığında şube adları
+                                // kaybolmasın: bu ürünün altındaki ayırıcı satıra başlık yazılır.
+                                basligiTekrarla: ["Kakaolu Browni"] },
+  "Tuzlu Kurabiye":             { punto: 18, yukseklik: 35, yon: "portrait",  urunGen: 68.5,  veriGen: 19.5,
+                                urunPunto: 30, urunYuk: 48, subeSutun: 2, veriGen2: 18, ayirac: 1,
+                                subePunto: 28, toplamSutunu: false },
   "Porsiyon Tatlılar - Üretim": { punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 122,   veriGen: 32 },
-  "Porsiyon Tatlılar - Dağıtım":{ punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 122,   veriGen: 42.5 },
+  "Porsiyon Tatlılar - Dağıtım":{ punto: 42, yukseklik: 90, yon: "portrait",  urunGen: 111.5, veriGen: 37,
+                                subeSutun: 2, veriGen2: 26, ayirac: 2 },
+  // Zayi ayrı bir dosya; oradaki tarih satırı kalsın.
+  "Zayi":                       { baslikSatiri: true },
 };
 const VARSAYILAN_BICIM = {
   punto: BUYUK_PUNTO, yukseklik: BUYUK_SATIR_YUKSEKLIGI,
   yon: "portrait", urunGen: 110, veriGen: 32,
+  // Kullanıcının kararı: üretim-dağıtım raporunun hiçbir sayfasında en üstte
+  // tarih satırı olmasın; tablo doğrudan 1. satırdan başlasın.
+  baslikSatiri: false,
 };
 function sayfaBicimi(sayfaTamAdi) {
   const b = Object.assign({}, VARSAYILAN_BICIM, SAYFA_BICIMI[sayfaTamAdi] || {});
@@ -1375,6 +1414,16 @@ function sayfaBicimi(sayfaTamAdi) {
   // Boylu bölüm bloğunun yeri: "yan" (sağa) veya "alt" (aşağıya)
   if (b.boyluBlok === undefined) b.boyluBlok = "yan";
   if (b.genelToplam === undefined) b.genelToplam = true;
+  // Şube adı hücrelerinin puntosu (başlık puntosundan ayrı verilebilir)
+  if (b.subePunto === undefined) b.subePunto = b.punto;
+  // Ürün adı ve rakam hücreleri kalın yazılsın mı
+  if (b.urunBold === undefined) b.urunBold = false;
+  // En sağdaki TOPLAM sütunu basılsın mı
+  if (b.toplamSutunu === undefined) b.toplamSutunu = true;
+  // Yan bloktaki bölümler arasına kaç boş satır konsun
+  if (b.yanBlokAra === undefined) b.yanBlokAra = 0;
+  // Adı burada geçen ürünün altındaki ayırıcı satıra şube başlıkları yazılır
+  if (b.basligiTekrarla === undefined) b.basligiTekrarla = [];
   return b;
 }
 
@@ -1501,13 +1550,27 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const SS = BC.subeSutun;               // her şubenin kapladığı sütun sayısı
   sayfaYazdirmaAyarla(ws, BC.yon);
 
-  const ustBaslik = ws.getCell(1, 1);
-  ustBaslik.value = `${sayfaAdi} — ${tarihBaslik}`;
-  ustBaslik.font = { bold: true, size: 16 };
-  ws.getRow(1).height = 26;
+  // Kurabiye sayfaları çok uzun (60 satıra yakın); kullanıcının düzenlediği
+  // örnek dosyada üst başlık satırı ile ilk bölümün ad satırı silinmiş,
+  // tablo doğrudan 1. satırdan başlıyor. baslikSatiri: false bunu yapar.
+  const BASLIK = BC.baslikSatiri !== false;
+  if (BASLIK) {
+    const ustBaslik = ws.getCell(1, 1);
+    ustBaslik.value = `${sayfaAdi} — ${tarihBaslik}`;
+    ustBaslik.font = { bold: true, size: 16 };
+    ws.getRow(1).height = 26;
+  }
 
-  const subeBas = sube => 2 + subeler.indexOf(sube) * SS;
-  const toplamCol = 2 + subeler.length * SS;
+  // Şube grupları arasına ince boş sütun (BC.ayirac). Kullanıcının düzenlediği
+  // örnek dosyada hangi sütunun hangi şubeye ait olduğu bu ayraçla okunuyor.
+  const AY = BC.ayirac || 0;
+  const ADIM = SS + (AY ? 1 : 0);
+  const SP = BC.subePunto;
+  const TOPLAM_VAR = BC.toplamSutunu;
+  const subeBas = sube => 2 + subeler.indexOf(sube) * ADIM;
+  const toplamCol = 2 + (subeler.length ? (subeler.length - 1) * ADIM + SS : 0);
+  // TOPLAM sütunu basılmıyorsa tablo son şube sütununda biter.
+  const sonCol = TOPLAM_VAR ? toplamCol : toplamCol - 1;
 
   // Şube başlıklarını verilen satıra yazar (SS>1 ise başlık hücresi birleştirilir).
   function subeBasliklariYaz(satir) {
@@ -1516,20 +1579,22 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
       if (bit > bas) ws.mergeCells(satir, bas, satir, bit);
       const c = ws.getCell(satir, bas);
       c.value = s.toLocaleUpperCase("tr");
-      hucreStilVer(c, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+      hucreStilVer(c, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: SP, hizalama: { horizontal: "center", vertical: "middle" } });
       for (let i = bas + 1; i <= bit; i++) hucreStilVer(ws.getCell(satir, i), { fill: RENK_SUBE_BASLIK });
     });
   }
 
-  const headerRow = 3;
+  const headerRow = BASLIK ? 3 : 1;
   ws.getRow(headerRow).height = BY;
   const urunBaslik = ws.getCell(headerRow, 1);
   urunBaslik.value = "ÜRÜN";
   hucreStilVer(urunBaslik, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP });
   subeBasliklariYaz(headerRow);
-  const toplamBaslik = ws.getCell(headerRow, toplamCol);
-  toplamBaslik.value = "TOPLAM";
-  hucreStilVer(toplamBaslik, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center" } });
+  if (TOPLAM_VAR) {
+    const toplamBaslik = ws.getCell(headerRow, toplamCol);
+    toplamBaslik.value = "TOPLAM";
+    hucreStilVer(toplamBaslik, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center" } });
+  }
 
   const grid = {};
   const birimler = {};
@@ -1552,29 +1617,51 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
       ...kategoriKayitlari.map(urunEtiketi),
     ]));
 
-    ws.getRow(r).height = BY;
-    const kc = ws.getCell(r, 1);
-    kc.value = kategori;
-    hucreStilVer(kc, { fill: RENK_KATEGORI, bold: true, boyut: BP });
-    for (let c = 2; c <= toplamCol; c++) hucreStilVer(ws.getCell(r, c), { fill: RENK_KATEGORI });
-    // İlk bölümün başlıkları hemen üstünde; sonrakilerde şube adları tekrarlanır
-    // ki uzun listede hangi sütunun hangi şube olduğu kaybolmasın.
-    if (ki > 0) subeBasliklariYaz(r);
-    r++;
+    // Üst başlık satırı olmayan sayfalarda ilk bölümün adı ayrı satır kaplamaz:
+    // başlık satırının ÜRÜN hücresi o işi görüyor (örnek dosyadaki gibi).
+    if (BASLIK || ki > 0) {
+      ws.getRow(r).height = BY;
+      const kc = ws.getCell(r, 1);
+      kc.value = kategori;
+      hucreStilVer(kc, { fill: RENK_KATEGORI, bold: true, boyut: BP });
+      for (let c = 2; c <= sonCol; c++) hucreStilVer(ws.getCell(r, c), { fill: RENK_KATEGORI });
+      // İlk bölümün başlıkları hemen üstünde; sonrakilerde bölüm adı ile şube
+      // adları aynı satırda yazılır ki uzun listede hangi sütun hangi şube
+      // kaybolmasın.
+      if (ki > 0) subeBasliklariYaz(r);
+      r++;
+    }
 
     let oncekiAltGrup = null;
+    let oncekiTemel = null;
     urunEtiketleri.forEach(etiket => {
       // Alt grup değiştiğinde araya ince bir boş satır konur.
       const temel = String(etiket).replace(/ \(Boy \d+\)$/, "");
       const altGrup = URUN_ALT_GRUP[temel] || null;
       if (oncekiAltGrup !== null && altGrup !== oncekiAltGrup) {
-        ws.getRow(r).height = AYIRICI_SATIR_YUKSEKLIGI;
-        // ExcelJS yalnızca yüksekliği ayarlanmış boş satırı dosyaya yazmıyor;
-        // satırın kalıcı olması için bir hücreye stil verilir.
-        ws.getCell(r, 1).font = { size: 1 };
+        if (BC.basligiTekrarla.indexOf(oncekiTemel) !== -1) {
+          // Ayırıcı satır boş kalmaz; şube başlıkları tekrar yazılır.
+          ws.getRow(r).height = BY;
+          const tb = ws.getCell(r, 1);
+          tb.value = "ÜRÜN";
+          hucreStilVer(tb, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { vertical: "middle" } });
+          for (let c = 2; c <= sonCol; c++) hucreStilVer(ws.getCell(r, c), { fill: RENK_SUBE_BASLIK });
+          subeBasliklariYaz(r);
+          if (TOPLAM_VAR) {
+            const tt = ws.getCell(r, toplamCol);
+            tt.value = "TOPLAM";
+            hucreStilVer(tt, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center" } });
+          }
+        } else {
+          ws.getRow(r).height = AYIRICI_SATIR_YUKSEKLIGI;
+          // ExcelJS yalnızca yüksekliği ayarlanmış boş satırı dosyaya yazmıyor;
+          // satırın kalıcı olması için bir hücreye stil verilir.
+          ws.getCell(r, 1).font = { size: 1 };
+        }
         r++;
       }
       oncekiAltGrup = altGrup;
+      oncekiTemel = temel;
 
       ws.getRow(r).height = UY;
       const ad = ws.getCell(r, 1);
@@ -1590,9 +1677,11 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
         hucreStilVer(c, { boyut: UP, hizalama: { horizontal: "center", vertical: "middle" } });
         for (let i = bas + 1; i < bas + SS; i++) hucreStilVer(ws.getCell(r, i), { boyut: UP });
       });
-      const tc = ws.getCell(r, toplamCol);
-      tc.value = toplam || null;
-      hucreStilVer(tc, { bold: true, boyut: UP, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center", vertical: "middle" } });
+      if (TOPLAM_VAR) {
+        const tc = ws.getCell(r, toplamCol);
+        tc.value = toplam || null;
+        hucreStilVer(tc, { bold: true, boyut: UP, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center", vertical: "middle" } });
+      }
       r++;
     });
   });
@@ -1615,18 +1704,22 @@ function raporSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
       hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center" } });
       for (let i = bas + 1; i < bas + SS; i++) hucreStilVer(ws.getCell(r, i), { fill: RENK_TOPLAM_SATIR });
     });
-    const gc = ws.getCell(r, toplamCol);
-    gc.value = genelToplam;
-    hucreStilVer(gc, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center" } });
+    if (TOPLAM_VAR) {
+      const gc = ws.getCell(r, toplamCol);
+      gc.value = genelToplam;
+      hucreStilVer(gc, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center" } });
+    }
   }
 
   ws.getColumn(1).width = BC.urunGen;
-  subeler.forEach(s => {
+  subeler.forEach((s, si) => {
     const bas = subeBas(s);
     ws.getColumn(bas).width = BC.veriGen;
     for (let i = bas + 1; i < bas + SS; i++) ws.getColumn(i).width = BC.veriGen2;
+    // Son şubeden sonra ayraç yok; TOPLAM sütunu hemen yanına gelir.
+    if (AY && si < subeler.length - 1) ws.getColumn(bas + SS).width = AY;
   });
-  ws.getColumn(toplamCol).width = BC.veriGen;
+  if (TOPLAM_VAR) ws.getColumn(toplamCol).width = BC.veriGen;
   yazdirmaOlcekAyarla(ws, subeler.length);
   ws.views = [{ state: "frozen", ySplit: headerRow }];
 }
@@ -1721,7 +1814,8 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const BP = BC.punto, BY = BC.yukseklik;
   sayfaYazdirmaAyarla(ws, BC.yon);
   const bag = bagUretim(sayfaAdi);
-  const urunHucreleri = [];   // GENEL TOPLAM formülünün kaynağı
+  // GENEL TOPLAM'ın kaynağı blok ve sütun başına tutulur: yan bloğun toplamı
+  // ana bloğun hücrelerini toplamasın, her NO sütunu kendi sütununu toplasın.
   const { grid, birimler, kategoriler } = flatVeriHazirla(kayitlar);
 
   const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
@@ -1735,15 +1829,20 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   kategoriler.forEach(bolum => {
     const harita = BOYLU_SUBE_BOYLARI[bolum];
     if (!harita) return;
-    const kanonik = [].concat(...Object.keys(harita).map(s => harita[s]));
+    const kanonik = SABIT_BOY_SUTUNLARI[bolum]
+      || [].concat(...Object.keys(harita).map(s => harita[s]));
     const mevcut = kayitlar.filter(k => urunBolumu(k) === bolum).map(boyDeger);
     bolumBoylari[bolum] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
   });
 
-  const ustBaslik = ws.getCell(1, 1);
-  ustBaslik.value = `${sayfaAdi} — Üretim — ${tarihBaslik}`;
-  ustBaslik.font = { bold: true, size: 16 };
-  ws.getRow(1).height = 26;
+  const BASLIK = BC.baslikSatiri !== false;
+  if (BASLIK) {
+    const ustBaslik = ws.getCell(1, 1);
+    ustBaslik.value = `${sayfaAdi} — Üretim — ${tarihBaslik}`;
+    ustBaslik.font = { bold: true, size: 16 };
+    ws.getRow(1).height = 26;
+  }
+  const basSatir = BASLIK ? 3 : 1;   // ÜRÜN / TOPLAM başlık satırı
 
   // Bazı bölümler sayfanın sağına, ayrı bir blok olarak yazılır (SAYFA_BICIMI.yanBlok).
   const yanBolumler = (BC.yanBlok || []).filter(b => kategoriler.includes(b));
@@ -1751,30 +1850,55 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const genelToplam = Object.values(grid).reduce((t, v) => t + v, 0);
 
   // Bir blok yazar; bas = ürün adı sütunu. Geriye son değer sütununu döner.
-  function blokYaz(bas, bolumler, ustBaslikVar) {
+  function blokYaz(bas, bolumler, ustBaslikVar, ara, toplamYaz) {
+    const blokHucreleri = {};   // sütun no -> [{harf, satir, deger}]
+    const ekle = (c, r2, deger) => {
+      (blokHucreleri[c] = blokHucreleri[c] || [])
+        .push({ harf: ws.getColumn(c).letter, satir: r2, deger: deger || 0 });
+    };
+    // son = bloğun en geniş bölümü (sütun genişlikleri için). Her bölüm ise
+    // kendi genişliğini kullanır: Dilim Cheesecake tek sütunken Bütün
+    // Cheesecake'in NO sütunları kadar uzatılmaz.
     const genislik = Math.max(1, ...bolumler.map(b => (bolumBoylari[b] || [0]).length));
     const son = bas + genislik;
+    let sonBolumSon = bas + 1;
     if (ustBaslikVar) {
-      ws.getRow(3).height = BY;
-      const h = ws.getCell(3, bas);
+      ws.getRow(basSatir).height = BY;
+      const h = ws.getCell(basSatir, bas);
       h.value = "ÜRÜN";
       hucreStilVer(h, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { vertical: "middle" } });
       for (let c = bas + 1; c <= son; c++) {
-        hucreStilVer(ws.getCell(3, c), { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+        hucreStilVer(ws.getCell(basSatir, c), { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
       }
-      ws.getCell(3, bas + 1).value = "TOPLAM";
-      if (son > bas + 1) ws.mergeCells(3, bas + 1, 3, son);
+      ws.getCell(basSatir, bas + 1).value = "TOPLAM";
+      if (son > bas + 1) ws.mergeCells(basSatir, bas + 1, basSatir, son);
     }
-    let r = 4;
-    bolumler.forEach(bolum => {
+    let r = basSatir + 1;
+    bolumler.forEach((bolum, bi) => {
+      // Yan blokta bölümler arasına boş satır konur (Dilim ile Bütün Cheesecake
+      // arasında boşluk olsun diye; kullanıcının düzenlediği örnek dosyadaki gibi).
+      if (bi > 0 && ara) {
+        for (let k = 0; k < ara; k++) {
+          ws.getRow(r).height = BY;
+          ws.getCell(r, bas).font = { size: 1 };
+          r++;
+        }
+        // Araya boşluk konan bölümler ayrı tablo sayılır: en alttaki GENEL TOPLAM
+        // yalnızca altında durduğu bölümü toplar (örnek dosyada Bütün Cheesecake
+        // toplamı Dilim Cheesecake satırlarını içermiyor).
+        Object.keys(blokHucreleri).forEach(c => { delete blokHucreleri[c]; });
+      }
       const kyt = kayitlar.filter(k => urunBolumu(k) === bolum);
       const boylar = bolumBoylari[bolum];
+
+      const bolumSon = bas + (boylar ? boylar.length : 1);
+      sonBolumSon = bolumSon;
 
       ws.getRow(r).height = BY;
       const bc = ws.getCell(r, bas);
       bc.value = bolum;
       hucreStilVer(bc, { fill: RENK_KATEGORI, bold: true, boyut: BP });
-      for (let c = bas + 1; c <= son; c++) hucreStilVer(ws.getCell(r, c), { fill: RENK_KATEGORI });
+      for (let c = bas + 1; c <= bolumSon; c++) hucreStilVer(ws.getCell(r, c), { fill: RENK_KATEGORI });
       if (boylar) {
         boylar.forEach((boy, i) => {
           const c = ws.getCell(r, bas + 1 + i);
@@ -1782,11 +1906,11 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
           hucreStilVer(c, { fill: RENK_KATEGORI, bold: true, boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
         });
       } else if (!ustBaslikVar) {
-        for (let c = bas + 1; c <= son; c++) {
+        for (let c = bas + 1; c <= bolumSon; c++) {
           hucreStilVer(ws.getCell(r, c), { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
         }
         ws.getCell(r, bas + 1).value = "TOPLAM";
-        if (son > bas + 1) ws.mergeCells(r, bas + 1, r, son);
+        if (bolumSon > bas + 1) ws.mergeCells(r, bas + 1, r, bolumSon);
       }
       r++;
 
@@ -1802,10 +1926,10 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
             const c = ws.getCell(r, bas + 1 + i);
             c.value = boyGrid[urun + "|" + boy] || null;
             bag.hucreler[urun + "|" + boy] = { hucre: c, deger: c.value };
-            urunHucreleri.push({ harf: ws.getColumn(bas + 1 + i).letter, satir: r });
+            ekle(bas + 1 + i, r, c.value);
             hucreStilVer(c, { bold: true, boyut: BP, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center", vertical: "middle" } });
           });
-          for (let c = bas + 1 + boylar.length; c <= son; c++) hucreStilVer(ws.getCell(r, c), { boyut: BP });
+          for (let c = bas + 1 + boylar.length; c <= bolumSon; c++) hucreStilVer(ws.getCell(r, c), { boyut: BP });
           r++;
         });
       } else {
@@ -1819,41 +1943,52 @@ function duzUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
           const tc = ws.getCell(r, bas + 1);
           tc.value = t;
           bag.hucreler[etiket] = { hucre: tc, deger: t };
-          urunHucreleri.push({ harf: ws.getColumn(bas + 1).letter, satir: r });
+          ekle(bas + 1, r, t);
           hucreStilVer(tc, { bold: true, boyut: BP, fill: RENK_TOPLAM_SUTUN, hizalama: { horizontal: "center", vertical: "middle" } });
-          for (let c = bas + 2; c <= son; c++) hucreStilVer(ws.getCell(r, c), { boyut: BP });
+          for (let c = bas + 2; c <= bolumSon; c++) hucreStilVer(ws.getCell(r, c), { boyut: BP });
           r++;
         });
       }
     });
 
+    if (!toplamYaz) return son;
+
     ws.getRow(r).height = BY;
     const gc = ws.getCell(r, bas);
     gc.value = "GENEL TOPLAM";
     hucreStilVer(gc, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { vertical: "middle" } });
-    for (let c = bas + 1; c <= son; c++) {
+    for (let c = bas + 1; c <= sonBolumSon; c++) {
       hucreStilVer(ws.getCell(r, c), { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
     }
-    const gtc = ws.getCell(r, bas + 1);
-    gtc.value = genelToplam;
-    bag.genel.push({ hucre: gtc, kaynaklar: urunHucreleri, deger: genelToplam });
+    for (let c = bas + 1; c <= sonBolumSon; c++) {
+      const kaynak = blokHucreleri[c];
+      if (!kaynak || !kaynak.length) continue;
+      const toplam = kaynak.reduce((t, x) => t + (Number(x.deger) || 0), 0);
+      const hucre = ws.getCell(r, c);
+      hucre.value = toplam;
+      bag.genel.push({
+        hucre,
+        kaynaklar: kaynak.map(x => ({ harf: x.harf, satir: x.satir })),
+        deger: toplam,
+      });
+    }
     return son;
   }
 
-  const anaSon = blokYaz(1, anaBolumler, true);
+  const anaSon = blokYaz(1, anaBolumler, true, 0, BC.anaGenelToplam !== false);
   ws.getColumn(1).width = BC.urunGen;
   for (let i = 2; i <= anaSon; i++) ws.getColumn(i).width = BC.veriGen;
 
   if (yanBolumler.length) {
     const yanBas = anaSon + 3;   // araya iki boş sütun
-    const yanSon = blokYaz(yanBas, yanBolumler, false);
+    const yanSon = blokYaz(yanBas, yanBolumler, false, BC.yanBlokAra, true);
     ws.getColumn(yanBas).width = BC.yanUrunGen || BC.urunGen;
-    for (let i = yanBas + 1; i <= yanSon; i++) ws.getColumn(i).width = BC.veriGen;
+    for (let i = yanBas + 1; i <= yanSon; i++) ws.getColumn(i).width = BC.yanVeriGen || BC.veriGen;
   }
 
   // Üretim sayfasında şube sütunu yok; ölçek yalnızca sayfaya sığdırmak için.
   yazdirmaOlcekAyarla(ws, 0);
-  ws.views = [{ state: "frozen", ySplit: 3 }];
+  ws.views = [{ state: "frozen", ySplit: basSatir }];
 }
 
 function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
@@ -1861,32 +1996,44 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const BC = sayfaBicimi(sayfaAdi + " - Dağıtım");
   const BP = BC.punto, BY = BC.yukseklik;
   const UP = BC.urunPunto, UY = BC.urunYuk;
+  // SS: her şubenin kapladığı sütun sayısı. 2 ise ikinci sütun boş bırakılır;
+  // dağıtımı yapan çalışan fiilen gönderdiği miktarı oraya kalemle yazıyor.
+  const SS = BC.subeSutun;
+  const AY = BC.ayirac || 0;
+  const ADIM = SS + (AY ? 1 : 0);
+  const subeBas = i => 2 + i * ADIM;
   sayfaYazdirmaAyarla(ws, BC.yon);
   const bag = bagDagitim(sayfaAdi, ws);
   const { subeler, grid, birimler, kategoriler } = flatVeriHazirla(kayitlar);
   const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
 
-  const ustBaslik = ws.getCell(1, 1);
-  ustBaslik.value = `${sayfaAdi} — Dağıtım — ${tarihBaslik}`;
-  ustBaslik.font = { bold: true, size: 16 };
-  ws.getRow(1).height = 26;
+  const BASLIK = BC.baslikSatiri !== false;
+  if (BASLIK) {
+    const ustBaslik = ws.getCell(1, 1);
+    ustBaslik.value = `${sayfaAdi} — Dağıtım — ${tarihBaslik}`;
+    ustBaslik.font = { bold: true, size: 16 };
+    ws.getRow(1).height = 26;
+  }
 
   // Boylu bölümler (Bütün Cheesecake) ana tablonun sağına, kendi şube+NO
   // başlıklı ayrı bloğuna yazılır (kullanıcının düzenlediği örnek dosyadaki gibi).
   const boyluBolumler = kategoriler.filter(b => !!BOYLU_SUBE_BOYLARI[b]);
   const duzBolumler = kategoriler.filter(b => !BOYLU_SUBE_BOYLARI[b]);
 
-  const headerRow = 2;
+  const headerRow = BASLIK ? 2 : 1;
   ws.getRow(headerRow).height = BY;
   const h = ws.getCell(headerRow, 1);
   h.value = "ÜRÜN";
   hucreStilVer(h, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { vertical: "middle" } });
   subeler.forEach((s, i) => {
-    const c = ws.getCell(headerRow, 2 + i);
+    const bas = subeBas(i), bit = bas + SS - 1;
+    if (bit > bas) ws.mergeCells(headerRow, bas, headerRow, bit);
+    const c = ws.getCell(headerRow, bas);
     c.value = s.toLocaleUpperCase("tr");
     hucreStilVer(c, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+    for (let j = bas + 1; j <= bit; j++) hucreStilVer(ws.getCell(headerRow, j), { fill: RENK_SUBE_BASLIK });
   });
-  const anaSon = 1 + subeler.length;
+  const anaSon = subeler.length ? subeBas(subeler.length - 1) + SS - 1 : 1;
 
   let r = headerRow + 1;
   duzBolumler.forEach(bolum => {
@@ -1903,10 +2050,12 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
       ad.value = raporAdi(etiket, birimler[etiket]);
       hucreStilVer(ad, { boyut: UP, hizalama: { vertical: "middle" } });
       subeler.forEach((sube, i) => {
-        const c = ws.getCell(r, 2 + i);
+        const bas = subeBas(i);
+        const c = ws.getCell(r, bas);
         c.value = grid[etiket + "|" + sube] || null;
-        dagitimHucresi(bag, etiket, c, "d" + (2 + i));
+        dagitimHucresi(bag, etiket, c, "d" + bas);
         hucreStilVer(c, { boyut: UP, hizalama: { horizontal: "center", vertical: "middle" } });
+        for (let j = bas + 1; j < bas + SS; j++) hucreStilVer(ws.getCell(r, j), { boyut: UP });
       });
       r++;
     });
@@ -1922,16 +2071,23 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
       Object.keys(grid).forEach(key => {
         if (key.endsWith("|" + sube)) t += grid[key];
       });
-      const c = ws.getCell(r, 2 + i);
+      const bas = subeBas(i);
+      const c = ws.getCell(r, bas);
       c.value = t;
-      bag.genel.push({ hucre: c, sutun: "d" + (2 + i), deger: t });
+      bag.genel.push({ hucre: c, sutun: "d" + bas, deger: t });
       hucreStilVer(c, { fill: RENK_TOPLAM_SATIR, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+      for (let j = bas + 1; j < bas + SS; j++) hucreStilVer(ws.getCell(r, j), { fill: RENK_TOPLAM_SATIR });
     });
     r++;
   }
 
   ws.getColumn(1).width = BC.urunGen;
-  for (let i = 2; i <= anaSon; i++) ws.getColumn(i).width = BC.veriGen;
+  subeler.forEach((s, i) => {
+    const bas = subeBas(i);
+    ws.getColumn(bas).width = BC.veriGen;
+    for (let j = bas + 1; j < bas + SS; j++) ws.getColumn(j).width = BC.veriGen2;
+    if (AY && i < subeler.length - 1) ws.getColumn(bas + SS).width = AY;
+  });
 
   // Boylu bölüm blokları: sayfaya göre ya ana tablonun sağına ya da altına.
   const altaMi = BC.boyluBlok === "alt";
@@ -1946,7 +2102,9 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     const blokSubeleri = subeSirala([...new Set(kyt.map(k => k.sube))]);
     const subeBoylari = {};
     blokSubeleri.forEach(s => {
-      const kanonik = harita[s] || [0];
+      // Sabit sütunlar (NO 0, NO 1) her şube için açılır; NO 2 yalnızca o gün
+      // o şubeden sipariş gelmişse eklenir.
+      const kanonik = SABIT_BOY_SUTUNLARI[bolum] || harita[s] || [0];
       const mevcut = kyt.filter(k => k.sube === s).map(boyDeger);
       subeBoylari[s] = [...new Set([...kanonik, ...mevcut])].sort((a, b) => a - b);
     });
@@ -2011,8 +2169,14 @@ function duzDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     });
 
     if (altaMi) {
+      // Alt blok sütunlarını ana tabloyla paylaşıyor. Ana tablonun bittiği yerden
+      // sonra genişlik atanmazsa son şubenin grubu diğerlerinden dar kalıyordu;
+      // bu yüzden aynı genişlik deseni (veriGen, veriGen2, ...) sürdürülür ki her
+      // şubenin bloğu eşit genişlikte olsun.
       for (let i = adSutun + 1; i <= blokSon; i++) {
-        if (!ws.getColumn(i).width) ws.getColumn(i).width = BC.yanVeriGen || BC.veriGen;
+        if (ws.getColumn(i).width) continue;
+        const idx = (i - 2) % ADIM;
+        ws.getColumn(i).width = idx === 0 ? BC.veriGen : (idx < SS ? BC.veriGen2 : AY);
       }
       altSatir = br + 1;
     } else {
@@ -2040,10 +2204,13 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const subeBoylariKanonik = BOYLU_SUBE_BOYLARI[sayfaAdi] || {};
   const urunSirasi = BOYLU_URUN_SIRALARI[sayfaAdi] || [];
 
-  const ustBaslik = ws.getCell(1, 1);
-  ustBaslik.value = `${sayfaAdi} — Üretim — ${tarihBaslik}`;
-  ustBaslik.font = { bold: true, size: 16 };
-  ws.getRow(1).height = 26;
+  const BASLIK = BC.baslikSatiri !== false;
+  if (BASLIK) {
+    const ustBaslik = ws.getCell(1, 1);
+    ustBaslik.value = `${sayfaAdi} — Üretim — ${tarihBaslik}`;
+    ustBaslik.font = { bold: true, size: 16 };
+    ws.getRow(1).height = 26;
+  }
 
   const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
   const subeBoylari = {};
@@ -2065,7 +2232,7 @@ function boyluUretimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     if (!urunlerVar.includes(k.urun)) urunlerVar.push(k.urun);
   });
 
-  const headerRow = 3;
+  const headerRow = BASLIK ? 3 : 1;
   ws.getRow(headerRow).height = BY;
   hucreStilVer(ws.getCell(headerRow, 1), { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { vertical: "middle" } });
   ws.getCell(headerRow, 1).value = "ÜRÜN";
@@ -2187,16 +2354,20 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
   const ws = wb.addWorksheet((sayfaAdi + " - Dağıtım").substring(0, 31));
   const BC = sayfaBicimi(sayfaAdi + " - Dağıtım");
   const BP = BC.punto, BY = BC.yukseklik;
+  const UP = BC.urunPunto;   // ürün adı ve rakam hücreleri
   sayfaYazdirmaAyarla(ws, BC.yon);
   const bag = bagDagitim(sayfaAdi, ws);
   const subeler = subeSirala([...new Set(kayitlar.map(k => k.sube))]);
   const subeBoylariKanonik = BOYLU_SUBE_BOYLARI[sayfaAdi] || {};
   const urunSirasi = BOYLU_URUN_SIRALARI[sayfaAdi] || [];
 
-  const ustBaslik = ws.getCell(1, 1);
-  ustBaslik.value = `${sayfaAdi} — Dağıtım — ${tarihBaslik}`;
-  ustBaslik.font = { bold: true, size: 16 };
-  ws.getRow(1).height = 26;
+  const BASLIK = BC.baslikSatiri !== false;
+  if (BASLIK) {
+    const ustBaslik = ws.getCell(1, 1);
+    ustBaslik.value = `${sayfaAdi} — Dağıtım — ${tarihBaslik}`;
+    ustBaslik.font = { bold: true, size: 16 };
+    ws.getRow(1).height = 26;
+  }
 
   const boyDeger = k => (k.boy === undefined || k.boy === null || k.boy === "" ? 0 : Number(k.boy));
 
@@ -2207,7 +2378,7 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     subeBoylari[sube] = subeBoyListesi(sayfaAdi, sube, kanonik, mevcut);
   });
 
-  const r1 = 2, r2 = 3;
+  const r1 = BASLIK ? 2 : 1, r2 = r1 + 1;
   ws.getRow(r1).height = BY;
   ws.getRow(r2).height = BY;
 
@@ -2230,7 +2401,7 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     if (bit > bas) ws.mergeCells(r1, bas, r1, bit);
     const c1 = ws.getCell(r1, bas);
     c1.value = sube.toLocaleUpperCase("tr");
-    hucreStilVer(c1, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+    hucreStilVer(c1, { fill: RENK_SUBE_BASLIK, bold: true, renk: "FFFFFFFF", boyut: BC.subePunto, hizalama: { horizontal: "center", vertical: "middle" } });
     for (let i = bas + 1; i <= bit; i++) hucreStilVer(ws.getCell(r1, i), { fill: RENK_SUBE_BASLIK });
     boylar.forEach((boy, i) => {
       const c2 = ws.getCell(r2, bas + i);
@@ -2257,7 +2428,7 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
     ws.getRow(r).height = BY;
     const ad = ws.getCell(r, 1);
     ad.value = raporAdi(urun, null);
-    hucreStilVer(ad, { boyut: BP, hizalama: { vertical: "middle" } });
+    hucreStilVer(ad, { boyut: UP, bold: BC.urunBold, hizalama: { vertical: "middle" } });
     subeler.forEach(sube => {
       subeBoylari[sube].forEach((boy, i) => {
         const c = ws.getCell(r, subeBaslangic[sube] + i);
@@ -2267,7 +2438,7 @@ function boyluDagitimSayfasiOlustur(wb, sayfaAdi, kayitlar, tarihBaslik) {
         const grup = ikinciPastaneMi(sayfaAdi, sube) ? "2PAT|" : "ANA|";
         dagitimHucresi(bag, grup + urun + "|" + boy, c,
           ISTEK_URUNLERI.has(urun) ? undefined : "b" + (subeBaslangic[sube] + i));
-        hucreStilVer(c, { boyut: BP, hizalama: { horizontal: "center", vertical: "middle" } });
+        hucreStilVer(c, { boyut: UP, bold: BC.urunBold, hizalama: { horizontal: "center", vertical: "middle" } });
       });
     });
     r++;
