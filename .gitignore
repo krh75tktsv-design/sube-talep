@@ -30,3 +30,6 @@ docs-ozel/
 
 # Excel dosyaları: şablonlar, reçete/maliyet/satış rakamları içerir — depoya girmemeli
 *.xlsx
+atolye-birimler.tsv
+gider-listesi-ay-ay.xlsx
+cek-*.tsv
