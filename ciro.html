@@ -58,6 +58,15 @@ button:disabled{ opacity:.55; cursor:default; }
 .ozet-izgara{ display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; margin-top:12px; }
 .ozet-izgara small{ display:block; font-size:12px; color:var(--text-2); }
 .ozet-izgara b{ font-variant-numeric:tabular-nums; font-size:15px; }
+.tahsilat-ozet{ cursor:pointer; list-style:none; display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.tahsilat-ozet::-webkit-details-marker{ display:none; }
+.tahsilat-ozet span{ font-size:12.5px; color:var(--text-2); font-weight:600; }
+.tahsilat-ozet b{ font-size:20px; font-variant-numeric:tabular-nums; }
+.tahsilat-ok{ color:var(--text-2); font-weight:400; margin-left:6px; display:inline-block; transition:transform .15s; }
+#tahsilat-kart[open] .tahsilat-ok{ transform:rotate(90deg); }
+.tahsilat-satir{ display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-top:1px solid var(--line); font-size:14px; }
+.tahsilat-satir small{ display:block; color:var(--text-2); font-size:12px; }
+.tahsilat-satir b{ font-variant-numeric:tabular-nums; white-space:nowrap; }
 .art{ color:var(--ok); } .eksi{ color:var(--err); }
 @media (max-width:420px){ .iki{ grid-template-columns:1fr; } }
 </style>
@@ -85,6 +94,7 @@ button:disabled{ opacity:.55; cursor:default; }
   <!-- Ciro girişi -->
   <div id="ana" class="gizli">
     <div class="kart" id="ozet-kart"></div>
+    <details class="kart gizli" id="tahsilat-kart"></details>
     <div class="kart">
       <div class="iki">
         <div class="satir"><label for="c-sube">Şube</label><select id="c-sube"></select></div>
@@ -316,8 +326,23 @@ function ozetCiz(){
   kart.innerHTML = h;
 }
 
+function tahsilatCiz(){
+  const kart = $("tahsilat-kart"); if(!kart) return;
+  const sube = $("c-sube").value, bugun = (VERI && VERI.bugun) || bugunStr();
+  if(!VERI || !sube || !Array.isArray(VERI.tahsilatlar)){ kart.classList.add("gizli"); return; }   /* sunucu henüz bu özelliği bilmiyorsa kutu görünmez */
+  const ay = bugun.slice(0,7), ayAd = AYLAR[Number(ay.slice(5,7)) - 1];
+  const liste = VERI.tahsilatlar.filter(t => t.sube === sube && t.tarih.slice(0,7) === ay && t.tarih <= bugun).sort((a,b) => b.tarih.localeCompare(a.tarih));
+  const toplam = liste.reduce((a,t) => a + (Number(t.tutar)||0), 0);
+  const acik = kart.open;
+  kart.classList.remove("gizli");
+  kart.innerHTML = `<summary class="tahsilat-ozet"><span>${esc(sube)} · ${ayAd} ayı tahsilatlar (${liste.length} kayıt)<span class="tahsilat-ok">›</span></span><b>₺${tr(toplam)}</b></summary>` +
+    (liste.length ? liste.map(t => `<div class="tahsilat-satir"><div><b style="font-weight:600;">${esc(t.cari || t.aciklama || "Tahsilat")}</b><small>${esc(tarihYaz(t.tarih))}${t.cari && t.aciklama ? " · " + esc(t.aciklama) : ""}</small></div><b>₺${tr(t.tutar)}</b></div>`).join("")
+      : '<div class="ipucu">Bu ay bu şube için tahsilat kaydı yok.</div>');
+  kart.open = acik;
+}
 function sonlariCiz(){
   ozetCiz();
+  tahsilatCiz();
   const sube = $("c-sube").value;
   const liste = ((VERI && VERI.kayitlar) || []).filter(k => k.sube === sube).sort((a,b) => b.tarih.localeCompare(a.tarih)).slice(0, 14);
   $("son").innerHTML = liste.length ? liste.map(k => `<li><div><b>${esc(tarihYaz(k.tarih))}</b><small>${esc(k.giren || "")}${k.not ? " · " + esc(k.not) : ""}</small></div>
