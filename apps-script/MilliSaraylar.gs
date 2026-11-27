@@ -507,6 +507,7 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
+    "LİMONLU FİT PASTA",
   ],
   "KAFE": [
     "LİMONLU PARFE",
@@ -532,6 +533,7 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
+    "LİMONLU FİT PASTA",
   ],
   "ŞEKER": [
     "TİRAMİSU  (dilim)",
@@ -548,6 +550,7 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
+    "LİMONLU FİT PASTA",
   ],
   "MASLAK": [
     "LİMONLU PARFE",
@@ -555,6 +558,7 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
+    "LİMONLU FİT PASTA",
   ],
   "ÇEŞMİ": [
     "LİMONLU PARFE",
@@ -570,6 +574,7 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
+    "LİMONLU FİT PASTA",
   ],
   "BEYLER": [
     "LİMONLU PARFE",
@@ -578,6 +583,7 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
+    "LİMONLU FİT PASTA",
   ],
   "ÇAMLICA": [
     "LİMONLU PARFE",
@@ -585,6 +591,7 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
+    "LİMONLU FİT PASTA",
   ],
   "MECİDİYE": [
     "LİMONLU PARFE",
@@ -597,6 +604,7 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
+    "LİMONLU FİT PASTA",
   ],
   "AYNALI": [
     "LİMONLU PARFE",
@@ -604,6 +612,7 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
+    "LİMONLU FİT PASTA",
   ],
   "KASKAT": [
     "LİMONLU PARFE",
@@ -611,6 +620,7 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
+    "LİMONLU FİT PASTA",
   ],
 };
 
