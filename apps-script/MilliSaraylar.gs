@@ -626,11 +626,19 @@ const GORUNURLUK_TOHUM = {
 
 function gorunurlukKur() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (ss.getSheetByName(GORUNURLUK_SEKMESI)) {
-    ss.toast("Gorunurluk sekmesi zaten var, dokunulmadı.", "Görünürlük", 10);
+  let sy = ss.getSheetByName(GORUNURLUK_SEKMESI);
+
+  // Sekme varsa ve icinde veri varsa dokunulmaz: elle yapilan degisiklikler
+  // ezilmesin. Ama bos bir sekme (ya da yalnizca baslik satiri) cikmaza
+  // yol aciyordu — "zaten var" deyip hicbir sey yapmiyor, gizleme de hic
+  // devreye girmiyordu. Bos sekme artik doldurulur.
+  if (sy && sy.getLastRow() > 1) {
+    ss.toast("Gorunurluk sekmesinde veri var, dokunulmadı. Sıfırdan kurmak " +
+             "için sekmeyi silip tekrar çalıştırın.", "Görünürlük", 10);
     return;
   }
-  const sy = ss.insertSheet(GORUNURLUK_SEKMESI);
+  if (!sy) sy = ss.insertSheet(GORUNURLUK_SEKMESI);
+  else sy.clear();
 
   const basliklar = ["ÜRÜNLER"].concat(SUBELER);
   const satirlar = [basliklar];
@@ -648,5 +656,17 @@ function gorunurlukKur() {
   sy.setFrozenRows(1);
   sy.setFrozenColumns(1);
   sy.setColumnWidth(1, 220);
-  ss.toast("Gorunurluk sekmesi kuruldu.", "Görünürlük", 10);
+
+  // Kac isaret yazildigini soyle ki calisip calismadigi belli olsun.
+  let isaret = 0;
+  SUBELER.forEach(function (sube) {
+    const liste = GORUNURLUK_TOHUM[sube] || [];
+    liste.forEach(function (urun) {
+      if (GORUNURLUK_URUNLERI.indexOf(urun) !== -1) isaret++;
+    });
+  });
+  ss.toast("Gorunurluk sekmesi kuruldu: " + GORUNURLUK_URUNLERI.length +
+           " ürün, " + SUBELER.length + " şube, " + isaret + " adet 'yok' işareti.",
+           "Görünürlük", 15);
+  Logger.log("Gorunurluk kuruldu: " + isaret + " işaret");
 }
