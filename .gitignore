@@ -33,3 +33,6 @@ docs-ozel/
 atolye-birimler.tsv
 gider-listesi-ay-ay.xlsx
 cek-*.tsv
+
+# Kasa+ paneli: gerçek finans/personel verisi gömülü — asla depoya girmez
+kasa-plus.html
