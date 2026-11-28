@@ -503,29 +503,24 @@ const GORUNURLUK_TOHUM = {
     "KIRMIZI MEYVALI",
     "LİMONLU PARFE",
     "LİMONLU TART",
-    "KROKANLI PASTA",
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
-    "LİMONLU FİT PASTA",
   ],
   "KAFE": [
     "LİMONLU PARFE",
     "LİMONLU TART",
   ],
   "SAAT": [
-    "MUZLU MUHALLEBİ",
     "KAZANDİBİ",
     "LİMONLU PARFE",
     "LİMONLU TART",
     "SÜTLAÇ",
-    "MALAGA YENİ SOS",
   ],
   "KÜÇÜKSU": [
     "LİMONLU PARFE",
     "LİMONLU TART",
     "SÜTLAÇ",
-    "MALAGA YENİ SOS",
   ],
   "IHLAMUR": [
     "LİMONLU PARFE",
@@ -533,7 +528,6 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
-    "LİMONLU FİT PASTA",
   ],
   "ŞEKER": [
     "TİRAMİSU  (dilim)",
@@ -546,11 +540,9 @@ const GORUNURLUK_TOHUM = {
     "FISTIKLI PASTA",
     "LİMONLU PARFE",
     "SÜTLAÇ",
-    "KROKANLI PASTA",
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
-    "LİMONLU FİT PASTA",
   ],
   "MASLAK": [
     "LİMONLU PARFE",
@@ -558,7 +550,6 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
-    "LİMONLU FİT PASTA",
   ],
   "ÇEŞMİ": [
     "LİMONLU PARFE",
@@ -569,21 +560,16 @@ const GORUNURLUK_TOHUM = {
     "LİMONLU TART",
   ],
   "LİMON": [
-    "LİMONLU TART",
-    "KROKANLI PASTA",
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
-    "LİMONLU FİT PASTA",
   ],
   "BEYLER": [
     "LİMONLU PARFE",
     "LİMONLU TART",
-    "KROKANLI PASTA",
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
-    "LİMONLU FİT PASTA",
   ],
   "ÇAMLICA": [
     "LİMONLU PARFE",
@@ -591,12 +577,10 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
-    "LİMONLU FİT PASTA",
   ],
   "MECİDİYE": [
     "LİMONLU PARFE",
     "LİMONLU TART",
-    "KROKANLI PASTA",
   ],
   "YILDIZ": [
     "LİMONLU PARFE",
@@ -604,7 +588,6 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
-    "LİMONLU FİT PASTA",
   ],
   "AYNALI": [
     "LİMONLU PARFE",
@@ -612,7 +595,6 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
-    "LİMONLU FİT PASTA",
   ],
   "KASKAT": [
     "LİMONLU PARFE",
@@ -620,7 +602,6 @@ const GORUNURLUK_TOHUM = {
     "UNSUZ  ÇİKOLATA PASTA",
     "HURMALI BROWNİ",
     "HAVUÇLU BROWNİ",
-    "LİMONLU FİT PASTA",
   ],
 };
 
@@ -639,7 +620,12 @@ function gorunurlukKur() {
   }
   if (!sy) sy = ss.insertSheet(GORUNURLUK_SEKMESI);
   else sy.clear();
+  gorunurluguYaz(ss, sy);
+}
 
+// Sekmeyi koddaki tablodan yeniden yazar. gorunurlukKur ile gorunurlukYenile
+// ortak kullanir.
+function gorunurluguYaz(ss, sy) {
   const basliklar = ["ÜRÜNLER"].concat(SUBELER);
   const satirlar = [basliklar];
   GORUNURLUK_URUNLERI.forEach(function (urun) {
@@ -669,4 +655,19 @@ function gorunurlukKur() {
            " ürün, " + SUBELER.length + " şube, " + isaret + " adet 'yok' işareti.",
            "Görünürlük", 15);
   Logger.log("Gorunurluk kuruldu: " + isaret + " işaret");
+}
+
+// Tek seferlik degil: koddaki tabloyu canli sekmeye ZORLA yazar.
+// gorunurlukKur dolu bir sekmeye dokunmaz (elle yapilan degisiklikler
+// korunsun diye); tabloyu kodda guncelleyip canliya tasimak gerektiginde
+// bu kullanilir.
+//
+// DIKKAT: sekmede elle yapilmis degisiklikler silinir. Once sekmeye bakip
+// kaybetmek istemediginiz bir sey var mi kontrol edin.
+function gorunurlukYenile() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sy = ss.getSheetByName(GORUNURLUK_SEKMESI);
+  if (!sy) sy = ss.insertSheet(GORUNURLUK_SEKMESI);
+  else sy.clear();
+  gorunurluguYaz(ss, sy);
 }
