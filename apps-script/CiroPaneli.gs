@@ -85,6 +85,8 @@ const SEKMELER = {
   KasaKalemleri: [["Ad", "ad", "m"], ["Subeler", "subeler", "m"], ["Tur", "tur", "m"], ["Alt", "alt", "m"], ["Aktif", "aktif", "b"]],
   Personeller: [["Ad", "ad", "m"], ["Sube", "sube", "m"]],
   Hedefler: [["Ay", "ay", "m"], ["Sube", "sube", "m"], ["Hedef", "hedef", "s"]],
+  // Kasa+ Gelirler sayfasındaki elle girilmiş tahsilatlar (yalnızca okunur; Kasa+ yönetici bağlantısıyla gönderir).
+  Tahsilatlar: [["Sube", "sube", "m"], ["Tarih", "tarih", "t"], ["Tutar", "tutar", "s"], ["Cari", "cari", "m"], ["Aciklama", "aciklama", "m"]],
 };
 
 // ————————————————————————————————————————————— kurulum
@@ -173,6 +175,7 @@ function doPost(e) {
         case "hedefKaydet": return hedefKaydet(kisi, String(v.ay || ""), String(v.sube || ""), v.hedef);
         case "kalemKaydet": return kalemKaydet(kisi, v);
         case "personelGuncelle": return personelGuncelle(kisi, v.personeller);
+        case "tahsilatGuncelle": return tahsilatGuncelle(kisi, v.tahsilatlar);
         case "pinDegistir": return pinDegistir(kisi, v);
         default:            return json({ ok: false, hata: "Bilinmeyen işlem: " + v.islem });
       }
@@ -286,8 +289,11 @@ function veriPaketi(kisi) {
   const hedefler = tumSatirlar("Hedefler").filter(function (h) {
     return h.ay && izinli.indexOf(h.sube) >= 0;
   }).map(function (h) { return { ay: h.ay, sube: h.sube, hedef: h.hedef || 0 }; });
+  const tahsilatlar = tumSatirlar("Tahsilatlar").filter(function (t) {
+    return t.sube && t.tarih && t.tarih >= alt && izinli.indexOf(t.sube) >= 0;
+  }).map(function (t) { return { sube: t.sube, tarih: t.tarih, tutar: t.tutar || 0, cari: t.cari || "", aciklama: t.aciklama || "" }; });
   return {
-    ok: true, kisi: disKisi(kisi), bugun: bugunStr(), kanallar: KANALLAR, subeler: izinli,
+    ok: true, tahsilatlar: tahsilatlar, kisi: disKisi(kisi), bugun: bugunStr(), kanallar: KANALLAR, subeler: izinli,
     duzeltmeGun: CIRO_DUZELTME_GUN, kasaKalemleri: kasaKalemleri(), personeller: personeller(izinli), kayitlar: kayitlar, hedefler: hedefler,
   };
 }
@@ -405,6 +411,19 @@ function personelGuncelle(kisi, liste) {
   const s = sekme("Personeller");
   if (s.getLastRow() > 1) s.getRange(2, 1, s.getLastRow() - 1, 2).clearContent();
   if (temiz.length) s.getRange(2, 1, temiz.length, 2).setValues(temiz.map(function (p) { return [p.ad, p.sube]; }));
+  return json({ ok: true, adet: temiz.length });
+}
+
+// Kasa+ Gelirler tahsilat listesini gönderir (yalnızca yönetici). Liste tümüyle değiştirilir; şube sorumluları kendi şubelerini görür.
+function tahsilatGuncelle(kisi, liste) {
+  if (kisi.rol !== "yonetici") return json({ ok: false, hata: "Tahsilat listesini yalnızca yönetici gönderir." });
+  const temiz = (Array.isArray(liste) ? liste : []).map(function (t) {
+    return { sube: String(t.sube || "").trim(), tarih: String(t.tarih || "").trim(), tutar: sayi(t.tutar), cari: String(t.cari || "").trim().slice(0, 80), aciklama: String(t.aciklama || "").trim().slice(0, 120) };
+  }).filter(function (t) { return SUBELER.indexOf(t.sube) >= 0 && /^\d{4}-\d{2}-\d{2}$/.test(t.tarih) && isFinite(t.tutar) && t.tutar > 0; }).slice(0, 3000);
+  const s = sekme("Tahsilatlar");
+  if (s.getLastRow() > 1) s.getRange(2, 1, s.getLastRow() - 1, 5).clearContent();
+  s.getRange(2, 2, Math.max(temiz.length, 1), 1).setNumberFormat("@");   // tarih metin kalsın
+  if (temiz.length) s.getRange(2, 1, temiz.length, 5).setValues(temiz.map(function (t) { return [t.sube, t.tarih, t.tutar, t.cari, t.aciklama]; }));
   return json({ ok: true, adet: temiz.length });
 }
 
