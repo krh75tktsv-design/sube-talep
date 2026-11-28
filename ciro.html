@@ -335,7 +335,7 @@ function tahsilatCiz(){
   const toplam = liste.reduce((a,t) => a + (Number(t.tutar)||0), 0);
   const acik = kart.open;
   kart.classList.remove("gizli");
-  kart.innerHTML = `<summary class="tahsilat-ozet"><span>${esc(sube)} · ${ayAd} ayı tahsilatlar (${liste.length} kayıt)<span class="tahsilat-ok">›</span></span><b>₺${tr(toplam)}</b></summary>` +
+  kart.innerHTML = `<summary class="tahsilat-ozet"><span>${esc(sube)} · ${ayAd} ayı tahsilatlar (${liste.length} kayıt · ciroya dahildir)<span class="tahsilat-ok">›</span></span><b>₺${tr(toplam)}</b></summary>` +
     (liste.length ? liste.map(t => `<div class="tahsilat-satir"><div><b style="font-weight:600;">${esc(t.cari || t.aciklama || "Tahsilat")}</b><small>${esc(tarihYaz(t.tarih))}${t.cari && t.aciklama ? " · " + esc(t.aciklama) : ""}</small></div><b>₺${tr(t.tutar)}</b></div>`).join("")
       : '<div class="ipucu">Bu ay bu şube için tahsilat kaydı yok.</div>');
   kart.open = acik;
